@@ -237,7 +237,7 @@ const TeamEditForm = ({
       showToast(
         error.response?.data?.message ||
           error.message ||
-          "Failed to remove team picture. Please try again.",
+          t("teams:teamForm.avatarRemoveFailed"),
         "error",
       );
     } finally {
@@ -288,7 +288,7 @@ const TeamEditForm = ({
       <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar Section */}
       <section className="space-y-4">
-        <FormSectionDivider text="Team Avatar" icon={Camera} />
+        <FormSectionDivider text={t("teams:teamForm.sections.avatar")} icon={Camera} />
 
         <div className="flex justify-center">
           <div className="w-full max-w-md">
@@ -319,26 +319,26 @@ const TeamEditForm = ({
                   team?.teamavatarUrl
                 ) && !formData.teamavatarFile
               }
-              removeButtonText="Remove Team Picture"
+              removeButtonText={t("teams:teamForm.removeTeamPicture")}
             />
           </div>
         </div>
       </section>
 
       {/* Team Details Section */}
-      <FormSectionDivider text="Team Details" icon={Users} />
+      <FormSectionDivider text={t("teams:teamForm.sections.details")} icon={Users} />
 
       {/* Team Name */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text">Team Name *</span>
+          <span className="label-text">{t("teams:teamForm.nameLabel")}</span>
         </label>
         <input
           type="text"
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Enter team name"
+          placeholder={t("teams:teamForm.namePlaceholder")}
           className={`input input-bordered w-full ${
             formErrors.name ? "input-error" : ""
           }`}
@@ -355,13 +355,13 @@ const TeamEditForm = ({
       {/* Team Description */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text">Description *</span>
+          <span className="label-text">{t("teams:teamForm.descriptionLabel")}</span>
         </label>
         <textarea
           name="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Describe your team's goals and what you're working on"
+          placeholder={t("teams:teamForm.descriptionPlaceholder")}
           className={`textarea textarea-bordered w-full h-24 ${
             formErrors.description ? "textarea-error" : ""
           }`}
@@ -379,7 +379,7 @@ const TeamEditForm = ({
 
       {/* Team Settings Section */}
       <section className="space-y-4 mt-12">
-        <FormSectionDivider text="Team Settings" icon={Settings} />
+        <FormSectionDivider text={t("teams:teamForm.sections.settings")} icon={Settings} />
 
         {/* Team Visibility Toggle */}
         <div className="form-control">
@@ -387,17 +387,17 @@ const TeamEditForm = ({
             name="isPublic"
             checked={formData.isPublic}
             onChange={handleChange}
-            label="Team Visibility"
+            label={t("teams:teamForm.visibilityLabel")}
             entityType="team"
-            visibleLabel="Public Team"
-            hiddenLabel="Private Team"
+            visibleLabel={t("teams:teamForm.publicTeam")}
+            hiddenLabel={t("teams:teamForm.privateTeam")}
           />
         </div>
 
         {/* Maximum Members */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Maximum Members *</span>
+            <span className="label-text">{t("teams:teamForm.maxMembersLabel")}</span>
           </label>
 
           {/* One row: buttons (left) + value input (right) */}
@@ -426,7 +426,7 @@ const TeamEditForm = ({
                 }}
                 disabled={loading}
               >
-                Preset
+                {t("teams:teamForm.preset")}
               </button>
 
               <button
@@ -450,7 +450,7 @@ const TeamEditForm = ({
                 }}
                 disabled={loading}
               >
-                Custom
+                {t("teams:teamForm.custom")}
               </button>
 
               <button
@@ -470,7 +470,7 @@ const TeamEditForm = ({
                 disabled={loading}
               >
                 <InfinityIcon className="h-4 w-4 mr-1" />
-                Unlimited
+                {t("teams:teamForm.unlimited")}
               </button>
             </div>
 
@@ -490,7 +490,7 @@ const TeamEditForm = ({
                 >
                   {PRESET_OPTIONS.map((n) => (
                     <option key={n} value={n}>
-                      {n} members
+                      {t("teams:teamForm.memberOption", { count: n })}
                     </option>
                   ))}
                 </select>
@@ -504,7 +504,7 @@ const TeamEditForm = ({
                   className="input input-bordered w-full"
                   value={formData.maxMembers ?? ""}
                   onChange={handleChange}
-                  placeholder="min. 2"
+                  placeholder={t("teams:teamForm.minPlaceholder")}
                   disabled={loading}
                 />
               )}
@@ -518,7 +518,7 @@ const TeamEditForm = ({
                 // cannot break and is clipped by the box instead.
                 <div className="input input-bordered w-full h-auto whitespace-normal flex items-center gap-2 opacity-70">
                   <InfinityIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>No member limit</span>
+                  <span>{t("teams:teamForm.noMemberLimit")}</span>
                 </div>
               )}
 
@@ -536,9 +536,8 @@ const TeamEditForm = ({
 
       {/* Location Section (Create-Team consistent) */}
       <section className="mt-12 space-y-4">
-        <FormSectionDivider text="Location" icon={Settings} />
+        <FormSectionDivider text={t("teams:teamForm.sections.location")} icon={Settings} />
 
-        {/* Location Mode Toggle */}
         {/* Location Mode Toggle */}
         <div className="form-control">
           <LocationModeToggle
@@ -560,11 +559,6 @@ const TeamEditForm = ({
                 },
               });
             }}
-            label="Team Location"
-            locationLabel="This is a team with a location"
-            remoteLabel="This is a remote team"
-            locationDescription="Provide location information for your team. This information is optional."
-            remoteDescription="Remote teams don't have a physical meeting location."
           />
         </div>
 
@@ -593,12 +587,12 @@ const TeamEditForm = ({
 
       {/* Focus Areas Section */}
       <section className="mt-12 space-y-4">
-        <FormSectionDivider text="Focus Areas" icon={Tag} />
+        <FormSectionDivider text={t("focusAreas.title")} icon={Tag} />
 
         <div className="form-control">
           <label className="label">
             <span className="label-text">
-              What does this team focus on? (Optional)
+              {t("teams:teamForm.focusAreasPrompt")}
             </span>
           </label>
           <TagInput
@@ -615,7 +609,7 @@ const TeamEditForm = ({
       <div className="-mx-6 -mb-6 mt-6 px-6 py-6 border-t border-base-200 bg-base-100/80">
         <div className="flex items-center justify-between">
           {onDelete ? (
-            <Tooltip content="Permanently delete this team and all its data. You will be asked to confirm." position="top">
+            <Tooltip content={t("teams:teamForm.deleteTooltip")} position="top">
               <Button
                 type="button"
                 variant="ghost"
@@ -624,7 +618,7 @@ const TeamEditForm = ({
                 icon={<Trash2 size={16} />}
                 className="hover:bg-red-600 hover:text-white"
               >
-                Delete
+                {t("teams:teamForm.delete")}
               </Button>
             </Tooltip>
           ) : <div />}
@@ -636,11 +630,11 @@ const TeamEditForm = ({
               disabled={loading}
               icon={<X size={16} />}
             >
-              Cancel
+              {t("teams:teamForm.cancel")}
             </Button>
-            <Tooltip content="Save Team Changes" position="top">
+            <Tooltip content={t("teams:teamForm.saveTooltip")} position="top">
               <Button type="submit" variant="primary" disabled={loading} icon={<Save size={16} />}>
-                {loading ? "Saving..." : "Save"}
+                {loading ? t("teams:teamForm.saving") : t("teams:teamForm.save")}
               </Button>
             </Tooltip>
           </div>
@@ -652,15 +646,15 @@ const TeamEditForm = ({
         isOpen={isAvatarDeleteDialogOpen}
         onClose={closeAvatarDeleteDialog}
         onConfirm={confirmAvatarDelete}
-        title="Remove Team Picture"
+        title={t("teams:teamForm.removeTeamPicture")}
         loading={avatarDeleteLoading}
-        confirmLabel="Remove"
-        loadingLabel="Removing..."
+        confirmLabel={t("imageUploader.remove")}
+        loadingLabel={t("teams:teamForm.removing")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Remove the team picture? The team will show its initials instead.
+          {t("teams:teamForm.avatarRemoveBody")}
         </p>
       </ConfirmModal>
     </>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { MapPin } from "lucide-react";
 import { normalizeLocationData, formatLocation } from "../../utils/locationUtils";
 
@@ -35,6 +36,11 @@ const LocationDisplay = ({
   showState,
   showCountry = true,
 }) => {
+  // Location text is resolved by `locationUtils`, which reads the active
+  // language from the i18n instance rather than from props. This hook is
+  // what makes the component re-render on `changeLanguage`.
+  useTranslation();
+
   // Create a location object and normalize it
   const locationData = normalizeLocationData({
     postal_code: postalCode,

@@ -169,7 +169,16 @@
     "loading": "Lädt …",
     "fallbackName": "Fokusbereich {id}",
     "remove": "{name} entfernen",
-    "removeGeneric": "Fokusbereich entfernen"
+    "removeGeneric": "Fokusbereich entfernen",
+    "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
+    "editAria": "Bearbeiten",
+    "cancel": "Abbrechen",
+    "updated": "Erfolgreich aktualisiert!",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "tagTooltip": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
+    "groupTooltip": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
+    "tagTooltipMembers": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -216,7 +225,26 @@
     "notFoundInCountry": "In {country} nicht gefunden.",
     "suggestedCity": "{city} ist der Ort zur Postleitzahl {postalCode}.",
     "useSuggestedCity": "Übernehmen",
-    "useSuggestedCityAria": "{city} übernehmen"
+    "useSuggestedCityAria": "{city} übernehmen",
+    "section": {
+      "title": "Standort",
+      "remote": "Remote",
+      "remoteTeam": "Remote-Team",
+      "noPhysicalLocation": "(Kein fester Treffpunkt)",
+      "noLocationBoundaries": "Keine räumliche Bindung",
+      "notSpecified": "Nicht angegeben",
+      "distanceAway": "{distance} entfernt",
+      "unavailable": "Standort nicht verfügbar",
+      "unavailableShort": "Keine Angabe"
+    },
+    "locationMode": {
+      "label": "Team-Standort",
+      "locationLabel": "Das ist ein Team mit festem Standort",
+      "remoteLabel": "Das ist ein Remote-Team",
+      "locationHelper": "Gib den Standort deines Teams an. Diese Angabe ist optional.",
+      "remoteHelper": "Remote-Teams haben keinen festen Treffpunkt.",
+      "toggleAria": "Standortmodus umschalten"
+    }
   },
   "modal": {
     "close": "Dialog schließen"
@@ -328,5 +356,89 @@
     "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
     "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
     "toggleAria": "Sichtbarkeit umschalten"
+  },
+  "demo": {
+    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team",
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle"
+  },
+  "matchScore": {
+    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
+    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
+    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
+    "plain": "{pct}% Profil-Übereinstimmung"
+  },
+  "distance": {
+    "awayFromYou": "{km} km von dir entfernt",
+    "away": "{km} km entfernt",
+    "awayWithinLimit": "{km} km entfernt (< {limit} km)",
+    "awayBeyondLimit": "{km} km entfernt (> {limit} km)"
+  },
+  "roles": {
+    "owner": "Eigentümer",
+    "admin": "Admin",
+    "member": "Mitglied",
+    "unknown": "Unbekannt"
+  },
+  "collapse": {
+    "showAll": "Alle anzeigen",
+    "showLess": "Weniger anzeigen"
+  },
+  "user": {
+    "privateProfile": "Privates Profil",
+    "unknown": "Unbekannt",
+    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet."
+  },
+  "matchSummary": {
+    "counted": "{matchCount}/{total} passend",
+    "none": "Keine Übereinstimmung",
+    "all": "Alle passend",
+    "countedWithYou": "{matchCount}/{total} passend zu dir",
+    "countedWithName": "{matchCount}/{total} passend zu {name}",
+    "noneWithYou": "Keine Übereinstimmung mit dir",
+    "noneWithName": "Keine Übereinstimmung mit {name}",
+    "allWithYou": "Alle passend zu dir",
+    "allWithName": "Alle passend zu {name}"
+  },
+  "roleStatus": {
+    "vacant": "Vakant",
+    "filled": "Besetzt",
+    "closed": "Geschlossen",
+    "open": "Offene Rolle",
+    "vacantRoleFallback": "Vakante Rolle"
+  },
+  "mapPopup": {
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeRole": "Offene Rolle",
+    "close": "Schließen",
+    "viewDetails": "Details ansehen",
+    "openDetails": "Details öffnen",
+    "resultAria": "Kartenergebnis {name}",
+    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
+    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
+    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
+    "openTeamInvitation": "Details der Team-Einladung öffnen",
+    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
+    "openTeamApplication": "Details der Team-Bewerbung öffnen",
+    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
+    "entityRemote": "{entity} (remote)",
+    "entityNoLocation": "{entity} ohne Standortangabe",
+    "typeUserProfile": "Profil",
+    "demoTeam": "Demo-Team",
+    "demoRole": "Demo-Rolle",
+    "demoProfile": "Demo-Profil",
+    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
+    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
+    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
+    "memberCount": "{count} von {max} Mitgliedern",
+    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
+    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
+    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
+    "remoteOrUnmapped": "Remote oder ohne Standort"
+  },
+  "team": {
+    "unknownName": "Unbekanntes Team"
   }
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import {
   Users,
@@ -55,6 +56,8 @@ const TeamCardListSubtitle = ({
   showDemoIndicator,
   demoTooltip,
 }) => {
+  const { t } = useTranslation("teams");
+
   return (
     <span className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base-content/60 space-x-1">
       {scoreSubtitleItem}
@@ -64,11 +67,11 @@ const TeamCardListSubtitle = ({
           content={
             hasInternalRoleInvitation
               ? internalRoleInvitationTooltip
-              : `You were invited to this team${
-                  formattedDate
-                    ? `\non ${formatDateMedium(new Date(normalizedData.date))}`
-                    : ""
-                }`
+              : formattedDate
+                ? t("teamCard.status.invitedToTeamOn", {
+                    date: formatDateMedium(new Date(normalizedData.date)),
+                  })
+                : t("teamCard.status.invitedToTeam")
           }
         >
           <span
@@ -103,14 +106,24 @@ const TeamCardListSubtitle = ({
         <Tooltip
           content={
             isCombinedApplication || isPendingCombinedApplicationForTeam
-              ? `You applied to join this team and fill a role${formattedDate ? `\non ${formatDateMedium(new Date(normalizedData.date))}` : ""}`
+              ? formattedDate
+                ? t("teamCard.status.appliedCombinedOn", {
+                    date: formatDateMedium(new Date(normalizedData.date)),
+                  })
+                : t("teamCard.status.appliedCombined")
               : isPendingInternalRoleApplicationForTeam
-                ? "You applied for a role within this team"
-                : `You applied${isRoleApplicationVariant ? " for this role" : " to join this team"}${
-                    formattedDate
-                      ? `\non ${formatDateMedium(new Date(normalizedData.date))}`
-                      : ""
-                  }`
+                ? t("teamCard.status.appliedForRole")
+                : isRoleApplicationVariant
+                  ? formattedDate
+                    ? t("teamCard.status.appliedForThisRoleOn", {
+                        date: formatDateMedium(new Date(normalizedData.date)),
+                      })
+                    : t("teamCard.status.appliedForThisRole")
+                  : formattedDate
+                    ? t("teamCard.status.appliedToTeamOn", {
+                        date: formatDateMedium(new Date(normalizedData.date)),
+                      })
+                    : t("teamCard.status.appliedToTeam")
           }
         >
           <span
@@ -144,7 +157,10 @@ const TeamCardListSubtitle = ({
         openRoleCount={openRoleCount}
       />
       {isRoleVariant && teamData._teamName && (
-        <Tooltip content="Click to view team details" wrapperClassName="inline-flex items-center gap-0.5">
+        <Tooltip
+          content={t("teamCard.tooltips.clickTeamDetails")}
+          wrapperClassName="inline-flex items-center gap-0.5"
+        >
           <span
             className="inline-flex items-center gap-0.5 cursor-pointer"
             onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
@@ -157,17 +173,17 @@ const TeamCardListSubtitle = ({
       {userRole && effectiveVariant === "member" && (
         <>
           {userRole === "owner" && (
-            <Tooltip content="You are the owner of this team">
+            <Tooltip content={t("teamCard.status.youAreOwner")}>
               <Crown size={9} className="text-[var(--color-role-owner-bg)]" />
             </Tooltip>
           )}
           {userRole === "admin" && (
-            <Tooltip content="You are an admin of this team">
+            <Tooltip content={t("teamCard.status.youAreAdmin")}>
               <ShieldCheck size={9} className="text-[var(--color-role-admin-bg)]" />
             </Tooltip>
           )}
           {userRole === "member" && !hideMemberRoleIcon && (
-            <Tooltip content="You are a member of this team">
+            <Tooltip content={t("teamCard.status.youAreMember")}>
               <User size={9} className="text-[var(--color-role-member-bg)]" />
             </Tooltip>
           )}

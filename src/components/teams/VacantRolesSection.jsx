@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   UserSearch,
   Plus,
@@ -63,6 +64,7 @@ const VacantRolesSection = ({
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { t } = useTranslation("teams");
   const [notification, setNotification] = useState({
     type: null,
     message: null,
@@ -107,11 +109,11 @@ const VacantRolesSection = ({
       onRolesLoaded?.(loaded);
     } catch (err) {
       console.error("Error fetching vacant roles:", err);
-      setError("Failed to load vacant roles");
+      setError(t("rolesSection.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [teamId, shouldShowAllRoleStatuses, onRolesLoaded]);
+  }, [teamId, shouldShowAllRoleStatuses, onRolesLoaded, t]);
 
   useEffect(() => {
     fetchRoles();
@@ -168,7 +170,12 @@ const VacantRolesSection = ({
 
       setNotification({
         type: "success",
-        message: `Role ${newStatus === "filled" ? "marked as filled" : newStatus === "closed" ? "closed" : "reopened"} successfully`,
+        message:
+          newStatus === "filled"
+            ? t("rolesSection.statusFilled")
+            : newStatus === "closed"
+              ? t("rolesSection.statusClosed")
+              : t("rolesSection.statusReopened"),
       });
       // Refresh the list
       await fetchRoles();
@@ -176,7 +183,8 @@ const VacantRolesSection = ({
       console.error("Error updating role status:", err);
       setNotification({
         type: "error",
-        message: err.response?.data?.message || "Failed to update role status",
+        message:
+          err.response?.data?.message || t("rolesSection.statusUpdateFailed"),
       });
     }
   };
@@ -199,7 +207,7 @@ const VacantRolesSection = ({
       await vacantRoleService.deleteVacantRole(teamId, pendingDeleteRoleId);
       setNotification({
         type: "success",
-        message: "Vacant role deleted successfully",
+        message: t("rolesSection.deleted"),
       });
       setPendingDeleteRoleId(null);
       await fetchRoles();
@@ -207,7 +215,7 @@ const VacantRolesSection = ({
       console.error("Error deleting vacant role:", err);
       setNotification({
         type: "error",
-        message: err.response?.data?.message || "Failed to delete role",
+        message: err.response?.data?.message || t("rolesSection.deleteFailed"),
       });
     } finally {
       setDeleteRoleLoading(false);
@@ -246,7 +254,7 @@ const VacantRolesSection = ({
       <div className={className}>
         <div className="flex items-center mb-4">
           <UserSearch size={18} className="mr-2 text-primary flex-shrink-0" />
-          <h3 className="font-medium">Team Roles</h3>
+          <h3 className="font-medium">{t("rolesSection.title")}</h3>
         </div>
         <div className="flex justify-center py-4">
           <span className="loading loading-spinner loading-sm text-primary"></span>
@@ -282,10 +290,10 @@ const VacantRolesSection = ({
         >
           <UserSearch size={18} className="mr-1 text-primary flex-shrink-0" />
           <h3 className="font-medium">
-            Team Roles
+            {t("rolesSection.title")}
             {openCount > 0 && (
               <span className="text-sm font-normal text-base-content/60 ml-1">
-                ({openCount} open)
+                {t("rolesSection.openCount", { count: openCount })}
               </span>
             )}
           </h3>
@@ -305,7 +313,7 @@ const VacantRolesSection = ({
             className="gap-1"
           >
             <Plus size={16} />
-            Add Role
+            {t("rolesSection.addRole")}
           </Button>
         )}
       </div>
@@ -354,7 +362,7 @@ const VacantRolesSection = ({
               onClick={() => setIsExpanded((v) => !v)}
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
-              {isExpanded ? "Show less" : "Show all"}
+              {isExpanded ? t("common:collapse.showLess") : t("common:collapse.showAll")}
             </button>
           )}
         </>
@@ -366,11 +374,10 @@ const VacantRolesSection = ({
               className="mx-auto mb-2 text-base-content/40"
             />
             <p className="text-sm text-base-content/60">
-              No vacant roles defined yet
+              {t("rolesSection.empty")}
             </p>
             <p className="text-xs text-base-content/40 mt-1">
-              Add roles to describe what kind of members your team is looking
-              for
+              {t("rolesSection.emptyHint")}
             </p>
           </div>
         )
@@ -393,19 +400,20 @@ const VacantRolesSection = ({
         isOpen={Boolean(pendingDeleteRoleId)}
         onClose={closeDeleteRoleDialog}
         onConfirm={confirmDeleteRole}
-        title="Delete Vacant Role"
+        title={t("rolesSection.deleteTitle")}
         loading={deleteRoleLoading}
-        confirmLabel="Delete Role"
-        loadingLabel="Deleting..."
+        confirmLabel={t("rolesSection.deleteConfirm")}
+        loadingLabel={t("rolesSection.deleteLoading")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Delete{" "}
-          {pendingDeleteRole?.roleName ||
-            pendingDeleteRole?.role_name ||
-            "this vacant role"}
-          ? This removes the role from your team.
+          {pendingDeleteRole?.roleName || pendingDeleteRole?.role_name
+            ? t("rolesSection.deleteBodyNamed", {
+                roleName:
+                  pendingDeleteRole.roleName ?? pendingDeleteRole.role_name,
+              })
+            : t("rolesSection.deleteBodyUnnamed")}
         </p>
       </ConfirmModal>
     </div>

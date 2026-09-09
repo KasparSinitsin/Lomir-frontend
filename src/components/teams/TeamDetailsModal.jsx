@@ -13,6 +13,7 @@ import {
   formatDateMedium,
   formatDateNumeric,
   formatMonthNumeric,
+  formatMonthYear,
 } from "../../utils/dateHelpers";
 import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
@@ -506,14 +507,14 @@ const TeamDetailsModal = ({
           if (err.response?.status === 404) {
             setNotification({
               type: "error",
-              message: "Team not found or you don't have access to it.",
+              message: t("teams:teamDetails.notFound"),
             });
           } else {
             setNotification({
               type: "error",
               message:
                 "Server error: " +
-                (err.response?.data?.error || err.message || "Unknown error"),
+                (err.response?.data?.error || err.message || t("teams:teamDetails.unknownError")),
             });
           }
         }
@@ -522,7 +523,7 @@ const TeamDetailsModal = ({
         setLoading(false);
       }
     },
-    [effectiveTeamId, initialTeamData, user, isAuthenticated, team],
+    [effectiveTeamId, initialTeamData, user, isAuthenticated, team, t],
   );
 
   useEffect(() => {
@@ -867,8 +868,8 @@ const TeamDetailsModal = ({
         type: "success",
         message:
           reopenedRoles.length > 0
-            ? `You have left the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
-            : "You have left the team successfully.",
+            ? t("teams:teamDetails.leftTeamWithReopened", { count: reopenedRoles.length })
+            : t("teams:teamDetails.leftTeam"),
       });
       setIsLeaveDialogOpen(false);
 
@@ -883,7 +884,7 @@ const TeamDetailsModal = ({
         type: "error",
         message:
           error.response?.data?.message ||
-          "Failed to leave team. Please try again.",
+          t("teams:teamDetails.leaveFailed"),
       });
       setIsLeaveDialogOpen(false);
     } finally {
@@ -908,7 +909,7 @@ const TeamDetailsModal = ({
       );
       setNotification({
         type: "success",
-        message: "Invitation accepted! You are now a member of this team.",
+        message: t("teams:teamDetails.inviteAccepted"),
       });
       setIsInvitationModalOpen(false);
       // Refresh team details to show updated membership
@@ -921,7 +922,7 @@ const TeamDetailsModal = ({
       console.error("Error accepting invitation:", error);
       setNotification({
         type: "error",
-        message: error.message || "Failed to accept invitation. Please try again.",
+        message: error.message || t("teams:teamDetails.inviteAcceptFailed"),
       });
     }
   };
@@ -938,7 +939,7 @@ const TeamDetailsModal = ({
       );
       setNotification({
         type: "success",
-        message: "Invitation declined.",
+        message: t("teams:teamDetails.inviteDeclined"),
       });
       setIsInvitationModalOpen(false);
       // Close the modal after a short delay
@@ -949,7 +950,7 @@ const TeamDetailsModal = ({
       console.error("Error declining invitation:", error);
       setNotification({
         type: "error",
-        message: "Failed to decline invitation. Please try again.",
+        message: t("teams:teamDetails.inviteDeclineFailed"),
       });
     }
   };
@@ -977,20 +978,20 @@ const TeamDetailsModal = ({
     const errors = {};
 
     if (!formData.name.trim()) {
-      errors.name = "Team name is required";
+      errors.name = t("teams:teamDetails.nameRequired");
     } else if (formData.name.trim().length < 3) {
-      errors.name = "Team name must be at least 3 characters";
+      errors.name = t("teams:teamDetails.nameTooShort");
     }
 
     if (!formData.description.trim()) {
-      errors.description = "Team description is required";
+      errors.description = t("teams:teamDetails.descriptionRequired");
     } else if (formData.description.trim().length < 10) {
-      errors.description = "Description must be at least 10 characters";
+      errors.description = t("teams:teamDetails.descriptionTooShort");
     }
 
     // Only validate maxMembers if it's not unlimited (null)
     if (formData.maxMembers !== null && formData.maxMembers < 2) {
-      errors.maxMembers = "Team size must be at least 2 members";
+      errors.maxMembers = t("teams:teamDetails.sizeTooSmall");
     }
 
     setFormErrors(errors);
@@ -1004,7 +1005,7 @@ const TeamDetailsModal = ({
     if (!canEditTeam) {
       setNotification({
         type: "error",
-        message: "You do not have permission to edit this team.",
+        message: t("teams:teamDetails.noEditPermission"),
       });
       return;
     }
@@ -1071,7 +1072,7 @@ const TeamDetailsModal = ({
           // Continue with the update even if image upload fails
           setNotification({
             type: "warning",
-            message: "Team updated but avatar upload failed.",
+            message: t("teams:teamDetails.updatedAvatarFailed"),
           });
         }
       }
@@ -1101,7 +1102,7 @@ const TeamDetailsModal = ({
 
       setNotification({
         type: "success",
-        message: "Team updated successfully!",
+        message: t("teams:teamDetails.updated"),
       });
 
       setIsEditing(false);
@@ -1116,7 +1117,7 @@ const TeamDetailsModal = ({
     } catch (err) {
       console.error("Error updating team:", err);
 
-      let errorMessage = "Failed to update team. Please try again.";
+      let errorMessage = t("teams:teamDetails.updateFailed");
       if (err.response?.data?.errors && err.response.data.errors.length > 0) {
         errorMessage = `Error: ${err.response.data.errors[0]}`;
       } else if (err.response?.data?.message) {
@@ -1167,7 +1168,7 @@ const TeamDetailsModal = ({
       console.error("Error deleting team:", err);
       setNotification({
         type: "error",
-        message: "Failed to delete team. Please try again.",
+        message: t("teams:teamDetails.deleteFailed"),
       });
       setLoading(false);
     }
@@ -1295,11 +1296,11 @@ const TeamDetailsModal = ({
       setNotification({
         type: "success",
         message: applicationData.isDraft
-          ? "Draft saved successfully"
-          : "Application sent successfully!",
+          ? t("teams:teamDetails.draftSaved")
+          : t("teams:teamDetails.applicationSent"),
       });
     },
-    [effectiveTeamId, team, teamRoles],
+    [effectiveTeamId, team, teamRoles, t],
   );
 
   const renderJoinButton = () => {
@@ -1320,7 +1321,7 @@ const TeamDetailsModal = ({
             className="w-full"
             icon={<Mail size={16} />}
           >
-            Open Invite to Respond
+            {t("teams:teamDetails.openInvite")}
           </Button>
         </div>
       );
@@ -1338,7 +1339,7 @@ const TeamDetailsModal = ({
             className="w-full"
             icon={<SendHorizontal size={16} />}
           >
-            View Application Details
+            {t("teams:teamDetails.viewApplication")}
           </Button>
         </div>
       );
@@ -1354,7 +1355,7 @@ const TeamDetailsModal = ({
               variant="primary"
               className="flex-1"
             >
-              Send Message to Team
+              {t("teams:teamDetails.sendMessage")}
             </SendMessageButton>
 
             {/* Leave Team Button */}
@@ -1364,8 +1365,8 @@ const TeamDetailsModal = ({
                 size="sm"
                 onClick={() => setIsLeaveDialogOpen(true)}
                 className="hover:bg-red-100 hover:text-red-700 p-2"
-                aria-label="Leave team"
-                title="Leave team"
+                aria-label={t("teams:teamDetails.leaveAria")}
+                title={t("teams:teamDetails.leaveTooltip")}
               >
                 <LogOut size={20} />
               </Button>
@@ -1512,7 +1513,7 @@ const TeamDetailsModal = ({
   const modalTitle = (
     <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
       {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
-      {isEditing ? "Edit Team" : "Team Details"}
+      {isEditing ? t("teams:teamDetails.editTitle") : t("teams:teamDetails.title")}
     </h2>
   );
 
@@ -1522,7 +1523,10 @@ const TeamDetailsModal = ({
 
     try {
       return {
-        short: formatMonthNumeric(new Date(createdAt)),
+        // Matches "member since" in UserProfileHeaderSection, which uses
+        // formatMonthYear ("March 2026"). `narrow` keeps the all-numeric form
+        // for the width-constrained header slot.
+        short: formatMonthYear(new Date(createdAt)),
         narrow: formatMonthNumeric(new Date(createdAt)),
         full: formatDateLong(new Date(createdAt)),
       };
@@ -1536,7 +1540,7 @@ const TeamDetailsModal = ({
     <div className="flex items-center gap-1">
       {canEditTeam && (
         <Tooltip
-          content="Edit this team's details, focus areas, location, and visibility."
+          content={t("teams:teamDetails.editTooltip")}
           position="bottom"
         >
           <Button
@@ -1555,14 +1559,14 @@ const TeamDetailsModal = ({
             }}
             className="hover:bg-[#7ace82] hover:text-[#036b0c]"
             icon={<Edit size={16} />}
-            aria-label="Edit team details"
+            aria-label={t("teams:teamDetails.editAria")}
           >
-            <span className="hidden sm:inline">Edit</span>
+            <span className="hidden sm:inline">{t("teams:teamDetails.edit")}</span>
           </Button>
         </Tooltip>
       )}
       {shouldShowHeaderApplyButton && (
-        <Tooltip content="Apply to join this team." position="bottom">
+        <Tooltip content={t("teams:teamDetails.applyTooltip")} position="bottom">
           <TeamApplicationButton
             team={team}
             teamId={effectiveTeamId}
@@ -1571,8 +1575,8 @@ const TeamDetailsModal = ({
             size="sm"
             className="flex items-center gap-1"
             buttonIcon={<SendHorizontal size={16} />}
-            buttonLabel={<span className="hidden sm:inline">Apply</span>}
-            ariaLabel="Apply to join team"
+            buttonLabel={<span className="hidden sm:inline">{t("teams:teamDetails.apply")}</span>}
+            ariaLabel={t("teams:teamDetails.applyAria")}
             onAfterSubmit={fetchTeamDetails}
             onSuccess={handleTeamApplicationSuccess}
           />
@@ -1598,7 +1602,7 @@ const TeamDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
-        closeButtonTooltip="Close team details and return to the previous view."
+        closeButtonTooltip={t("teams:teamDetails.closeAria")}
         zIndexStyle={zIndexStyle}
         boxZIndexStyle={boxZIndexStyle}
       >
@@ -1626,7 +1630,7 @@ const TeamDetailsModal = ({
                   fetchTeamDetails();
                   setNotification({
                     type: "success",
-                    message: "Team picture removed successfully!",
+                    message: t("teams:teamDetails.pictureRemoved"),
                   });
                 }}
               />
@@ -1640,7 +1644,7 @@ const TeamDetailsModal = ({
                       !teamImageError ? (
                         <img
                           src={team?.teamavatar_url || team?.teamavatarUrl}
-                          alt="Team"
+                          alt={t("teams:teamDetails.teamImageAlt")}
                           className="rounded-full object-cover w-full h-full"
                           onError={() => setTeamImageError(true)}
                         />
@@ -1698,7 +1702,7 @@ const TeamDetailsModal = ({
 
                       {teamRoles.filter((r) => r.status === "open").length > 0 && (
                         <Tooltip
-                          content="Vacant roles"
+                          content={t("teams:teamDetails.vacantRolesTooltip")}
                           position="bottom"
                           wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
                         >
@@ -1713,11 +1717,25 @@ const TeamDetailsModal = ({
                       {effectiveHasPendingInvitation && effectivePendingInvitation && (
                         <Tooltip
                           content={
-                            (effectivePendingInvitation.isInternal ?? effectivePendingInvitation.is_internal)
-                              ? `You were invited to fill a role in this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
-on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)))}` : ""}`
-                              : `You were invited to join this team${(effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at) ? `
-on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectivePendingInvitation.created_at)))}` : ""}`
+                            (() => {
+                              const invitedAt =
+                                effectivePendingInvitation.createdAt ??
+                                effectivePendingInvitation.created_at;
+                              const isInternal =
+                                effectivePendingInvitation.isInternal ??
+                                effectivePendingInvitation.is_internal;
+                              const date = invitedAt
+                                ? formatDateMedium(new Date(invitedAt))
+                                : null;
+                              if (isInternal) {
+                                return date
+                                  ? t("teams:teamDetails.invitedToFillRoleOn", { date })
+                                  : t("teams:teamDetails.invitedToFillRole");
+                              }
+                              return date
+                                ? t("teams:teamDetails.invitedToTeamOn", { date })
+                                : t("teams:teamDetails.invitedToTeam");
+                            })()
                           }
                           position="bottom"
                           wrapperClassName="inline-flex"
@@ -1742,7 +1760,15 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       {/* Combined team+role application → violet */}
                       {pendingCombinedApplication && (
                         <Tooltip
-                          content={`You applied to join this team and fill a role${(pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at)))}` : ""}`}
+                          content={(() => {
+                            const appliedAt =
+                              pendingCombinedApplication.createdAt ?? pendingCombinedApplication.created_at;
+                            return appliedAt
+                              ? t("teams:teamDetails.appliedCombinedOn", {
+                                  date: formatDateMedium(new Date(appliedAt)),
+                                })
+                              : t("teams:teamDetails.appliedCombined");
+                          })()}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1761,7 +1787,15 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       {/* Role-only application for existing members → orange */}
                       {pendingInternalRoleApplication && (
                         <Tooltip
-                          content={`You applied to fill a role in this team${(pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at)))}` : ""}`}
+                          content={(() => {
+                            const appliedAt =
+                              pendingInternalRoleApplication.createdAt ?? pendingInternalRoleApplication.created_at;
+                            return appliedAt
+                              ? t("teams:teamDetails.appliedForRoleOn", {
+                                  date: formatDateMedium(new Date(appliedAt)),
+                                })
+                              : t("teams:teamDetails.appliedForRole");
+                          })()}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1780,7 +1814,15 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       {/* Team-only application → blue */}
                       {pendingTeamOnlyApplication && (
                         <Tooltip
-                          content={`You applied to join this team${(pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at) ? `\non ${formatDateMedium(new Date((pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at)))}` : ""}`}
+                          content={(() => {
+                            const appliedAt =
+                              pendingTeamOnlyApplication.createdAt ?? pendingTeamOnlyApplication.created_at;
+                            return appliedAt
+                              ? t("teams:teamDetails.appliedToTeamOn", {
+                                  date: formatDateMedium(new Date(appliedAt)),
+                                })
+                              : t("teams:teamDetails.appliedToTeam");
+                          })()}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
@@ -1800,13 +1842,13 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       {/* Archived status - ALWAYS show for archived teams */}
                       {(team?.archived_at || team?.status === "inactive") && (
                         <Tooltip
-                          content="Archived (scheduled for deletion and inactive — no invitations or changes to the team possible)."
+                          content={t("teams:teamDetails.archivedTooltip")}
                           position="bottom"
                           wrapperClassName="inline-flex"
                         >
                           <div className="flex items-center gap-1 text-base-content/70 cursor-help">
                             <Archive size={14} className="flex-shrink-0" />
-                            <span>Archived</span>
+                            <span>{t("teams:teamDetails.archived")}</span>
                           </div>
                         </Tooltip>
                       )}
@@ -1815,7 +1857,11 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       {shouldShowVisibilityStatus() &&
                         !(team?.archived_at || team?.status === "inactive") && (
                           <Tooltip
-                            content={isPublic ? "Public — visible to everyone" : "Private — only visible to members"}
+                            content={
+                              isPublic
+                                ? t("teams:teamDetails.publicTooltip")
+                                : t("teams:teamDetails.privateTooltip")
+                            }
                             position="bottom"
                             wrapperClassName="flex items-center gap-1 text-base-content/70 cursor-help"
                           >
@@ -1825,7 +1871,7 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                                   size={14}
                                   className="text-green-600 flex-shrink-0"
                                 />
-                                {!teamDateIsNarrow && <span>Public</span>}
+                                {!teamDateIsNarrow && <span>{t("teams:teamDetails.public")}</span>}
                               </>
                             ) : (
                               <>
@@ -1833,7 +1879,7 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                                   size={14}
                                   className="text-gray-500 flex-shrink-0"
                                 />
-                                {!teamDateIsNarrow && <span>Private</span>}
+                                {!teamDateIsNarrow && <span>{t("teams:teamDetails.private")}</span>}
                               </>
                             )}
                           </Tooltip>
@@ -1843,7 +1889,9 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                         <span className="flex items-center gap-1.5 flex-shrink-0">
                           {getTeamCreatedDate() && (
                             <Tooltip
-                              content={`Created on ${getTeamCreatedDate().full}`}
+                              content={t("teams:teamDetails.createdOn", {
+                                date: getTeamCreatedDate().full,
+                              })}
                               position="bottom"
                               wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${teamDateIsNarrow ? "flex" : "flex sm:hidden"}`}
                             >
@@ -1857,7 +1905,7 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                               wrapperClassName="flex items-start text-base-content/50"
                             >
                               <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " sm:mr-0.5"}`} />
-                              {!teamDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Team</span>}
+                              {!teamDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">{t("teams:teamDetails.demoTeam")}</span>}
                             </Tooltip>
                           )}
                         </span>
@@ -1870,7 +1918,9 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                       className={`flex-shrink-0${teamDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
                     >
                       <Tooltip
-                        content={`Created on ${getTeamCreatedDate().full}`}
+                        content={t("teams:teamDetails.createdOn", {
+                                date: getTeamCreatedDate().full,
+                              })}
                         position="bottom"
                         wrapperClassName="flex items-center text-base-content/70 cursor-help"
                       >
@@ -1896,7 +1946,7 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                     matchScore={effectiveTeamMatch.matchScore}
                     matchType={effectiveTeamMatch.matchType}
                     matchDetails={effectiveTeamMatch.matchDetails}
-                    comparisonLabel="this team"
+                    comparisonLabel={t("teams:teamDetails.thisTeam")}
                   />
 
                   {/* Team Location */}
@@ -1934,14 +1984,21 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} matching</span>
+                              <span>
+                                {t("matchSummary.counted", {
+                                  matchCount,
+                                  total,
+                                })}
+                              </span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span className="leading-[1.1]">None matching</span>
+                            <span className="leading-[1.1]">
+                              {t("matchSummary.none")}
+                            </span>
                           </span>
                         );
                       })() : null}
@@ -1969,14 +2026,21 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
                           return (
                             <span className="flex items-center gap-1.5 text-sm text-success">
                               <MatchIcon size={14} className="flex-shrink-0" />
-                              <span>{matchCount}/{total} matching</span>
+                              <span>
+                                {t("matchSummary.counted", {
+                                  matchCount,
+                                  total,
+                                })}
+                              </span>
                             </span>
                           );
                         }
                         return (
                           <span className="flex items-center gap-1.5 text-sm text-slate-500">
                             <X size={14} className="flex-shrink-0" />
-                            <span className="leading-[1.1]">None matching</span>
+                            <span className="leading-[1.1]">
+                              {t("matchSummary.none")}
+                            </span>
                           </span>
                         );
                       })() : null}
@@ -2043,18 +2107,15 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
         isOpen={isDeleteDialogOpen}
         onClose={closeDeleteTeamDialog}
         onConfirm={confirmDeleteTeam}
-        title="Delete Team"
+        title={t("teams:teamDetails.deleteTitle")}
         loading={loading}
-        confirmLabel="Delete Team"
-        loadingLabel="Deleting..."
+        confirmLabel={t("teams:teamDetails.deleteConfirm")}
+        loadingLabel={t("teams:teamDetails.deleteLoading")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Delete this team? If you are the only member, the team and chat are
-          deleted immediately. If other members remain, the team is archived
-          first and permanently deleted after they leave or after the archive
-          grace period, currently 14 days by default.
+          {t("teams:teamDetails.deleteBody")}
         </p>
       </ConfirmModal>
 
@@ -2063,19 +2124,18 @@ on ${formatDateMedium(new Date((effectivePendingInvitation.createdAt ?? effectiv
         isOpen={isLeaveDialogOpen}
         onClose={() => setIsLeaveDialogOpen(false)}
         onConfirm={handleLeaveTeam}
-        title="Leave Team"
+        title={t("teams:teamDetails.leaveTitle")}
         loading={leaveLoading}
-        confirmLabel="Leave Team"
-        loadingLabel="Leaving..."
+        confirmLabel={t("teams:teamDetails.leaveConfirm")}
+        loadingLabel={t("teams:teamDetails.leaveLoading")}
         confirmVariant="error"
       >
         <p className="text-sm text-base-content/80">
-          Really want to leave this team?
+          {t("teams:teamDetails.leaveBody")}
         </p>
         {isOwner && (
           <p className="text-warning text-sm mt-2">
-            Note: As an owner, you can only leave if there&apos;s another owner
-            to manage the team. Pass ownership before leaving.
+            {t("teams:teamDetails.leaveOwnerNote")}
           </p>
         )}
       </ConfirmModal>

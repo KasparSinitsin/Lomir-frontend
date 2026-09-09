@@ -47,7 +47,77 @@ export function getMatchTier(score) {
 }
 
 /**
+ * Decide WHICH match-score sentence applies, and with which values.
+ *
+ * The wording itself lives in the translation files: this module is plain
+ * JavaScript with no component around it, so it must not reach for a global
+ * `t`. The caller resolves the returned variant against a key it spells out
+ * literally - a key built from this variant name would be invisible to
+ * `npm run i18n:check`.
+ *
+ * @param {Object} matchTier - from getMatchTier()
+ * @param {Object|null} matchDetails - optional breakdown object
+ * @param {Object} options
+ * @returns {{variant: "none"|"breakdown"|"shared"|"sharedFocus"|"plain", values: Object}}
+ */
+export const getMatchTooltipParts = (
+  matchTier,
+  matchDetails = null,
+  { sharedFocusCount = null } = {},
+) => {
+  if (!matchTier) return { variant: "none", values: {} };
+
+  const pct = matchTier.pct;
+
+  const hasBreakdown =
+    matchDetails &&
+    ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
+      (matchDetails.badgeScore ?? matchDetails.badge_score) != null ||
+      (matchDetails.distanceScore ?? matchDetails.distance_score) != null);
+
+  if (hasBreakdown) {
+    return {
+      variant: "breakdown",
+      values: {
+        pct,
+        tagPct: Math.round(
+          (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
+        ),
+        badgePct: Math.round(
+          (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
+        ),
+        distPct: Math.round(
+          (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
+        ),
+      },
+    };
+  }
+
+  if (matchDetails) {
+    const sharedTags =
+      matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
+    const sharedBadges =
+      matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
+
+    if (sharedTags > 0 || sharedBadges > 0) {
+      return { variant: "shared", values: { pct, sharedTags, sharedBadges } };
+    }
+  }
+
+  if (!matchDetails && sharedFocusCount > 0) {
+    return { variant: "sharedFocus", values: { pct, count: sharedFocusCount } };
+  }
+
+  return { variant: "plain", values: { pct } };
+};
+
+/**
  * Build a human-readable tooltip string for a match score.
+ *
+ * ⚠️ English only, and assembled from fragments. Kept for `UserCard` and
+ * `VacantRoleCard`, which are not translated yet; both move to
+ * `getMatchTooltipParts` when their surface is converted, and this function
+ * goes with the last caller.
  *
  * @param {Object} matchTier - from getMatchTier()
  * @param {Object|null} matchDetails - optional breakdown object

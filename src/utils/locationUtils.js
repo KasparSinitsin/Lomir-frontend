@@ -1,3 +1,5 @@
+import i18n from "../i18n";
+
 /**
  * Location Utilities
  * Shared utilities for location handling across users and teams
@@ -304,14 +306,77 @@ export const getBrowserDefaultCountryCode = () => {
   return null;
 };
 
-export const getCountryDisplayName = (countryCode) => {
+/**
+ * German names the project spells differently from the CLDR default.
+ *
+ * `Intl.DisplayNames` gives "Tschechien"; the project keeps the long form so
+ * it matches the English "Czech Republic" it sits beside (Julia, 2026-09-08).
+ * Only deviations belong here - everything else comes from the browser and
+ * stays correct without maintenance.
+ */
+const COUNTRY_NAME_OVERRIDES = {
+  de: {
+    CZ: "Tschechische Republik",
+  },
+};
+
+const displayNamesCache = new Map();
+
+const getRegionDisplayNames = (language) => {
+  if (displayNamesCache.has(language)) return displayNamesCache.get(language);
+
+  let instance = null;
+  try {
+    instance = new Intl.DisplayNames([language], { type: "region" });
+  } catch {
+    // Intl.DisplayNames unavailable or the language is unusable - the caller
+    // falls back to the stored English name.
+  }
+  displayNamesCache.set(language, instance);
+  return instance;
+};
+
+/**
+ * Display name for a country code, in the language currently active.
+ *
+ * English comes from `COUNTRY_NAMES` so the wording the app already shipped
+ * stays byte-identical; every other language is resolved by the browser, with
+ * `COUNTRY_NAME_OVERRIDES` for the few the project spells its own way.
+ *
+ * ⚠️ `COUNTRY_NAMES` remains the validity check elsewhere in this file
+ * (`getBrowserDefaultCountryCode`, `getCountryCode`): those ask "is this a
+ * code we know", which must not depend on the interface language.
+ *
+ * @param {string} countryCode - ISO code, or an already-resolved full name
+ * @param {string} [language] - defaults to the active i18n language
+ */
+export const getCountryDisplayName = (countryCode, language) => {
   if (!countryCode) return null;
 
   // If it's already a full name (longer than 3 chars), return as-is
   if (countryCode.length > 3) return countryCode;
 
-  // Look up the code
-  return COUNTRY_NAMES[countryCode.toUpperCase()] || countryCode;
+  const code = countryCode.toUpperCase();
+  const storedName = COUNTRY_NAMES[code];
+
+  // A plain module cannot call useTranslation; reading the instance is the
+  // documented alternative. Components re-render on `languageChanged`, which
+  // is why every surface showing a location holds a useTranslation.
+  const lang = (language ?? i18n.language ?? "en").split("-")[0];
+
+  // English keeps the stored wording wherever there is one, so the names the
+  // app already shipped stay byte-identical (Julia, 2026-09-09: "Turkey" and
+  // "Czech Republic", not Intl's "Türkiye" / "Czechia").
+  if (lang === "en" && storedName) return storedName;
+
+  const override = COUNTRY_NAME_OVERRIDES[lang]?.[code];
+  if (override) return override;
+
+  const localized = getRegionDisplayNames(lang)?.of(code);
+  // `of()` echoes the code back when it knows nothing about it.
+  if (localized && localized !== code) return localized;
+
+  return storedName || countryCode;
 };
 
 /**

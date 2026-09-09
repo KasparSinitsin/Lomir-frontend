@@ -1,4 +1,6 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { getBadgeName } from "../../utils/badgeLabels";
 import { Tag, Award, UserSearch } from "lucide-react";
 import LocationSection from "./LocationSection";
 import {
@@ -95,6 +97,8 @@ const LocationDistanceTagsRow = ({
   compact = false,
   showCountryCode = true,
 }) => {
+  const { t } = useTranslation();
+
   // ─── Normalize tags into a sorted array of strings ───
   const normalizeSortedTagStrings = (input) => {
     if (!input) return [];
@@ -289,7 +293,9 @@ const LocationDistanceTagsRow = ({
       ? normalizeTagsToStrings(getDisplayTags())
       : normalizeSortedTagStrings(tags);
 
-  const badgeNames = normalizeSortedBadges(badges).map((b) => b.name);
+  const badgeNames = normalizeSortedBadges(badges).map((b) =>
+    getBadgeName(b.name, t),
+  );
 
   const openRoleNames = Array.isArray(openRoles)
     ? openRoles.filter(Boolean)

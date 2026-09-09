@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Button from "../common/Button";
 import TeamApplicationModal from "./TeamApplicationModal";
 import { teamService } from "../../services/teamService";
@@ -25,11 +26,12 @@ const TeamApplicationButton = ({
   variant = "primary",
   onAfterSubmit,
   onSuccess,
-  buttonLabel = "Apply to Join Team",
+  buttonLabel,
   buttonIcon = null,
   ariaLabel = null,
   onApplicationModalToggle,
 }) => {
+  const { t } = useTranslation("teams");
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
 
@@ -88,13 +90,14 @@ const TeamApplicationButton = ({
       } catch (error) {
         console.error("Error submitting application:", error);
         throw new Error(
-          error.response?.data?.message || "Failed to submit application",
+          error.response?.data?.message ||
+          t("applicationButton.submitFailed"),
         );
       } finally {
         setApplicationLoading(false);
       }
     },
-    [closeApplicationModal, effectiveTeamId, onAfterSubmit, onSuccess, roleId],
+    [closeApplicationModal, effectiveTeamId, onAfterSubmit, onSuccess, roleId, t],
   );
 
   if (!effectiveTeamId) return null;
@@ -110,7 +113,7 @@ const TeamApplicationButton = ({
         icon={buttonIcon}
         aria-label={ariaLabel}
       >
-        {buttonLabel}
+        {buttonLabel ?? t("applicationButton.defaultLabel")}
       </Button>
 
       <TeamApplicationModal

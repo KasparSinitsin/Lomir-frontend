@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../contexts/ToastContext";
 import {
   Calendar,
@@ -161,6 +162,7 @@ const TeamInvitationDetailsModal = ({
 
   // ============ State ============
   const showToast = useToast();
+  const { t } = useTranslation();
   const [loading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "switchRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
@@ -190,7 +192,7 @@ const TeamInvitationDetailsModal = ({
     isSynthetic:
       baseTeam?.isSynthetic ?? baseTeam?.is_synthetic ?? syntheticTeamFlag,
   };
-  const teamName = team.name || "Unknown Team";
+  const teamName = team.name || t("common:team.unknownName");
 
   useLayoutEffect(() => {
     const row = teamHeaderRowRef.current;
@@ -260,13 +262,13 @@ const TeamInvitationDetailsModal = ({
       invitation?.date ||
       invitation?.sent_at;
 
-    if (!date) return "Unknown date";
+    if (!date) return t("teams:invitationDetails.unknownDate");
 
     try {
       return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
-      return "Unknown date";
+      return t("teams:invitationDetails.unknownDate");
     }
   };
 
@@ -316,11 +318,11 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("acceptRole");
       setError(null);
       await onAccept(invitation.id, responseMessage, true);
-      showToast("Invitation accepted! You've joined the team and taken on the role.", "success");
+      showToast(t("teams:invitationDetails.acceptedWithRole"), "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to accept invitation");
+      setError(err.message || t("teams:invitationDetails.acceptFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -331,11 +333,11 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("switchRole");
       setError(null);
       await onAccept(invitation.id, responseMessage, true, { switchRoles: true });
-      showToast("Role switched successfully! You've joined the team with the new role.", "success");
+      showToast(t("teams:invitationDetails.roleSwitched"), "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to switch roles");
+      setError(err.message || t("teams:invitationDetails.switchFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -346,11 +348,11 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("acceptTeam");
       setError(null);
       await onAccept(invitation.id, responseMessage, false);
-      showToast("Invitation accepted! You've joined the team.", "success");
+      showToast(t("teams:invitationDetails.acceptedTeam"), "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to accept invitation");
+      setError(err.message || t("teams:invitationDetails.acceptFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -361,11 +363,11 @@ const TeamInvitationDetailsModal = ({
       setActionLoading("decline");
       setError(null);
       await onDecline(invitation.id, responseMessage);
-      showToast("Invitation declined.", "success");
+      showToast(t("teams:invitationDetails.declined"), "success");
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to decline invitation");
+      setError(err.message || t("teams:invitationDetails.declineFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -396,14 +398,14 @@ const TeamInvitationDetailsModal = ({
   const isCombinedRoleInvitation = hasRoleInvitation && !inviteeAlreadyTeamMember;
 
   const headerSubtitle = isInternal
-    ? "You've been invited to fill this role!"
+    ? t("teams:invitationDetails.subtitleRole")
     : inviteeAlreadyTeamMember && hasRoleInvitation
-      ? "You've been invited to fill this role!"
+      ? t("teams:invitationDetails.subtitleRole")
       : isCombinedRoleInvitation
-      ? "You've been invited to join a new Team and fill a Role"
+      ? t("teams:invitationDetails.subtitleCombined")
       : hasRoleInvitation
-      ? "You are invited for a role!"
-      : "You are invited!";
+      ? t("teams:invitationDetails.subtitleRoleShort")
+      : t("teams:invitationDetails.subtitleTeam");
   const syntheticRoleFlag =
     invitation?.role?.is_synthetic ??
     invitation?.role?.isSynthetic ??
@@ -457,11 +459,11 @@ const TeamInvitationDetailsModal = ({
           roleName:
             invitation.current_filled_role_name ??
             invitation.currentFilledRoleName ??
-            "your current role",
+            t("teams:invitationDetails.currentRoleFallback"),
           role_name:
             invitation.current_filled_role_name ??
             invitation.currentFilledRoleName ??
-            "your current role",
+            t("teams:invitationDetails.currentRoleFallback"),
         }
       : null);
   const currentFilledRoleName =
@@ -469,7 +471,7 @@ const TeamInvitationDetailsModal = ({
     currentFilledRole?.role_name ??
     invitation?.current_filled_role_name ??
     invitation?.currentFilledRoleName ??
-    "your current role";
+    t("teams:invitationDetails.currentRoleFallback");
   const currentFilledRoleForCard = hydratedCurrentFilledRole
     ? {
         ...hydratedCurrentFilledRole,
@@ -517,18 +519,18 @@ const TeamInvitationDetailsModal = ({
           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <Users size={20} className="shrink-0 text-primary" />
-              <span>Team</span>
+              <span>{t("teams:invitationDetails.titleTeamPart")}</span>
             </span>
             <span>{"&"}</span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <UserSearch size={20} className="shrink-0 text-primary" />
-              <span>Role Invitation</span>
+              <span>{t("teams:invitationDetails.titleRolePart")}</span>
             </span>
           </span>
         ) : !hasRoleInvitation ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <Users size={20} className="shrink-0 text-primary" />
-            <span>Team Invitation</span>
+            <span>{t("teams:invitationDetails.titleTeam")}</span>
           </span>
         ) : (
           teamName
@@ -551,7 +553,7 @@ const TeamInvitationDetailsModal = ({
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {/* Sent by — shares row with buttons when there's space, own row otherwise */}
       <InlineUserLink
-        label="Invite sent by"
+        label={t("teams:invitationDetails.inviteSentBy")}
         user={inviter}
         onOpenUser={handleUserClick}
         className="min-w-0 flex-[1_1_12rem] overflow-hidden"
@@ -562,7 +564,7 @@ const TeamInvitationDetailsModal = ({
           {hasRoleInvitation && inviteeAlreadyTeamMember ? (
             // Internal role invite: user is already a member, just fill the role
             isRoleUnavailable ? (
-              <Tooltip content={isRoleFilled ? "This role is already filled" : "This role is closed"}>
+              <Tooltip content={isRoleFilled ? t("teams:invitationDetails.roleFilled") : t("teams:invitationDetails.roleClosed")}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -570,11 +572,11 @@ const TeamInvitationDetailsModal = ({
                   className="border border-base-content/30 text-base-content/40"
                   icon={<UserCheck size={16} />}
                 >
-                  Fill Role
+                  {t("teams:invitationDetails.fillRole")}
                 </Button>
               </Tooltip>
             ) : canSwitchRole ? (
-              <Tooltip content={`Leave ${currentFilledRoleName} and fill this role instead.`}>
+              <Tooltip content={t("teams:invitationDetails.switchRoleHint", { roleName: currentFilledRoleName })}>
                 <Button
                   variant="successOutline"
                   size="sm"
@@ -582,11 +584,11 @@ const TeamInvitationDetailsModal = ({
                   disabled={isControlsDisabled}
                   icon={<ArrowRightLeft size={16} />}
                 >
-                  {isSwitchRoleLoading ? "Switching..." : "Switch Role"}
+                  {isSwitchRoleLoading ? t("teams:invitationDetails.switching") : t("teams:invitationDetails.switchRole")}
                 </Button>
               </Tooltip>
             ) : (
-              <Tooltip content="Accept this role invitation">
+              <Tooltip content={t("teams:invitationDetails.acceptRoleTooltip")}>
                 <Button
                   variant="successOutline"
                   size="sm"
@@ -594,7 +596,7 @@ const TeamInvitationDetailsModal = ({
                   disabled={isControlsDisabled}
                   icon={<Check size={16} />}
                 >
-                  {isAcceptRoleLoading ? "Accepting..." : "Fill Role"}
+                  {isAcceptRoleLoading ? t("teams:invitationDetails.accepting") : t("teams:invitationDetails.fillRole")}
                 </Button>
               </Tooltip>
             )
@@ -602,7 +604,7 @@ const TeamInvitationDetailsModal = ({
             // External invite with a role: offer team-only or fill-role options
             <>
               {isRoleUnavailable ? (
-                <Tooltip content={isRoleFilled ? "This role is already filled — you can still join the team" : "This role is closed — you can still join the team"}>
+                <Tooltip content={isRoleFilled ? t("teams:invitationDetails.roleFilledCanJoin") : t("teams:invitationDetails.roleClosedCanJoin")}>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -610,11 +612,11 @@ const TeamInvitationDetailsModal = ({
                     className="border border-base-content/30 text-base-content/40"
                     icon={<UserCheck size={16} />}
                   >
-                    Fill Role + Join Team
+                    {t("teams:invitationDetails.fillRoleAndJoin")}
                   </Button>
                 </Tooltip>
               ) : (
-                <Tooltip content="Join the team and fill the role">
+                <Tooltip content={t("teams:invitationDetails.joinAndFillTooltip")}>
                   <Button
                     variant="successOutline"
                     size="sm"
@@ -622,11 +624,11 @@ const TeamInvitationDetailsModal = ({
                     disabled={isControlsDisabled}
                     icon={<CheckCheck size={16} />}
                   >
-                    {isAcceptRoleLoading ? "Joining..." : "Fill Role + Join Team"}
+                    {isAcceptRoleLoading ? t("teams:invitationDetails.joining") : t("teams:invitationDetails.fillRoleAndJoin")}
                   </Button>
                 </Tooltip>
               )}
-              <Tooltip content="Join the team without filling the role">
+              <Tooltip content={t("teams:invitationDetails.joinWithoutRoleTooltip")}>
                 <Button
                   variant="successOutline"
                   size="sm"
@@ -634,13 +636,13 @@ const TeamInvitationDetailsModal = ({
                   disabled={isControlsDisabled}
                   icon={<Check size={16} />}
                 >
-                  {isAcceptTeamLoading ? "Joining..." : "Join Team"}
+                  {isAcceptTeamLoading ? t("teams:invitationDetails.joining") : t("teams:invitationDetails.joinTeam")}
                 </Button>
               </Tooltip>
             </>
           ) : (
             // No role: simple accept
-            <Tooltip content="Accept this team invitation">
+            <Tooltip content={t("teams:invitationDetails.acceptTeamTooltip")}>
               <Button
                 variant="successOutline"
                 size="sm"
@@ -648,11 +650,11 @@ const TeamInvitationDetailsModal = ({
                 disabled={isControlsDisabled}
                 icon={<Check size={16} />}
               >
-                {isAcceptTeamLoading ? "Joining..." : "Join Team"}
+                {isAcceptTeamLoading ? t("teams:invitationDetails.joining") : t("teams:invitationDetails.joinTeam")}
               </Button>
             </Tooltip>
           )}
-          <Tooltip content="Decline this invitation">
+          <Tooltip content={t("teams:invitationDetails.declineTooltip")}>
             <Button
               variant="errorOutline"
               size="sm"
@@ -700,7 +702,7 @@ const TeamInvitationDetailsModal = ({
             className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
-            <Tooltip content="Click to view team details" wrapperClassName="avatar">
+            <Tooltip content={t("teams:teamCard.tooltips.clickTeamDetails")} wrapperClassName="avatar">
               <TeamAvatar
                 team={team}
                 sizeClass="w-12 h-12"
@@ -717,7 +719,7 @@ const TeamInvitationDetailsModal = ({
                 className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
               >
                 <Tooltip
-                  content="Click to view team details"
+                  content={t("teams:teamCard.tooltips.clickTeamDetails")}
                   wrapperClassName="cursor-pointer hover:text-primary transition-colors"
                 >
                   <span>{teamName}</span>
@@ -743,7 +745,7 @@ const TeamInvitationDetailsModal = ({
                   </div>
                 )}
                 <Tooltip
-                  content="Team members"
+                  content={t("teams:invitationDetails.teamMembers")}
                   wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
                 >
                   <Users size={10} className="shrink-0 text-primary" />
@@ -768,11 +770,11 @@ const TeamInvitationDetailsModal = ({
                 )}
                 {inviteeAlreadyTeamMember && (
                   <Tooltip
-                    content="You are already a member of this team"
+                    content={t("teams:invitationDetails.alreadyMember")}
                     wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
                     <User size={10} className="flex-shrink-0 text-success" />
-                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                    <span className="leading-[1.05] whitespace-nowrap">{t("teams:invitationDetails.teamMember")}</span>
                   </Tooltip>
                 )}
                 {isSyntheticTeam(team) && (
@@ -809,12 +811,12 @@ const TeamInvitationDetailsModal = ({
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MailOpen size={12} className="text-info mr-1" />
-              {`Invitation message from ${getPrivateAwareUserLabel(inviter, "them")}:`}
+              {t("teams:invitationDetails.inviterMessage", { name: getPrivateAwareUserLabel(inviter, "them") })}
             </p>
             <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
               <p className="text-sm text-base-content/90 leading-relaxed">
                 {(() => {
-                  if (inviteeAlreadyTeamMember && currentFilledRoleName && currentFilledRoleName !== "your current role") {
+                  if (inviteeAlreadyTeamMember && currentFilledRoleName && currentFilledRoleName !== t("teams:invitationDetails.currentRoleFallback")) {
                     const suffix = ` ${currentFilledRoleName}.`;
                     return invitation.message.endsWith(suffix)
                       ? invitation.message.slice(0, -suffix.length)
@@ -883,8 +885,8 @@ const TeamInvitationDetailsModal = ({
                 : <Pencil size={12} className="text-primary mr-1" />
               }
               {responseExpanded
-                ? "Your response message (optional):"
-                : "Add a personal response message (optional)"
+                ? t("teams:invitationDetails.responseLabel")
+                : t("teams:invitationDetails.responsePrompt")
               }
               <span className="ml-auto pl-3 text-base-content/40">
                 {responseExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -896,7 +898,7 @@ const TeamInvitationDetailsModal = ({
               value={responseMessage}
               onChange={(e) => setResponseMessage(e.target.value)}
               className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-              placeholder="Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat."
+              placeholder={t("teams:invitationDetails.responsePlaceholder")}
               disabled={isControlsDisabled}
             />
           )}

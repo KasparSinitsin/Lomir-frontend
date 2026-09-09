@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import {
   formatDateLong,
@@ -319,6 +320,7 @@ const VacantRoleDetailsModal = ({
   const teamModal = useTeamModalSafe();
   const childTeamModalZIndex = useChildModalZIndex();
 
+  const { t } = useTranslation();
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
   const [hydratedRole, setHydratedRole] = useState(null);
@@ -1492,11 +1494,46 @@ const VacantRoleDetailsModal = ({
     />
   ) : null;
   const ModalStatusIcon = isFilledRole ? UserCheck : isClosedRole ? UserX : UserSearch;
-  const summarySuffix = isComparisonSelf
-    ? " with you"
-    : comparisonShortName
-      ? ` with ${comparisonShortName}`
-      : "";
+  // Whole sentences per variant instead of a suffix glued onto a finished
+  // one: German cannot take " with you" as a tail. Keys are spelled out so
+  // `npm run i18n:check` can see them.
+  const matchSummaryText = (matchCount, total) => {
+    const isAll = matchCount === total;
+    if (matchCount <= 0) {
+      return isComparisonSelf
+        ? t("matchSummary.noneWithYou")
+        : comparisonShortName
+          ? t("matchSummary.noneWithName", { name: comparisonShortName })
+          : t("matchSummary.none");
+    }
+    if (isAll) {
+      return isComparisonSelf
+        ? t("matchSummary.allWithYou")
+        : comparisonShortName
+          ? t("matchSummary.allWithName", { name: comparisonShortName })
+          : t("matchSummary.all");
+    }
+    return isComparisonSelf
+      ? t("matchSummary.countedWithYou", { matchCount, total })
+      : comparisonShortName
+        ? t("matchSummary.countedWithName", {
+            matchCount,
+            total,
+            name: comparisonShortName,
+          })
+        : t("matchSummary.counted", { matchCount, total });
+  };
+
+  const matchCountedText = (matchCount, total) =>
+    isComparisonSelf
+      ? t("matchSummary.countedWithYou", { matchCount, total })
+      : comparisonShortName
+        ? t("matchSummary.countedWithName", {
+            matchCount,
+            total,
+            name: comparisonShortName,
+          })
+        : t("matchSummary.counted", { matchCount, total });
   const distanceKm =
     effectiveMatchDetails?.distanceKm ??
     effectiveMatchDetails?.distance_km ??
@@ -1561,8 +1598,8 @@ const VacantRoleDetailsModal = ({
   const getPersonLocationText = (person, fallbackDistanceKm = null) => {
     if (!person) {
       return fallbackDistanceKm != null
-        ? `${Math.round(fallbackDistanceKm)} km away`
-        : "Location unavailable";
+        ? t("distance.away", { km: Math.round(fallbackDistanceKm) })
+        : t("location.section.unavailable");
     }
 
     const locationLabel = formatLocation(normalizeLocationData(person), {
@@ -1574,8 +1611,8 @@ const VacantRoleDetailsModal = ({
     if (locationLabel) return locationLabel;
 
     return fallbackDistanceKm != null
-      ? `${Math.round(fallbackDistanceKm)} km away`
-      : "Location unavailable";
+      ? t("distance.away", { km: Math.round(fallbackDistanceKm) })
+      : t("location.section.unavailable");
   };
 
   const locationText = getLocationText();
@@ -2304,16 +2341,14 @@ const VacantRoleDetailsModal = ({
                 const total = tags.length;
                 if (matchCount > 0) {
                   const MatchIcon = matchCount === total ? CheckCheck : Check;
-                  const compactLabel =
-                    matchCount === total
-                      ? "All matching"
-                      : `${matchCount}/${total} matching`;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span className="break-words sm:hidden">{compactLabel}{summarySuffix}</span>
+                      <span className="break-words sm:hidden">
+                        {matchSummaryText(matchCount, total)}
+                      </span>
                       <span className="hidden break-words sm:inline">
-                        {matchCount}/{total} matching{summarySuffix}
+                        {matchCountedText(matchCount, total)}
                       </span>
                     </span>
                   );
@@ -2321,7 +2356,9 @@ const VacantRoleDetailsModal = ({
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
                     <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">None matching{summarySuffix}</span>
+                    <span className="leading-[1.1]">
+                      {matchSummaryText(0, 0)}
+                    </span>
                   </span>
                 );
               })()}
@@ -2445,16 +2482,14 @@ const VacantRoleDetailsModal = ({
                 const total = badges.length;
                 if (matchCount > 0) {
                   const MatchIcon = matchCount === total ? CheckCheck : Check;
-                  const compactLabel =
-                    matchCount === total
-                      ? "All matching"
-                      : `${matchCount}/${total} matching`;
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span className="break-words sm:hidden">{compactLabel}{summarySuffix}</span>
+                      <span className="break-words sm:hidden">
+                        {matchSummaryText(matchCount, total)}
+                      </span>
                       <span className="hidden break-words sm:inline">
-                        {matchCount}/{total} matching{summarySuffix}
+                        {matchCountedText(matchCount, total)}
                       </span>
                     </span>
                   );
@@ -2462,7 +2497,9 @@ const VacantRoleDetailsModal = ({
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
                     <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">None matching{summarySuffix}</span>
+                    <span className="leading-[1.1]">
+                      {matchSummaryText(0, 0)}
+                    </span>
                   </span>
                 );
               })()}

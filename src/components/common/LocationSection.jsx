@@ -1,5 +1,6 @@
 import React from "react";
-import { MapPin, Globe, Ruler, CheckCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { MapPin, MapPinX, Globe, Ruler, CheckCheck } from "lucide-react";
 import {
   formatDistanceKm,
   formatLocation,
@@ -17,7 +18,8 @@ import {
  * @param {string} props.entityType - "user" | "team" (affects remote team handling)
  * @param {boolean} props.compact - Use compact display (for cards) vs full display (for modals)
  * @param {string} props.className - Additional CSS classes
- * @param {string} props.title - Section title (default: "Location")
+ * @param {string} props.title - Section title (defaults to the translated
+ *   "Location"; a caller-supplied value still wins)
  * @param {boolean} props.showTitle - Whether to show section title (default: true for full, false for compact)
  *  * @param {number} props.distance - Distance in km (optional, for search results)
  * @param {boolean} props.showDefaultHeaderRight - Whether to render the built-in remote/distance header info
@@ -27,7 +29,7 @@ const LocationSection = ({
   entityType = "user",
   compact = false,
   className = "",
-  title = "Location",
+  title,
   showTitle,
   distance = null,
   headerRight = null,
@@ -35,12 +37,36 @@ const LocationSection = ({
   iconSize = 16,
   showCountryCode = true,
 }) => {
+  const { t } = useTranslation();
+
+  // Resolved in the body, not in the parameter list: a default there is
+  // evaluated once at import and `changeLanguage` can never move it.
+  const resolvedTitle = title ?? t("location.section.title");
+
   // Normalize the location data (handles snake_case/camelCase)
   const location = normalizeLocationData(entity);
 
-  // Don't render if no location data
+  // Don't render if no location data.
+  //
+  // ⚠️ Cards are the exception: they show the crossed-out pin, mirroring the
+  // map, so "no location" is stated rather than left blank next to a
+  // meaningless "0 km". The icon carries the meaning and needs no
+  // translation; the tooltip holds the wording. The test is the DATA flag
+  // `hasLocation` (`isRemote || district || city || postalCode || state ||
+  // country`), never a comparison against a display string.
   if (!location.hasLocation) {
-    return null;
+    if (!compact) return null;
+
+    return (
+      <div
+        className={`flex flex-wrap items-start leading-[110%] text-sm text-base-content/70 ${className} ${iconSize < 16 ? "gap-x-2 gap-y-1" : "gap-x-3 gap-y-2"}`}
+      >
+        <div className="flex items-start text-base-content/50">
+          <MapPinX size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
+          <span>{t("location.section.unavailable")}</span>
+        </div>
+      </div>
+    );
   }
 
   // Determine if we should show the title
@@ -74,7 +100,7 @@ const LocationSection = ({
             className="mr-1 flex-shrink-0 mt-0.5"
           />
           {isRemote ? (
-            <span>Remote</span>
+            <span>{t("location.section.remote")}</span>
           ) : (
             <span>
               {formatLocation(location, {
@@ -92,7 +118,11 @@ const LocationSection = ({
         {hasDistance && (
           <div className="flex items-start">
             <Ruler size={iconSize} className="mr-1 flex-shrink-0 mt-0.5" />
-            <span>{formatDistanceKm(distance)} away</span>
+            <span>
+              {t("location.section.distanceAway", {
+                distance: formatDistanceKm(distance),
+              })}
+            </span>
           </div>
         )}
       </div>
@@ -104,14 +134,18 @@ const LocationSection = ({
     : isRemote ? (
         <span className="flex items-center gap-1.5 text-sm text-success">
           <CheckCheck size={14} className="flex-shrink-0" />
-          <span>No location boundaries</span>
+          <span>{t("location.section.noLocationBoundaries")}</span>
         </span>
       ) : hasDistance ? (
           <span
             className={`flex items-center gap-1.5 text-sm ${distanceToneClass}`}
           >
             <Ruler size={14} className="flex-shrink-0" />
-            <span>{formatDistanceKm(distance)} away</span>
+            <span>
+              {t("location.section.distanceAway", {
+                distance: formatDistanceKm(distance),
+              })}
+            </span>
           </span>
         ) : null;
 
@@ -128,7 +162,7 @@ const LocationSection = ({
             className="mt-0.5 text-primary flex-shrink-0"
           />
           <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
-            <h3 className="font-medium leading-[1.1]">{title}</h3>
+            <h3 className="font-medium leading-[1.1]">{resolvedTitle}</h3>
             {resolvedHeaderRight && (
               <div className="shrink-0">{resolvedHeaderRight}</div>
             )}
@@ -140,9 +174,9 @@ const LocationSection = ({
       <div>
         {isRemote ? (
           <div className="flex items-center text-sm text-base-content/70">
-            <span>Remote Team</span>
+            <span>{t("location.section.remoteTeam")}</span>
             <span className="text-xs text-base-content/50 ml-2">
-              (No physical location)
+              {t("location.section.noPhysicalLocation")}
             </span>
           </div>
         ) : location.hasLocation ? (
@@ -161,7 +195,9 @@ const LocationSection = ({
             </span>
           </div>
         ) : (
-          <p className="text-base-content/50">Not specified</p>
+          <p className="text-base-content/50">
+            {t("location.section.notSpecified")}
+          </p>
         )}
       </div>
     </div>
