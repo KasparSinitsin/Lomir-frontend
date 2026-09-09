@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { UserSearch, EyeClosed, EyeIcon, FlaskConical } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 
@@ -17,9 +18,13 @@ export const OpenRolesIndicator = React.memo(function OpenRolesIndicator({
   shouldShow,
   openRoleCount,
 }) {
+  const { t } = useTranslation("teams");
+
   if (!(shouldShow && openRoleCount > 0)) return null;
   return (
-    <Tooltip content={`${openRoleCount} open ${openRoleCount === 1 ? 'role' : 'roles'} posted in this team`}>
+    <Tooltip
+      content={t("teamCard.indicators.openRoles", { count: openRoleCount })}
+    >
       <span className="flex items-center">
         <UserSearch size={size} className="text-orange-500 mr-0.5" />
         <span>{openRoleCount}</span>
@@ -33,13 +38,15 @@ export const VisibilityIndicator = React.memo(function VisibilityIndicator({
   show,
   isPublic,
 }) {
+  const { t } = useTranslation("teams");
+
   if (!show) return null;
   return (
     <Tooltip
       content={
         isPublic
-          ? "Public Team - visible for everyone"
-          : "Private Team - only visible for Members"
+          ? t("teamCard.indicators.publicTeam")
+          : t("teamCard.indicators.privateTeam")
       }
     >
       {isPublic ? (

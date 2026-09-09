@@ -1,4 +1,5 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Calendar, MapPin, FlaskConical } from "lucide-react";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import Tooltip from "./Tooltip";
@@ -54,6 +55,11 @@ const PersonRequestCard = ({
   forceNarrow = false,
   privateProfile,
 }) => {
+  // Location text is resolved by `locationUtils`, which reads the active
+  // language from the i18n instance rather than from props. This hook is
+  // what makes the component re-render on `changeLanguage`.
+  useTranslation();
+
   // ============ Helper Functions ============
   const isPrivateUser = privateProfile ?? isPrivateProfileUser(user);
   const displayUser = isPrivateUser

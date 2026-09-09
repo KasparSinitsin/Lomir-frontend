@@ -1,5 +1,6 @@
 import React from "react";
-import { MapPin, Globe, Tag, Award, Ruler } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { MapPin, MapPinX, Globe, Tag, Award, Ruler } from "lucide-react";
 import Tooltip from "./Tooltip";
 
 const ListViewRow = ({
@@ -20,6 +21,8 @@ const ListViewRow = ({
   locationBreakpoint = "sm",
   className = "",
 }) => {
+  const { t } = useTranslation();
+
   const LocationIcon = isRemote ? Globe : MapPin;
   const shortBreakpointClass = locationBreakpoint === "md" ? "md:hidden" : "sm:hidden";
   const fullBreakpointClass = locationBreakpoint === "md" ? "hidden md:block" : "hidden sm:block";
@@ -32,13 +35,33 @@ const ListViewRow = ({
         {distance != null && (
           <div className="hidden w-16 flex-shrink-0 overflow-hidden md:block">
             <div className="text-xs text-base-content flex items-center gap-1 overflow-hidden">
-              <Tooltip content={`${Math.round(distance)} km away from you`}>
+              <Tooltip
+                content={t("distance.awayFromYou", {
+                  km: Math.round(distance),
+                })}
+              >
                 <div className="flex items-center gap-1">
                   <Ruler size={9} className="flex-shrink-0" />
                   <span className="whitespace-nowrap">{Math.round(distance)} km</span>
                 </div>
               </Tooltip>
             </div>
+          </div>
+        )}
+
+        {!locationText && !isRemote && (
+          <div className="min-w-0 text-xs text-base-content/50 flex items-center gap-1 overflow-hidden">
+            <Tooltip
+              content={t("location.section.unavailable")}
+              wrapperClassName="flex min-w-0 w-full items-center overflow-hidden"
+            >
+              <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
+                <MapPinX size={9} className="flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate">
+                  {t("location.section.unavailableShort")}
+                </span>
+              </div>
+            </Tooltip>
           </div>
         )}
 

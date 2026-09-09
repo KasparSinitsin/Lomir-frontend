@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import {
   Users,
@@ -62,6 +63,8 @@ const TeamCardSubtitle = ({
   showDemoIndicator,
   demoTooltip,
 }) => {
+  const { t } = useTranslation("teams");
+
   return (
     <span
       className={`mt-0.5 flex max-h-[2.75em] overflow-hidden items-center flex-wrap leading-[110%] text-base-content/70 ${viewMode === "mini" ? "text-xs gap-x-1 gap-y-px w-full" : "text-sm gap-x-1.5 gap-y-px"}`}
@@ -103,13 +106,11 @@ const TeamCardSubtitle = ({
           content={
             hasInternalRoleInvitation
               ? internalRoleInvitationTooltip
-              : `You were invited to this team${
-                  formattedDate
-                    ? `\non ${formatDateMedium(
-                        new Date(normalizedData.date),
-                      )}`
-                    : ""
-                }`
+              : formattedDate
+                ? t("teamCard.status.invitedToTeamOn", {
+                    date: formatDateMedium(new Date(normalizedData.date)),
+                  })
+                : t("teamCard.status.invitedToTeam")
           }
         >
           <span className="flex items-center gap-0.5 whitespace-nowrap">
@@ -154,8 +155,16 @@ const TeamCardSubtitle = ({
         <Tooltip
           content={
             isCombinedApplication
-              ? `You applied to join this team and fill a role${formattedDate ? `\non ${formatDateMedium(new Date(normalizedData.date))}` : ""}`
-              : `You applied to join this team${formattedDate ? `\non ${formatDateMedium(new Date(normalizedData.date))}` : ""}`
+              ? formattedDate
+                ? t("teamCard.status.appliedCombinedOn", {
+                    date: formatDateMedium(new Date(normalizedData.date)),
+                  })
+                : t("teamCard.status.appliedCombined")
+              : formattedDate
+                ? t("teamCard.status.appliedToTeamOn", {
+                    date: formatDateMedium(new Date(normalizedData.date)),
+                  })
+                : t("teamCard.status.appliedToTeam")
           }
         >
           <span className="flex items-center gap-0.5 whitespace-nowrap">
@@ -226,7 +235,13 @@ const TeamCardSubtitle = ({
 
       {shouldMoveSearchResultRoleApplicationIndicator &&
         isPendingRoleApplicationForTeam && (
-          <Tooltip content={isPendingCombinedApplicationForTeam ? "You applied to join this team and fill a role" : "You applied for a role within this team"}>
+          <Tooltip
+            content={
+              isPendingCombinedApplicationForTeam
+                ? t("teamCard.status.appliedCombined")
+                : t("teamCard.status.appliedForRole")
+            }
+          >
             <span className="flex items-center">
               <SendHorizontal
                 size={viewMode === "mini" ? 10 : 13}
@@ -253,7 +268,7 @@ const TeamCardSubtitle = ({
       {/* Pending role application indicator */}
       {!shouldMoveSearchResultRoleApplicationIndicator &&
         isPendingRoleApplicationForTeam && (
-        <Tooltip content="You applied for a role within this team">
+        <Tooltip content={t("teamCard.status.appliedForRole")}>
           <span className="flex items-center">
             <SendHorizontal
               size={viewMode === "mini" ? 10 : 13}
@@ -268,7 +283,7 @@ const TeamCardSubtitle = ({
         (userRole === "owner" || userRole === "admin" || (userRole === "member" && !hideMemberRoleIcon)) && (
         <span className="flex items-center text-base-content/70">
           {userRole === "owner" && (
-            <Tooltip content="You are the owner of this team">
+            <Tooltip content={t("teamCard.status.youAreOwner")}>
               <Crown
                 size={viewMode === "mini" ? 10 : 13}
                 className="text-[var(--color-role-owner-bg)]"
@@ -276,7 +291,7 @@ const TeamCardSubtitle = ({
             </Tooltip>
           )}
           {userRole === "admin" && (
-            <Tooltip content="You are an admin of this team">
+            <Tooltip content={t("teamCard.status.youAreAdmin")}>
               <ShieldCheck
                 size={viewMode === "mini" ? 10 : 13}
                 className="text-[var(--color-role-admin-bg)]"
@@ -284,7 +299,7 @@ const TeamCardSubtitle = ({
             </Tooltip>
           )}
           {userRole === "member" && !hideMemberRoleIcon && (
-            <Tooltip content="You are a member of this team">
+            <Tooltip content={t("teamCard.status.youAreMember")}>
               <User
                 size={viewMode === "mini" ? 10 : 13}
                 className="text-[var(--color-role-member-bg)]"
@@ -306,7 +321,7 @@ const TeamCardSubtitle = ({
             {teamData.is_remote || teamData.isRemote ? (
               <>
                 <Globe size={10} className="flex-shrink-0" />
-                <span>Remote</span>
+                <span>{t("teamCard.indicators.remote")}</span>
               </>
             ) : (
               <>

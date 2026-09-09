@@ -5,7 +5,7 @@
  * is used as a grouping key, so it must never be translated in place. These
  * helpers translate the *display* only and leave the stored value untouched.
  *
- * Keys are written out literally rather than composed (`t("badges.category." +
+ * Keys are written out literally rather than composed (`t("common:badges.category." +
  * slug)`), because `npm run i18n:check` can only verify keys it can read.
  * Same shape as `roleLabel` in `Settings.jsx`.
  *
@@ -15,12 +15,12 @@
 
 /** The closed set of categories, mirroring CATEGORY_COLORS in badgeConstants. */
 export const getCategoryLabel = (category, t) => {
-  if (category === "Collaboration Skills") return t("badges.category.collaboration");
-  if (category === "Technical Expertise") return t("badges.category.technical");
-  if (category === "Creative Thinking") return t("badges.category.creative");
-  if (category === "Leadership Qualities") return t("badges.category.leadership");
-  if (category === "Personal Attributes") return t("badges.category.personal");
-  if (category === "Other") return t("badges.category.other");
+  if (category === "Collaboration Skills") return t("common:badges.category.collaboration");
+  if (category === "Technical Expertise") return t("common:badges.category.technical");
+  if (category === "Creative Thinking") return t("common:badges.category.creative");
+  if (category === "Leadership Qualities") return t("common:badges.category.leadership");
+  if (category === "Personal Attributes") return t("common:badges.category.personal");
+  if (category === "Other") return t("common:badges.category.other");
   // An unknown category from the database renders as stored, not as a raw key.
   return category;
 };
@@ -42,128 +42,137 @@ export const getCategoryLabel = (category, t) => {
  */
 const BADGE_LABELS = {
   "Team Player": {
-    name: (t) => t("badges.names.teamPlayer"),
-    description: (t) => t("badges.descriptions.teamPlayer"),
+    name: (t) => t("common:badges.names.teamPlayer"),
+    description: (t) => t("common:badges.descriptions.teamPlayer"),
   },
   "Mediator": {
-    name: (t) => t("badges.names.mediator"),
-    description: (t) => t("badges.descriptions.mediator"),
+    name: (t) => t("common:badges.names.mediator"),
+    description: (t) => t("common:badges.descriptions.mediator"),
   },
   "Communicator": {
-    name: (t) => t("badges.names.communicator"),
-    description: (t) => t("badges.descriptions.communicator"),
+    name: (t) => t("common:badges.names.communicator"),
+    description: (t) => t("common:badges.descriptions.communicator"),
   },
   "Motivator": {
-    name: (t) => t("badges.names.motivator"),
-    description: (t) => t("badges.descriptions.motivator"),
+    name: (t) => t("common:badges.names.motivator"),
+    description: (t) => t("common:badges.descriptions.motivator"),
   },
   "Organizer": {
-    name: (t) => t("badges.names.organizer"),
-    description: (t) => t("badges.descriptions.organizer"),
+    name: (t) => t("common:badges.names.organizer"),
+    description: (t) => t("common:badges.descriptions.organizer"),
   },
   "Reliable": {
-    name: (t) => t("badges.names.reliable"),
-    description: (t) => t("badges.descriptions.reliable"),
+    name: (t) => t("common:badges.names.reliable"),
+    description: (t) => t("common:badges.descriptions.reliable"),
   },
   "Coder": {
-    name: (t) => t("badges.names.coder"),
-    description: (t) => t("badges.descriptions.coder"),
+    name: (t) => t("common:badges.names.coder"),
+    description: (t) => t("common:badges.descriptions.coder"),
   },
   "Designer": {
-    name: (t) => t("badges.names.designer"),
-    description: (t) => t("badges.descriptions.designer"),
+    name: (t) => t("common:badges.names.designer"),
+    description: (t) => t("common:badges.descriptions.designer"),
   },
   "Data Whiz": {
-    name: (t) => t("badges.names.dataWhiz"),
-    description: (t) => t("badges.descriptions.dataWhiz"),
+    name: (t) => t("common:badges.names.dataWhiz"),
+    description: (t) => t("common:badges.descriptions.dataWhiz"),
   },
   "Tech Support": {
-    name: (t) => t("badges.names.techSupport"),
-    description: (t) => t("badges.descriptions.techSupport"),
+    name: (t) => t("common:badges.names.techSupport"),
+    description: (t) => t("common:badges.descriptions.techSupport"),
   },
   "Systems Thinker": {
-    name: (t) => t("badges.names.systemsThinker"),
-    description: (t) => t("badges.descriptions.systemsThinker"),
+    name: (t) => t("common:badges.names.systemsThinker"),
+    description: (t) => t("common:badges.descriptions.systemsThinker"),
   },
   "Documentation Master": {
-    name: (t) => t("badges.names.documentationMaster"),
-    description: (t) => t("badges.descriptions.documentationMaster"),
+    name: (t) => t("common:badges.names.documentationMaster"),
+    description: (t) => t("common:badges.descriptions.documentationMaster"),
   },
   "Innovator": {
-    name: (t) => t("badges.names.innovator"),
-    description: (t) => t("badges.descriptions.innovator"),
+    name: (t) => t("common:badges.names.innovator"),
+    description: (t) => t("common:badges.descriptions.innovator"),
   },
   "Problem Solver": {
-    name: (t) => t("badges.names.problemSolver"),
-    description: (t) => t("badges.descriptions.problemSolver"),
+    name: (t) => t("common:badges.names.problemSolver"),
+    description: (t) => t("common:badges.descriptions.problemSolver"),
   },
   "Visionary": {
-    name: (t) => t("badges.names.visionary"),
-    description: (t) => t("badges.descriptions.visionary"),
+    name: (t) => t("common:badges.names.visionary"),
+    description: (t) => t("common:badges.descriptions.visionary"),
   },
   "Storyteller": {
-    name: (t) => t("badges.names.storyteller"),
-    description: (t) => t("badges.descriptions.storyteller"),
+    name: (t) => t("common:badges.names.storyteller"),
+    description: (t) => t("common:badges.descriptions.storyteller"),
   },
   "Artisan": {
-    name: (t) => t("badges.names.artisan"),
-    description: (t) => t("badges.descriptions.artisan"),
+    name: (t) => t("common:badges.names.artisan"),
+    description: (t) => t("common:badges.descriptions.artisan"),
   },
   "Outside-the-Box": {
-    name: (t) => t("badges.names.outsideTheBox"),
-    description: (t) => t("badges.descriptions.outsideTheBox"),
+    name: (t) => t("common:badges.names.outsideTheBox"),
+    description: (t) => t("common:badges.descriptions.outsideTheBox"),
   },
   "Decision Maker": {
-    name: (t) => t("badges.names.decisionMaker"),
-    description: (t) => t("badges.descriptions.decisionMaker"),
+    name: (t) => t("common:badges.names.decisionMaker"),
+    description: (t) => t("common:badges.descriptions.decisionMaker"),
   },
   "Mentor": {
-    name: (t) => t("badges.names.mentor"),
-    description: (t) => t("badges.descriptions.mentor"),
+    name: (t) => t("common:badges.names.mentor"),
+    description: (t) => t("common:badges.descriptions.mentor"),
   },
   "Initiative Taker": {
-    name: (t) => t("badges.names.initiativeTaker"),
-    description: (t) => t("badges.descriptions.initiativeTaker"),
+    name: (t) => t("common:badges.names.initiativeTaker"),
+    description: (t) => t("common:badges.descriptions.initiativeTaker"),
   },
   "Delegator": {
-    name: (t) => t("badges.names.delegator"),
-    description: (t) => t("badges.descriptions.delegator"),
+    name: (t) => t("common:badges.names.delegator"),
+    description: (t) => t("common:badges.descriptions.delegator"),
   },
   "Strategic Planner": {
-    name: (t) => t("badges.names.strategicPlanner"),
-    description: (t) => t("badges.descriptions.strategicPlanner"),
+    name: (t) => t("common:badges.names.strategicPlanner"),
+    description: (t) => t("common:badges.descriptions.strategicPlanner"),
   },
   "Feedback Provider": {
-    name: (t) => t("badges.names.feedbackProvider"),
-    description: (t) => t("badges.descriptions.feedbackProvider"),
+    name: (t) => t("common:badges.names.feedbackProvider"),
+    description: (t) => t("common:badges.descriptions.feedbackProvider"),
   },
   "Quick Learner": {
-    name: (t) => t("badges.names.quickLearner"),
-    description: (t) => t("badges.descriptions.quickLearner"),
+    name: (t) => t("common:badges.names.quickLearner"),
+    description: (t) => t("common:badges.descriptions.quickLearner"),
   },
   "Empathetic": {
-    name: (t) => t("badges.names.empathetic"),
-    description: (t) => t("badges.descriptions.empathetic"),
+    name: (t) => t("common:badges.names.empathetic"),
+    description: (t) => t("common:badges.descriptions.empathetic"),
   },
   "Persistent": {
-    name: (t) => t("badges.names.persistent"),
-    description: (t) => t("badges.descriptions.persistent"),
+    name: (t) => t("common:badges.names.persistent"),
+    description: (t) => t("common:badges.descriptions.persistent"),
   },
   "Detail-Oriented": {
-    name: (t) => t("badges.names.detailOriented"),
-    description: (t) => t("badges.descriptions.detailOriented"),
+    name: (t) => t("common:badges.names.detailOriented"),
+    description: (t) => t("common:badges.descriptions.detailOriented"),
   },
   "Adaptable": {
-    name: (t) => t("badges.names.adaptable"),
-    description: (t) => t("badges.descriptions.adaptable"),
+    name: (t) => t("common:badges.names.adaptable"),
+    description: (t) => t("common:badges.descriptions.adaptable"),
   },
   "Knowledge Sharer": {
-    name: (t) => t("badges.names.knowledgeSharer"),
-    description: (t) => t("badges.descriptions.knowledgeSharer"),
+    name: (t) => t("common:badges.names.knowledgeSharer"),
+    description: (t) => t("common:badges.descriptions.knowledgeSharer"),
   },
 };
 
-/** Display name for a badge; unknown names fall back to the stored value. */
+/**
+ * Display name for a badge; unknown names fall back to the stored value.
+ *
+ * ⚠️ Keys carry the explicit `common:` prefix. This module is called from
+ * components bound to a page namespace (`TeamCard` uses
+ * `useTranslation("teams")`), where an unprefixed key would resolve against
+ * THAT namespace and render as the raw key. `i18n:check` cannot see this: it
+ * assumes `common` for a plain module, so the keys look resolvable while the
+ * runtime returns "badges.names.teamPlayer". Found in the browser, 2026-09-09.
+ */
 export const getBadgeName = (name, t) => {
   const entry = BADGE_LABELS[name];
   return entry ? entry.name(t) : name;

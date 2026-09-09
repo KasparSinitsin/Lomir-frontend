@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Globe, MapPin } from "lucide-react";
 
 /**
@@ -13,20 +14,34 @@ const LocationModeToggle = ({
   name = "isRemote",
   checked, // boolean: true => "Team with location"
   onChange,
-  label = "Team Location",
-  locationLabel = "This is a team with a location",
-  remoteLabel = "This is a remote team",
-  locationHelper = "Provide location information for your team. This information is optional.",
-  remoteHelper = "Remote teams don't have a physical meeting location.",
+  label,
+  locationLabel,
+  remoteLabel,
+  locationHelper,
+  remoteHelper,
   disabled = false,
   className = "",
 }) => {
+  const { t } = useTranslation();
+
+  // Resolved here, never in the parameter list: a default there is evaluated
+  // once at import and `changeLanguage` can never move it.
+  const resolvedLabel = label ?? t("location.locationMode.label");
+  const resolvedLocationLabel =
+    locationLabel ?? t("location.locationMode.locationLabel");
+  const resolvedRemoteLabel =
+    remoteLabel ?? t("location.locationMode.remoteLabel");
+  const resolvedLocationHelper =
+    locationHelper ?? t("location.locationMode.locationHelper");
+  const resolvedRemoteHelper =
+    remoteHelper ?? t("location.locationMode.remoteHelper");
+
   const isLocationTeam = !!checked;
 
   return (
     <div className={`form-control w-full ${className}`}>
       <label className="label">
-        <span className="label-text">{label}</span>
+        <span className="label-text">{resolvedLabel}</span>
       </label>
 
       {/* Toggle row — kept inside the input-styled box (single row, no wrapping issues) */}
@@ -45,7 +60,7 @@ const LocationModeToggle = ({
           )}
 
           <span className="text-base-content font-normal truncate">
-            {isLocationTeam ? locationLabel : remoteLabel}
+            {isLocationTeam ? resolvedLocationLabel : resolvedRemoteLabel}
           </span>
         </div>
 
@@ -64,14 +79,16 @@ const LocationModeToggle = ({
             }}
             disabled={disabled}
           />
-          <span className="sr-only">Toggle location mode</span>
+          <span className="sr-only">
+            {t("location.locationMode.toggleAria")}
+          </span>
         </label>
       </div>
 
       {/* Helper text lives OUTSIDE the .input container so DaisyUI's
           white-space:nowrap / overflow:hidden can't clip it */}
       <p className="form-helper-text mt-1 px-1">
-        {isLocationTeam ? locationHelper : remoteHelper}
+        {isLocationTeam ? resolvedLocationHelper : resolvedRemoteHelper}
       </p>
     </div>
   );

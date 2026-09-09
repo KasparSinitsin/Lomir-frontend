@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
@@ -228,6 +229,7 @@ const UserDetailsModal = ({
   const hasRoleMatchBadgeNames =
     (normalizedRoleMatchBadgeNames?.size ?? 0) > 0;
 
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -830,9 +832,15 @@ const UserDetailsModal = ({
       >
         <Ruler size={14} className="flex-shrink-0" />
         <span>
-          {roundedDistanceKm} km away ({isWithinRange ? "<" : ">"}
-          {" "}
-          {Math.round(configuredLimitKm)} km)
+          {isWithinRange
+            ? t("distance.awayWithinLimit", {
+                km: roundedDistanceKm,
+                limit: Math.round(configuredLimitKm),
+              })
+            : t("distance.awayBeyondLimit", {
+                km: roundedDistanceKm,
+                limit: Math.round(configuredLimitKm),
+              })}
         </span>
       </span>
     );
@@ -842,6 +850,7 @@ const UserDetailsModal = ({
     effectiveUserMatch.matchType,
     matchDetails,
     roleMatchMaxDistanceKm,
+    t,
   ]);
 
   // =================================================
@@ -971,8 +980,7 @@ const UserDetailsModal = ({
           // EDIT MODE - Future implementation could use TagInput here (canonical focus area selector)
           <div className="space-y-6">
             <p className="text-base-content/70">
-              For comprehensive profile editing, you'll be redirected to the
-              full profile page.
+              {t("user.editRedirectNote")}
             </p>
           </div>
         ) : (!ownProfile && !sharedTeamId && (user?.profileAccess === "limited" || user?.profile_access === "limited")) ? (
@@ -1056,14 +1064,18 @@ const UserDetailsModal = ({
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span>{matchCount}/{total} matching</span>
+                      <span>
+                        {t("matchSummary.counted", { matchCount, total })}
+                      </span>
                     </span>
                   );
                 }
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">None matching</span>
+                    <span className="leading-[1.1]">
+                      {t("matchSummary.none")}
+                    </span>
                   </span>
                 );
               })()}
@@ -1118,14 +1130,18 @@ const UserDetailsModal = ({
                   return (
                     <span className="flex items-center gap-1.5 text-sm text-success">
                       <MatchIcon size={14} className="flex-shrink-0" />
-                      <span>{matchCount}/{total} matching</span>
+                      <span>
+                        {t("matchSummary.counted", { matchCount, total })}
+                      </span>
                     </span>
                   );
                 }
                 return (
                   <span className="flex items-center gap-1.5 text-sm text-slate-500">
                     <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">None matching</span>
+                    <span className="leading-[1.1]">
+                      {t("matchSummary.none")}
+                    </span>
                   </span>
                 );
               })()}

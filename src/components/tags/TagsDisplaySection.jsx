@@ -258,13 +258,13 @@ const TagsDisplaySection = ({
 
       await onSave(localSelectedTags);
 
-      setSuccess("Updated successfully!");
+      setSuccess(t("focusAreas.updated"));
       setIsEditing(false);
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Error saving tags:", err);
-      setError(err.message || "Failed to update");
+      setError(err.message || t("focusAreas.updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -308,18 +308,21 @@ const TagsDisplaySection = ({
       entityType === "team"
         ? Number(tag.awardeeCount || 0)
         : Number(tag.awarderCount || 0);
-    const personLabel =
-      entityType === "team"
-        ? personCount === 1
-          ? "member"
-          : "members"
-        : personCount === 1
-          ? "person"
-          : "people";
-
     const tooltipText =
       tag.badgeCredits > 0
-        ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${personCount} ${personLabel}`
+        ? entityType === "team"
+          ? t("focusAreas.tagTooltipMembers", {
+              name: tag.name,
+              credits: tag.badgeCredits,
+              badges: Number(tag.linkedBadgeCount),
+              people: personCount,
+            })
+          : t("focusAreas.tagTooltip", {
+              name: tag.name,
+              credits: tag.badgeCredits,
+              badges: Number(tag.linkedBadgeCount),
+              people: personCount,
+            })
         : tag.name;
 
     const isHighlighted =
@@ -395,18 +398,22 @@ const TagsDisplaySection = ({
       entityType === "team"
         ? groupTags.reduce((sum, t) => sum + Number(t.awardeeCount || 0), 0)
         : groupTags.reduce((sum, t) => sum + Number(t.awarderCount || 0), 0);
-    const personsLabel =
-      entityType === "team"
-        ? totalPersons === 1
-          ? "member"
-          : "members"
-        : totalPersons === 1
-          ? "person"
-          : "people";
 
     const tooltip =
       totalCredits > 0
-        ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalPersons} ${personsLabel}`
+        ? entityType === "team"
+          ? t("focusAreas.groupTooltipMembers", {
+              group: supercategory,
+              credits: totalCredits,
+              badges: totalBadges,
+              people: totalPersons,
+            })
+          : t("focusAreas.groupTooltip", {
+              group: supercategory,
+              credits: totalCredits,
+              badges: totalBadges,
+              people: totalPersons,
+            })
         : supercategory;
 
     const isClickable = !!onSupercategoryClick;
@@ -453,7 +460,7 @@ const TagsDisplaySection = ({
               onClick={handleCancel}
               disabled={loading}
             >
-              Cancel
+              {t("focusAreas.cancel")}
             </Button>
             <Button
               variant="primary"
@@ -506,7 +513,10 @@ const TagsDisplaySection = ({
                 </h3>
                 {totalCredits > 0 && (
                   <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
-                    ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+                    {t("focusAreas.summary", {
+                      credits: totalCredits,
+                      count: pillCount,
+                    })}
                   </span>
                 )}
               </div>
@@ -523,7 +533,7 @@ const TagsDisplaySection = ({
                 className="hover:bg-violet-200 hover:text-violet-700"
                 onClick={() => setIsEditing(true)}
               >
-                Edit
+                {t("focusAreas.editAria")}
               </Button>
             )}
           </div>
@@ -580,7 +590,7 @@ const TagsDisplaySection = ({
               onClick={() => setIsExpanded((v) => !v)}
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
-              {isExpanded ? "Show less" : "Show all"}
+              {isExpanded ? t("collapse.showLess") : t("collapse.showAll")}
             </button>
           )}
         </>

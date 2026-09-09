@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -29,6 +30,7 @@ import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
+import { getBadgeName } from "../../utils/badgeLabels";
 import {
   formatListLocation,
   formatLocation,
@@ -58,6 +60,7 @@ const UserCard = ({
   activeFilters = {},
   showSearchResultTypeOverlay = false,
 }) => {
+  const { t } = useTranslation();
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
 
@@ -229,13 +232,21 @@ const UserCard = ({
       });
 
     const distance = user.distanceKm ?? user.distance_km;
-    const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
+    // Same guard as TeamCard: with no location data the distance arrives as
+    // 0 and "0 km" would state something false. ListViewRow draws MapPinX.
+    const showDistance =
+      distance != null &&
+      distance < 999999 &&
+      Boolean(listLocationTextShort) &&
+      !(user.is_remote || user.isRemote);
 
     const tagNames = extractNames(user.tags);
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames);
 
-    const badgeNames = extractNames(user.badges);
+    const badgeNames = extractNames(user.badges).map((name) =>
+      getBadgeName(name, t),
+    );
     const { summary: badgesSummary, tooltip: badgesTooltip } =
       summarizeList(badgeNames);
 
