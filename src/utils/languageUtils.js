@@ -37,6 +37,21 @@ export const readStoredLanguage = () => {
   }
 };
 
+/**
+ * Forget this browser's language preference.
+ *
+ * Called on sign-out. `writeStoredLanguage(null)` would do the same thing,
+ * but the intent at the call site is "forget", not "write nothing", and a
+ * reader should not have to know that an unsupported code clears the key.
+ */
+export const clearStoredLanguage = () => {
+  try {
+    window.localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  } catch {
+    // Same reasoning as the writer: never take the page down for this.
+  }
+};
+
 export const writeStoredLanguage = (code) => {
   try {
     if (isSupportedLanguage(code)) {

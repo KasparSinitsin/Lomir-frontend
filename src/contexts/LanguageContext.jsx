@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +15,7 @@ import {
   isSupportedLanguage,
 } from "../constants/languages";
 import {
+  clearStoredLanguage,
   readStoredLanguage,
   resolveLanguage,
   writeStoredLanguage,
@@ -40,7 +42,7 @@ const LanguageContext = createContext(null);
  * the shell is actually translated.
  */
 export const LanguageProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { i18n } = useTranslation();
 
   // localStorage is not reactive, so the logged-out choice has to pass
@@ -90,6 +92,41 @@ export const LanguageProvider = ({ children }) => {
     writeStoredLanguage(accountLanguage);
     setStoredLanguage(accountLanguage);
   }, [user?.preferredLanguage, storedLanguage]);
+
+  /**
+   * Forget the preference when the session ends.
+   *
+   * `lomir.language` serves two masters: a signed-out visitor's own choice,
+   * and the mirror of the signed-in account's language written by the effect
+   * above so the shell does not flash English before /api/auth/me answers.
+   * The mirror is the problem - it is a browser-wide key holding one specific
+   * account's setting, and `resolveLanguage` reads it as step 1 of the chain,
+   * ahead of the country rule. The next person to sign in on this browser
+   * inherited it: an account with no `preferred_language` of its own rendered
+   * in the previous user's language, and a new registration was *created*
+   * with it, because RegisterForm resolves with `includeStored: true`.
+   *
+   * ⚠️ This keys off the *transition* out of an authenticated session, not
+   * off `user` being null. `user` is null on every first paint too, while
+   * /api/auth/me is still in flight - clearing on that would throw away a
+   * signed-out visitor's choice on every page load and make the navbar picker
+   * useless.
+   *
+   * A signed-out visitor who never signs in keeps their choice; that is the
+   * key's original purpose and it is untouched. What ends here is one
+   * session's memory, which is what sign-out should mean.
+   */
+  const wasAuthenticated = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated) {
+      wasAuthenticated.current = true;
+      return;
+    }
+    if (!wasAuthenticated.current) return;
+    wasAuthenticated.current = false;
+    clearStoredLanguage();
+    setStoredLanguage(null);
+  }, [isAuthenticated]);
 
   /**
    * Record an explicit choice. This is the navbar picker's entry point; the
