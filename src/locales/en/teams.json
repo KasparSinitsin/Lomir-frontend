@@ -208,7 +208,8 @@
     "appliedToTeamOn": "You applied to join this team\non {date}",
     "createdOn": "Created on {date}",
     "deleteBody": "Delete this team? If you are the only member, the team and chat are deleted immediately. If other members remain, the team is archived first and permanently deleted after they leave or after the archive grace period, currently 14 days by default.",
-    "leaveOwnerNote": "Note: As an owner, you can only leave if there's another owner to manage the team. Pass ownership before leaving."
+    "leaveOwnerNote": "Note: As an owner, you can only leave if there's another owner to manage the team. Pass ownership before leaving.",
+    "serverError": "Server error: {detail}"
   },
   "vacantRoleCard": {
     "appliedForRole": "You applied for this role",
@@ -343,7 +344,9 @@
     "unknownDate": "Unknown date",
     "switching": "Switching...",
     "accepting": "Accepting...",
-    "joining": "Joining..."
+    "joining": "Joining...",
+    "decline": "Decline",
+    "declining": "Declining..."
   },
   "vacantRoleDetails": {
     "viewApplicationOf": "Click to view {name}'s full application for the team",

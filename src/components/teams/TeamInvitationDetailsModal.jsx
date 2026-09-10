@@ -304,7 +304,7 @@ const TeamInvitationDetailsModal = ({
     return {
       isRemote,
       locationText: isRemote
-        ? "Remote"
+        ? t("location.section.remote")
         : locationParts.length > 0
           ? locationParts.join(", ")
           : fallbackLocation,
@@ -666,7 +666,7 @@ const TeamInvitationDetailsModal = ({
               disabled={isControlsDisabled}
               icon={<X size={16} />}
             >
-              {isDeclineLoading ? "Declining..." : "Decline"}
+              {isDeclineLoading ? t("teams:invitationDetails.declining") : t("teams:invitationDetails.decline")}
             </Button>
           </Tooltip>
         </div>

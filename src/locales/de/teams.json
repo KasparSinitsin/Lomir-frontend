@@ -208,7 +208,8 @@
     "appliedToTeamOn": "Du hast dich für dieses Team beworben\nam {date}",
     "createdOn": "Gegründet am {date}",
     "deleteBody": "Dieses Team löschen? Wenn du das einzige Mitglied bist, werden Team und Chat sofort gelöscht. Wenn weitere Mitglieder bleiben, wird das Team zuerst archiviert und endgültig gelöscht, sobald sie es verlassen haben oder die Archivfrist abgelaufen ist - derzeit standardmäßig 14 Tage.",
-    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Eigentum, bevor du gehst."
+    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Eigentum, bevor du gehst.",
+    "serverError": "Serverfehler: {detail}"
   },
   "vacantRoleCard": {
     "appliedForRole": "Du hast dich für diese Rolle beworben",
@@ -343,7 +344,9 @@
     "unknownDate": "Unbekanntes Datum",
     "switching": "Wird gewechselt...",
     "accepting": "Wird angenommen...",
-    "joining": "Tritt bei..."
+    "joining": "Tritt bei...",
+    "decline": "Ablehnen",
+    "declining": "Wird abgelehnt..."
   },
   "vacantRoleDetails": {
     "viewApplicationOf": "Klicken, um die vollständige Bewerbung von {name} für das Team zu sehen",

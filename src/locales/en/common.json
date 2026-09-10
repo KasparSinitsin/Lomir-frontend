@@ -415,7 +415,8 @@
     "filled": "Filled",
     "closed": "Closed",
     "open": "Open Role",
-    "vacantRoleFallback": "Vacant Role"
+    "vacantRoleFallback": "Vacant Role",
+    "roleInvitationFallback": "Role Invitation"
   },
   "mapPopup": {
     "typeTeam": "Team",

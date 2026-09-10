@@ -490,7 +490,7 @@ const TeamApplicationDetailsModal = ({
     return {
       isRemote,
       locationText: isRemote
-        ? "Remote"
+        ? t("location.section.remote")
         : locationParts.length > 0
           ? locationParts.join(", ")
           : fallbackLocation,

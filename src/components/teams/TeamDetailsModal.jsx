@@ -516,9 +516,12 @@ const TeamDetailsModal = ({
           } else {
             setNotification({
               type: "error",
-              message:
-                "Server error: " +
-                (err.response?.data?.error || err.message || t("teams:teamDetails.unknownError")),
+              message: t("teams:teamDetails.serverError", {
+                detail:
+                  err.response?.data?.error ||
+                  err.message ||
+                  t("teams:teamDetails.unknownError"),
+              }),
             });
           }
         }
