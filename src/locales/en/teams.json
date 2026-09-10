@@ -344,5 +344,13 @@
     "switching": "Switching...",
     "accepting": "Accepting...",
     "joining": "Joining..."
+  },
+  "vacantRoleDetails": {
+    "viewApplicationOf": "Click to view {name}'s full application for the team",
+    "viewApplicationUnnamed": "Click to view this applicant's full application for the team",
+    "viewInvitationOf": "Click to view {name}'s pending invitation for this role",
+    "viewInvitationUnnamed": "Click to view this invitee's pending invitation for this role",
+    "viewMatchScoreOf": "Click to view {name}'s profile matching score for this role",
+    "viewMatchScoreUnnamed": "Click to view this member's profile matching score for this role"
   }
 }

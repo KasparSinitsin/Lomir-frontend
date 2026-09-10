@@ -110,9 +110,6 @@ const roleMemberMatchDataQueryKey = (memberId) => [
   "roleMemberMatchData",
 ];
 
-const toPossessive = (value) =>
-  !value ? "your" : value.endsWith("s") ? `${value}'` : `${value}'s`;
-
 const firstPresent = (...values) =>
   values.find((value) => value !== undefined && value !== null);
 
@@ -320,7 +317,7 @@ const VacantRoleDetailsModal = ({
   const teamModal = useTeamModalSafe();
   const childTeamModalZIndex = useChildModalZIndex();
 
-  const { t } = useTranslation();
+  const { t } = useTranslation(["common", "teams"]);
   const [userTagMap, setUserTagMap] = useState(new Map()); // tagId → { badgeCredits }
   const [userBadgeMap, setUserBadgeMap] = useState(new Map()); // lowercase name → { totalCredits }
   const [hydratedRole, setHydratedRole] = useState(null);
@@ -1357,14 +1354,10 @@ const VacantRoleDetailsModal = ({
     const fallbackName = comparisonDisplayName?.trim();
     return fallbackName ? fallbackName.split(/\s+/)[0] : null;
   })();
-  const comparisonPossessive = toPossessive(comparisonShortName);
   const compactComparisonName =
     comparisonUser && comparisonShortName
       ? formatDisplayName(comparisonUser)
       : comparisonShortName;
-  const compactComparisonPossessive = isComparisonSelf
-    ? "your"
-    : toPossessive(compactComparisonName);
   const filledRoleUser = isFilledRole
     ? comparisonUser || resolvedFilledUser
     : null;
@@ -1448,16 +1441,25 @@ const VacantRoleDetailsModal = ({
       ? getMatchTier(effectiveMatchScore)
       : null;
   const MatchTierIcon = matchTier?.Icon ?? null;
-  const matchHeadline = effectivePct !== null
-    ? (isFilledRole
-      ? `${effectivePct}% matching score for ${filledRoleCompactDisplayName || "this member"} with this role`
-      : `${effectivePct}% match with ${compactComparisonPossessive} profile`)
-    : null;
-  const matchHeadlineTooltip = effectivePct !== null
-    ? (isFilledRole
-      ? `${effectivePct}% matching score for ${filledRoleDisplayName || "this member"} with this role`
-      : `${effectivePct}% match with ${comparisonPossessive} profile`)
-    : null;
+  const buildMatchHeadline = (filledName, comparisonName) => {
+    if (effectivePct === null) return null;
+    if (isFilledRole) {
+      return filledName
+        ? t("matchScore.roleWithMember", { pct: effectivePct, name: filledName })
+        : t("matchScore.roleWithThisMember", { pct: effectivePct });
+    }
+    return comparisonName
+      ? t("matchScore.withProfileOf", { pct: effectivePct, name: comparisonName })
+      : t("matchScore.withYourProfile", { pct: effectivePct });
+  };
+  const matchHeadline = buildMatchHeadline(
+    filledRoleCompactDisplayName,
+    compactComparisonName,
+  );
+  const matchHeadlineTooltip = buildMatchHeadline(
+    filledRoleDisplayName,
+    comparisonShortName,
+  );
   const handleFilledUserClick = () => {
     const filledUserId = filledRoleUserId;
     if (
@@ -1548,11 +1550,11 @@ const VacantRoleDetailsModal = ({
     comparisonUserId &&
     comparisonDataLoaded;
   const locationMatchText = comparisonShortName
-    ? `Matches ${comparisonPossessive} location`
-    : "Matches your location";
+    ? t("location.section.matchesLocationOf", { name: comparisonShortName })
+    : t("location.section.matchesYourLocation");
   const locationMismatchText = comparisonShortName
-    ? `Outside ${comparisonPossessive} location range`
-    : "Outside your location range";
+    ? t("location.section.outsideRangeOf", { name: comparisonShortName })
+    : t("location.section.outsideYourRange");
   const normalizePostalCode = (value) =>
     value == null ? "" : String(value).trim().toLowerCase();
   const rolePostalCode = normalizePostalCode(
@@ -2652,8 +2654,10 @@ const VacantRoleDetailsModal = ({
                     applicantProfile,
                     applicantDistanceKm,
                   );
-                  const applicantTooltipName = firstName || displayName || "this applicant";
-                  const applicantTooltip = `Click to view ${toPossessive(applicantTooltipName)} full application for the team`;
+                  const applicantTooltipName = firstName || displayName;
+                  const applicantTooltip = applicantTooltipName
+                    ? t("teams:vacantRoleDetails.viewApplicationOf", { name: applicantTooltipName })
+                    : t("teams:vacantRoleDetails.viewApplicationUnnamed");
 
                   return (
                     <Tooltip
@@ -2835,8 +2839,10 @@ const VacantRoleDetailsModal = ({
                     invitation?.date ??
                     invitation?.sent_at,
                   );
-                  const inviteeTooltipName = firstName || displayName || "this invitee";
-                  const inviteeTooltip = `Click to view ${toPossessive(inviteeTooltipName)} pending invitation for this role`;
+                  const inviteeTooltipName = firstName || displayName;
+                  const inviteeTooltip = inviteeTooltipName
+                    ? t("teams:vacantRoleDetails.viewInvitationOf", { name: inviteeTooltipName })
+                    : t("teams:vacantRoleDetails.viewInvitationUnnamed");
 
                   return (
                     <Tooltip
@@ -3018,11 +3024,10 @@ const VacantRoleDetailsModal = ({
                     memberDistanceKm,
                   );
                   const memberTooltipName =
-                    member.firstName ??
-                    member.first_name ??
-                    displayName ??
-                    "this member";
-                  const memberTooltip = `Click to view ${toPossessive(memberTooltipName)} profile matching score for this role`;
+                    member.firstName ?? member.first_name ?? displayName ?? null;
+                  const memberTooltip = memberTooltipName
+                    ? t("teams:vacantRoleDetails.viewMatchScoreOf", { name: memberTooltipName })
+                    : t("teams:vacantRoleDetails.viewMatchScoreUnnamed");
 
                   return (
                     <Tooltip

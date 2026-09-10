@@ -235,7 +235,11 @@
       "notSpecified": "Nicht angegeben",
       "distanceAway": "{distance} entfernt",
       "unavailable": "Standort nicht verfügbar",
-      "unavailableShort": "Keine Angabe"
+      "unavailableShort": "Keine Angabe",
+      "matchesYourLocation": "Passt zu deinem Standort",
+      "matchesLocationOf": "Passt zum Standort von {name}",
+      "outsideYourRange": "Außerhalb deines Umkreises",
+      "outsideRangeOf": "Außerhalb des Umkreises von {name}"
     },
     "locationMode": {
       "label": "Team-Standort",
@@ -364,7 +368,11 @@
     "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
     "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
     "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
-    "plain": "{pct}% Profil-Übereinstimmung"
+    "plain": "{pct}% Profil-Übereinstimmung",
+    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
+    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
+    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
+    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}"
   },
   "distance": {
     "awayFromYou": "{km} km von dir entfernt",

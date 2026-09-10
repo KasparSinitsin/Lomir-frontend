@@ -235,7 +235,11 @@
       "notSpecified": "Not specified",
       "distanceAway": "{distance} away",
       "unavailable": "Location not available",
-      "unavailableShort": "Not available"
+      "unavailableShort": "Not available",
+      "matchesYourLocation": "Matches your location",
+      "matchesLocationOf": "Matches {name}'s location",
+      "outsideYourRange": "Outside your location range",
+      "outsideRangeOf": "Outside {name}'s location range"
     },
     "locationMode": {
       "label": "Team Location",
@@ -364,7 +368,11 @@
     "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
     "shared": "{pct}% profile match — {sharedTags, plural, one {# shared tag} other {# shared tags}}, {sharedBadges, plural, one {# shared badge} other {# shared badges}}",
     "sharedFocus": "{pct}% profile match — {count, plural, one {# shared focus area} other {# shared focus areas}}",
-    "plain": "{pct}% profile match"
+    "plain": "{pct}% profile match",
+    "roleWithMember": "{pct}% matching score for {name} with this role",
+    "roleWithThisMember": "{pct}% matching score for this member with this role",
+    "withYourProfile": "{pct}% match with your profile",
+    "withProfileOf": "{pct}% match with {name}'s profile"
   },
   "distance": {
     "awayFromYou": "{km} km away from you",

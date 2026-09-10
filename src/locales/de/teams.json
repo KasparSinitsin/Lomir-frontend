@@ -344,5 +344,13 @@
     "switching": "Wird gewechselt...",
     "accepting": "Wird angenommen...",
     "joining": "Tritt bei..."
+  },
+  "vacantRoleDetails": {
+    "viewApplicationOf": "Klicken, um die vollständige Bewerbung von {name} für das Team zu sehen",
+    "viewApplicationUnnamed": "Klicken, um die vollständige Bewerbung dieser Person für das Team zu sehen",
+    "viewInvitationOf": "Klicken, um die offene Einladung von {name} für diese Rolle zu sehen",
+    "viewInvitationUnnamed": "Klicken, um die offene Einladung dieser Person für diese Rolle zu sehen",
+    "viewMatchScoreOf": "Klicken, um die Profil-Übereinstimmung von {name} mit dieser Rolle zu sehen",
+    "viewMatchScoreUnnamed": "Klicken, um die Profil-Übereinstimmung dieses Mitglieds mit dieser Rolle zu sehen"
   }
 }
