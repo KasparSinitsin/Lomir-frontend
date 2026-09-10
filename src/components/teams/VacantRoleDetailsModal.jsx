@@ -1603,6 +1603,22 @@ const VacantRoleDetailsModal = ({
     }) || null;
   };
 
+  /**
+   * The tier sentence for a match ring, in the active language.
+   *
+   * All three keys are spelled out literally on purpose: `matchScoreUtils`
+   * documents that a key assembled from `tier` would be invisible to
+   * `npm run i18n:check`. Shared by the header ring and the three list rings
+   * so a future change cannot translate one and forget the others - which is
+   * exactly how the three `title` attributes stayed English.
+   */
+  const matchTierSentence = (tier) =>
+    tier?.tier === "great"
+      ? t("matchScore.tierGreat", { pct: tier.pct })
+      : tier?.tier === "good"
+        ? t("matchScore.tierGood", { pct: tier.pct })
+        : t("matchScore.tierLow", { pct: tier.pct });
+
   const getPersonLocationText = (person, fallbackDistanceKm = null) => {
     if (!person) {
       return fallbackDistanceKm != null
@@ -2032,13 +2048,7 @@ const VacantRoleDetailsModal = ({
             )}
             {MatchTierIcon && (
               <Tooltip
-                content={
-                  matchTier.tier === "great"
-                    ? t("matchScore.tierGreat", { pct: matchTier.pct })
-                    : matchTier.tier === "good"
-                      ? t("matchScore.tierGood", { pct: matchTier.pct })
-                      : t("matchScore.tierLow", { pct: matchTier.pct })
-                }
+                content={matchTierSentence(matchTier)}
                 position="bottom"
                 wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
               >
@@ -2472,7 +2482,7 @@ const VacantRoleDetailsModal = ({
                                 {tag.name}
                                 {isMatch && credits > 0 && (
                                   <span className="opacity-70">
-                                    | {credits}ct.
+                                    {t("badges.creditsInline", { credits })}
                                   </span>
                                 )}
                               </span>
@@ -2587,7 +2597,7 @@ const VacantRoleDetailsModal = ({
                               {badge.name}
                               {isMatch && credits > 0 && (
                                 <span className="opacity-70">
-                                  | {credits}ct.
+                                  {t("badges.creditsInline", { credits })}
                                 </span>
                               )}
                             </span>
@@ -2679,7 +2689,10 @@ const VacantRoleDetailsModal = ({
                     applicantProfile,
                     applicantDistanceKm,
                   );
-                  const applicantTooltipName = firstName || lastName || username || null;
+                  // Deliberately WITHOUT username: it is a required field, so including it
+                  // made the …Unnamed branch unreachable. A raw handle also reads badly
+                  // inside a dative sentence - "die Bewerbung von hjkl_2024".
+                  const applicantTooltipName = firstName || lastName || null;
                   const applicantTooltip = applicantTooltipName
                     ? t("teams:vacantRoleDetails.viewApplicationOf", { name: applicantTooltipName })
                     : t("teams:vacantRoleDetails.viewApplicationUnnamed");
@@ -2712,7 +2725,7 @@ const VacantRoleDetailsModal = ({
                           {ApplicantMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${applicantMatchTier.bg}`}
-                              title={`${applicantMatchTier.pct}% ${applicantMatchTier.label.toLowerCase()}`}
+                              title={matchTierSentence(applicantMatchTier)}
                             >
                               <ApplicantMatchIcon
                                 size={7}
@@ -2864,7 +2877,10 @@ const VacantRoleDetailsModal = ({
                     invitation?.date ??
                     invitation?.sent_at,
                   );
-                  const inviteeTooltipName = firstName || lastName || username || null;
+                  // Deliberately WITHOUT username: it is a required field, so including it
+                  // made the …Unnamed branch unreachable. A raw handle also reads badly
+                  // inside a dative sentence - "die Bewerbung von hjkl_2024".
+                  const inviteeTooltipName = firstName || lastName || null;
                   const inviteeTooltip = inviteeTooltipName
                     ? t("teams:vacantRoleDetails.viewInvitationOf", { name: inviteeTooltipName })
                     : t("teams:vacantRoleDetails.viewInvitationUnnamed");
@@ -2897,7 +2913,7 @@ const VacantRoleDetailsModal = ({
                           {InviteeMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${inviteeMatchTier.bg}`}
-                              title={`${inviteeMatchTier.pct}% ${inviteeMatchTier.label.toLowerCase()}`}
+                              title={matchTierSentence(inviteeMatchTier)}
                             >
                               <InviteeMatchIcon
                                 size={7}
@@ -3048,12 +3064,14 @@ const VacantRoleDetailsModal = ({
                     member,
                     memberDistanceKm,
                   );
+                  // Deliberately WITHOUT username - see the applicant list above.
+                  // `||` rather than `??`: an empty-string name must fall through
+                  // to the next part, which `??` would not do.
                   const memberTooltipName =
-                    member.firstName ??
-                    member.first_name ??
-                    member.lastName ??
-                    member.last_name ??
-                    member.username ??
+                    member.firstName ||
+                    member.first_name ||
+                    member.lastName ||
+                    member.last_name ||
                     null;
                   const memberTooltip = memberTooltipName
                     ? t("teams:vacantRoleDetails.viewMatchScoreOf", { name: memberTooltipName })
@@ -3097,7 +3115,7 @@ const VacantRoleDetailsModal = ({
                           {MemberMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${memberMatchTier.bg}`}
-                              title={`${memberMatchTier.pct}% ${memberMatchTier.label.toLowerCase()}`}
+                              title={matchTierSentence(memberMatchTier)}
                             >
                               <MemberMatchIcon
                                 size={7}

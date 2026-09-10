@@ -33,6 +33,7 @@
       "personal": "Persönliche Eigenschaften",
       "technical": "Technische Expertise"
     },
+    "creditsInline": "| {credits} ct.",
     "descriptions": {
       "adaptable": "Reagiert flexibel auf sich ändernde Umstände und Anforderungen",
       "artisan": "Schafft schöne und hochwertige Werke in jedem Medium",
