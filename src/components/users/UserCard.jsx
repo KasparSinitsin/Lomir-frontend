@@ -203,7 +203,7 @@ const UserCard = ({
     <SearchResultTypeOverlay
       icon={User}
       bgClassName={matchTier?.bg ?? "bg-success"}
-      tooltip="Person"
+      tooltip={t("common:mapPopup.typeUser")}
       viewMode={viewMode}
     />
   ) : (
