@@ -51,7 +51,6 @@ import {
 } from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../utils/userHelpers";
@@ -1315,7 +1314,7 @@ const Profile = () => {
                   </div>
                   {isSyntheticUser(user) && (
                     <Tooltip
-                      content={DEMO_PROFILE_TOOLTIP}
+                      content={t("common:demo.profileTooltip")}
                       wrapperClassName="flex items-start text-base-content/50"
                     >
                       <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />

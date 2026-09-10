@@ -370,7 +370,8 @@
   "demo": {
     "teamTooltip": "Demo Team: for testing purposes, no real team",
     "roleTooltip": "Demo Role: for testing purposes, no real role",
-    "roleLabel": "Demo Role"
+    "roleLabel": "Demo Role",
+    "profileTooltip": "Demo Profile: for testing purposes, no real person"
   },
   "matchScore": {
     "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",

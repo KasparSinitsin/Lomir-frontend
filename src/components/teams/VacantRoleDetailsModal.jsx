@@ -79,8 +79,6 @@ import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import { buildRoleInvitationAcceptedMessage } from "../../utils/roleEventMessages";
 import { getMatchTier } from "../../utils/matchScoreUtils";
 import {
-  DEMO_PROFILE_TOOLTIP,
-  DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
@@ -3129,7 +3127,7 @@ const VacantRoleDetailsModal = ({
                               </CardMetaItem>
                               {showDemoAvatarOverlay && (
                                 <Tooltip
-                                  content={DEMO_PROFILE_TOOLTIP}
+                                  content={t("demo.profileTooltip")}
                                   wrapperClassName="flex items-center gap-1 text-base-content/50"
                                 >
                                   <FlaskConical

@@ -17,7 +17,6 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -276,7 +275,7 @@ const UserCard = ({
         )}
         {isSyntheticUser(user) && (
           <Tooltip
-            content={DEMO_PROFILE_TOOLTIP}
+            content={t("demo.profileTooltip")}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
             <FlaskConical size={9} className="flex-shrink-0" />
@@ -364,7 +363,7 @@ const UserCard = ({
             )}
           {isSyntheticUser(user) && (
             <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
+              content={t("demo.profileTooltip")}
               wrapperClassName="flex items-center gap-1 text-base-content/50"
             >
               <FlaskConical

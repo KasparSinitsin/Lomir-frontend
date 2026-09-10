@@ -6,7 +6,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
@@ -213,7 +212,7 @@ const InlineUserLink = ({
       </Tooltip>
       {showDemoIndicator && (
         <Tooltip
-          content={DEMO_PROFILE_TOOLTIP}
+          content={t("demo.profileTooltip")}
           wrapperClassName="ml-1 flex items-center text-base-content/50"
         >
           <FlaskConical size={10} className="shrink-0" />

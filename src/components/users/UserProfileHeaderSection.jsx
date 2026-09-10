@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
@@ -7,7 +8,6 @@ import {
   FlaskConical,
 } from "lucide-react";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -32,6 +32,7 @@ const UserProfileHeaderSection = ({
   matchScore = null,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const [imageError, setImageError] = useState(false);
   const [dateIsNarrow, setDateIsNarrow] = useState(false);
   const dateIsNarrowRef = useRef(false);
@@ -216,7 +217,7 @@ const UserProfileHeaderSection = ({
               )}
               {isSyntheticUser(user) && (
                 <Tooltip
-                  content={DEMO_PROFILE_TOOLTIP}
+                  content={t("demo.profileTooltip")}
                   wrapperClassName="flex items-start text-base-content/50"
                 >
                   <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />

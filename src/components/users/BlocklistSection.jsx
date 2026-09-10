@@ -5,7 +5,7 @@ import { userService } from "../../services/userService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { formatListLocation } from "../../utils/locationUtils";
 import { formatDateNumeric } from "../../utils/dateHelpers";
-import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
+import { isSyntheticUser } from "../../utils/userHelpers";
 import UserAvatar from "./UserAvatar";
 import CardMetaRow from "../common/CardMetaRow";
 import CardMetaItem from "../common/CardMetaItem";
@@ -155,7 +155,7 @@ const BlocklistSection = ({ userId, onChange }) => {
                       )}
                       {isDemo && (
                         <Tooltip
-                          content={DEMO_PROFILE_TOOLTIP}
+                          content={t("common:demo.profileTooltip")}
                           wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                         >
                           <FlaskConical size={10} className="shrink-0" />

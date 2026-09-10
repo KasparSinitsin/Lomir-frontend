@@ -83,7 +83,7 @@ import {
   calculateDistanceKm,
   locationsHaveDifferentKnownParts,
 } from "../../utils/locationUtils";
-import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+import { isSyntheticTeam } from "../../utils/userHelpers";
 
 const getTeamMemberUserId = (member) =>
   member?.user_id ??
@@ -1921,7 +1921,7 @@ const TeamDetailsModal = ({
                           )}
                           {isSyntheticTeam(team) && (
                             <Tooltip
-                              content={DEMO_TEAM_TOOLTIP}
+                              content={t("demo.teamTooltip")}
                               wrapperClassName="flex items-start text-base-content/50"
                             >
                               <FlaskConical size={14} className={`flex-shrink-0 mt-px${teamDateIsNarrow ? "" : " sm:mr-0.5"}`} />
