@@ -1203,6 +1203,11 @@ const TeamDetailsModal = ({
     selectedPendingApplication ?? effectivePendingApplication;
   const effectivePendingInvitation = pendingInvitation ?? fetchedPendingInvitation;
   const effectiveHasPendingInvitation = hasPendingInvitation || Boolean(fetchedPendingInvitation);
+  // ⚠️ The membership guard STAYS here, even though the same guard is wrong on
+  // `pendingInternalRoleApplication` below. This flag drives the footer CTA,
+  // and `renderJoinButton` returns early on it — dropping the guard would
+  // replace a member's "Send message" and "Leave team" buttons with
+  // "View application". The CTA slot belongs to non-members.
   const hasActivePendingApplication = Boolean(
     (hasPendingApplication || effectivePendingApplication) &&
       !currentUserIsListedTeamMember,
@@ -1224,11 +1229,15 @@ const TeamDetailsModal = ({
         (a) => Boolean(a.role) && !(a.isInternalRoleApplication || a.is_internal_role_application),
       )
     : null;
-  const pendingInternalRoleApplication = !currentUserIsListedTeamMember
-    ? allPendingApplications.find(
-        (a) => Boolean(a.isInternalRoleApplication || a.is_internal_role_application),
-      )
-    : null;
+  // No membership guard here, deliberately, and unlike its two neighbours: an
+  // internal role application is BY DEFINITION one made by a current member,
+  // so `!currentUserIsListedTeamMember` could never be satisfied and this
+  // branch was unreachable for the only case it describes. The card had it
+  // right and the modal did not.
+  const pendingInternalRoleApplication =
+    allPendingApplications.find(
+      (a) => Boolean(a.isInternalRoleApplication || a.is_internal_role_application),
+    ) ?? null;
   const pendingTeamOnlyApplication = !currentUserIsListedTeamMember
     ? allPendingApplications.find(
         (a) => !a.role && !(a.isInternalRoleApplication || a.is_internal_role_application),
