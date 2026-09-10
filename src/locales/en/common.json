@@ -381,7 +381,10 @@
     "roleWithMember": "{pct}% matching score for {name} with this role",
     "roleWithThisMember": "{pct}% matching score for this member with this role",
     "withYourProfile": "{pct}% match with your profile",
-    "withProfileOf": "{pct}% match with {name}'s profile"
+    "withProfileOf": "{pct}% match with {name}'s profile",
+    "tierGreat": "{pct}% great match",
+    "tierGood": "{pct}% good match",
+    "tierLow": "{pct}% low match"
   },
   "distance": {
     "awayFromYou": "{km} km away from you",

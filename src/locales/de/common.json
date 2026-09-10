@@ -381,7 +381,10 @@
     "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
     "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
     "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
-    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}"
+    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
+    "tierGreat": "{pct}% sehr gute Übereinstimmung",
+    "tierGood": "{pct}% gute Übereinstimmung",
+    "tierLow": "{pct}% geringe Übereinstimmung"
   },
   "distance": {
     "awayFromYou": "{km} km von dir entfernt",

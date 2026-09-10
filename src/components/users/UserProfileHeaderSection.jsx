@@ -159,7 +159,13 @@ const UserProfileHeaderSection = ({
         </div>
         {matchTier && (
           <Tooltip
-            content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            content={
+              matchTier.tier === "great"
+                ? t("matchScore.tierGreat", { pct: matchTier.pct })
+                : matchTier.tier === "good"
+              ? t("matchScore.tierGood", { pct: matchTier.pct })
+              : t("matchScore.tierLow", { pct: matchTier.pct })
+            }
             position="bottom"
             wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
           >

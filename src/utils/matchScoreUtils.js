@@ -21,6 +21,7 @@ export function getMatchTier(score) {
       bgTint: "bg-orange-50",
       borderTint: "border-orange-500",
       text: "text-orange-500",
+      tier: "great",
       label: "Great match",
     };
   if (pct >= MATCH_TIER_GOOD)
@@ -32,6 +33,7 @@ export function getMatchTier(score) {
       bgTint: "bg-green-50",
       borderTint: "border-success",
       text: "text-success",
+      tier: "good",
       label: "Good match",
     };
   return {
@@ -42,6 +44,7 @@ export function getMatchTier(score) {
     bgTint: "bg-slate-50",
     borderTint: "border-slate-400",
     text: "text-slate-400",
+    tier: "low",
     label: "Low match",
   };
 }
