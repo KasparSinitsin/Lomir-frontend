@@ -129,6 +129,10 @@
       "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     }
   },
+  "collapse": {
+    "showAll": "Alle anzeigen",
+    "showLess": "Weniger anzeigen"
+  },
   "communication": {
     "sectionTitle": "Kommunikation",
     "languageLabel": "Sprache der Lomir-App",
@@ -155,6 +159,18 @@
     "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
     "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
     "archiveRemainingUnderAnHour": "weniger als eine Stunde"
+  },
+  "demo": {
+    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team",
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "roleLabel": "Demo-Rolle",
+    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person"
+  },
+  "distance": {
+    "awayFromYou": "{km} km von dir entfernt",
+    "away": "{km} km entfernt",
+    "awayWithinLimit": "{km} km entfernt (< {limit} km)",
+    "awayBeyondLimit": "{km} km entfernt (> {limit} km)"
   },
   "focusAreas": {
     "title": "Fokusbereiche",
@@ -257,6 +273,118 @@
       "toggleAria": "Standortmodus umschalten"
     }
   },
+  "mapPopup": {
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeRole": "Offene Rolle",
+    "close": "Schließen",
+    "viewDetails": "Details ansehen",
+    "openDetails": "Details öffnen",
+    "resultAria": "Kartenergebnis {name}",
+    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
+    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
+    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
+    "openTeamInvitation": "Details der Team-Einladung öffnen",
+    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
+    "openTeamApplication": "Details der Team-Bewerbung öffnen",
+    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
+    "entityRemote": "{entity} (remote)",
+    "entityNoLocation": "{entity} ohne Standortangabe",
+    "typeUserProfile": "Profil",
+    "demoTeam": "Demo-Team",
+    "demoRole": "Demo-Rolle",
+    "demoProfile": "Demo-Profil",
+    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
+    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
+    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
+    "memberCount": "{count} von {max} Mitgliedern",
+    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
+    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
+    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
+    "remoteOrUnmapped": "Remote oder ohne Standort",
+    "posted": "Eingestellt am {date}",
+    "mappedResults": "Ergebnisse auf der Karte"
+  },
+  "matchDetail": {
+    "itemsTwo": "{first} und {second}",
+    "tagsOfTotal": "{shared} von {total} Fokusbereichen",
+    "tagsOfTotalRequired": "{shared} von {total} geforderten Fokusbereichen",
+    "badgesOfTotal": "{shared} von {total} Badges",
+    "tagsShared": "{count, plural, one {# Fokusbereich} other {# Fokusbereiche}}",
+    "badgesShared": "{count, plural, one {# Badge} other {# Badges}}",
+    "itemsAndLocation": "{items} gemeinsam, {location}",
+    "itemsOnly": "{items} gemeinsam",
+    "roleItemsAndLocation": "{items} erfüllt, {location}",
+    "roleItemsOnly": "{items} erfüllt",
+    "location": {
+      "same": "gleicher Ort oder Remote-freundliches Team",
+      "within100": "unter 100 km entfernt",
+      "within300": "unter 300 km entfernt",
+      "within1000": "unter 1000 km entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "locationAlone": {
+      "same": "Gleicher Ort oder Remote-freundliches Team",
+      "within100": "Unter 100 km voneinander entfernt",
+      "within300": "Unter 300 km voneinander entfernt",
+      "within1000": "Unter 1000 km voneinander entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "roleLocation": {
+      "inside": "im Standort-Umkreis der Rolle",
+      "near": "bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "außerhalb des Standort-Umkreises der Rolle"
+    },
+    "roleLocationAlone": {
+      "inside": "Im Standort-Umkreis der Rolle",
+      "near": "Bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "Außerhalb des Standort-Umkreises der Rolle"
+    },
+    "bars": {
+      "locationWeight": "Der Standort geht mit {weight} % in den Score ein.",
+      "locationRoleRule": "Im Umkreis der Rolle = 100 %. Bis zu 20 km darüber hinaus = 25 %. Weiter = 0 %.",
+      "locationGenericRule": "Remote-Teams = 100 %. Gleiche Stadt = 100 %. Bis 100 km = 75 %.",
+      "locationGenericRuleFar": "Bis 300 km = 50 %. Bis 1000 km = 25 %. Weiter entfernt = 0 %.",
+      "tagsWeight": "Fokusbereiche gehen mit {weight} % in den Score ein.",
+      "tagsMet": "{shared} von {total} geforderten Fokusbereichen erfüllt.",
+      "tagsSharedCount": "{shared} von {total} Fokusbereichen sind gemeinsam.",
+      "tagsNone": "Es gab keine Fokusbereiche zum Vergleichen.",
+      "badgesWeight": "Badges gehen mit {weight} % in den Score ein.",
+      "badgesMet": "{shared} von {total} geforderten Badges erfüllt.",
+      "badgesSharedCount": "{shared} von {total} Badges sind gemeinsam.",
+      "badgesNone": "Es gab keine Badges zum Vergleichen."
+    }
+  },
+  "matchScore": {
+    "betweenYouAnd": "{pct}% Profil-Übereinstimmung von dir und {name}",
+    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
+    "plain": "{pct}% Profil-Übereinstimmung",
+    "roleNamed": "{pct}% Übereinstimmung von {name} mit der Rolle {role}",
+    "roleNamedAnon": "{pct}% Übereinstimmung dieser Person mit der Rolle {role}",
+    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
+    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
+    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
+    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
+    "tierGood": "{pct}% gute Übereinstimmung",
+    "tierGreat": "{pct}% sehr gute Übereinstimmung",
+    "tierLow": "{pct}% geringe Übereinstimmung",
+    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
+    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
+    "yourProfileWith": "{pct}% Übereinstimmung deines Profils mit {name}"
+  },
+  "matchSummary": {
+    "counted": "{matchCount}/{total} passend",
+    "none": "Keine Übereinstimmung",
+    "all": "Alle passend",
+    "countedWithYou": "{matchCount}/{total} passend zu dir",
+    "countedWithName": "{matchCount}/{total} passend zu {name}",
+    "noneWithYou": "Keine Übereinstimmung mit dir",
+    "noneWithName": "Keine Übereinstimmung mit {name}",
+    "allWithYou": "Alle passend zu dir",
+    "allWithName": "Alle passend zu {name}"
+  },
   "modal": {
     "close": "Dialog schließen"
   },
@@ -355,6 +483,34 @@
       "tooltip": "Kartenansicht"
     }
   },
+  "roleStatus": {
+    "vacant": "Vakant",
+    "filled": "Besetzt",
+    "closed": "Geschlossen",
+    "open": "Offene Rolle",
+    "vacantRoleFallback": "Vakante Rolle",
+    "roleInvitationFallback": "Rolleneinladung",
+    "filledRole": "Besetzte Rolle",
+    "closedRole": "Geschlossene Rolle"
+  },
+  "roles": {
+    "owner": "Eigentümer",
+    "admin": "Admin",
+    "member": "Mitglied",
+    "unknown": "Unbekannt"
+  },
+  "team": {
+    "unknownName": "Unbekanntes Team"
+  },
+  "user": {
+    "privateProfile": "Privates Profil",
+    "unknown": "Unbekannt",
+    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
+    "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
+    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
+    "profileImageAlt": "Profilbild von {name}",
+    "profileImageAltGeneric": "Profilbild"
+  },
   "visibility": {
     "title": "Sichtbarkeit",
     "visible": "Für alle Nutzer sichtbar",
@@ -366,107 +522,5 @@
     "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
     "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
     "toggleAria": "Sichtbarkeit umschalten"
-  },
-  "demo": {
-    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team",
-    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
-    "roleLabel": "Demo-Rolle",
-    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person"
-  },
-  "matchScore": {
-    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
-    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
-    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
-    "plain": "{pct}% Profil-Übereinstimmung",
-    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
-    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
-    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
-    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
-    "tierGreat": "{pct}% sehr gute Übereinstimmung",
-    "tierGood": "{pct}% gute Übereinstimmung",
-    "tierLow": "{pct}% geringe Übereinstimmung"
-  },
-  "distance": {
-    "awayFromYou": "{km} km von dir entfernt",
-    "away": "{km} km entfernt",
-    "awayWithinLimit": "{km} km entfernt (< {limit} km)",
-    "awayBeyondLimit": "{km} km entfernt (> {limit} km)"
-  },
-  "roles": {
-    "owner": "Eigentümer",
-    "admin": "Admin",
-    "member": "Mitglied",
-    "unknown": "Unbekannt"
-  },
-  "collapse": {
-    "showAll": "Alle anzeigen",
-    "showLess": "Weniger anzeigen"
-  },
-  "user": {
-    "privateProfile": "Privates Profil",
-    "unknown": "Unbekannt",
-    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
-    "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
-    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
-    "profileImageAlt": "Profilbild von {name}",
-    "profileImageAltGeneric": "Profilbild"
-  },
-  "matchSummary": {
-    "counted": "{matchCount}/{total} passend",
-    "none": "Keine Übereinstimmung",
-    "all": "Alle passend",
-    "countedWithYou": "{matchCount}/{total} passend zu dir",
-    "countedWithName": "{matchCount}/{total} passend zu {name}",
-    "noneWithYou": "Keine Übereinstimmung mit dir",
-    "noneWithName": "Keine Übereinstimmung mit {name}",
-    "allWithYou": "Alle passend zu dir",
-    "allWithName": "Alle passend zu {name}"
-  },
-  "roleStatus": {
-    "vacant": "Vakant",
-    "filled": "Besetzt",
-    "closed": "Geschlossen",
-    "open": "Offene Rolle",
-    "vacantRoleFallback": "Vakante Rolle",
-    "roleInvitationFallback": "Rolleneinladung",
-    "filledRole": "Besetzte Rolle",
-    "closedRole": "Geschlossene Rolle"
-  },
-  "mapPopup": {
-    "typeTeam": "Team",
-    "typeUser": "Person",
-    "typeRole": "Offene Rolle",
-    "close": "Schließen",
-    "viewDetails": "Details ansehen",
-    "openDetails": "Details öffnen",
-    "resultAria": "Kartenergebnis {name}",
-    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
-    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
-    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
-    "openTeamInvitation": "Details der Team-Einladung öffnen",
-    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
-    "openTeamApplication": "Details der Team-Bewerbung öffnen",
-    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
-    "entityInLocation": "{entity} in {location}",
-    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
-    "entityRemote": "{entity} (remote)",
-    "entityNoLocation": "{entity} ohne Standortangabe",
-    "typeUserProfile": "Profil",
-    "demoTeam": "Demo-Team",
-    "demoRole": "Demo-Rolle",
-    "demoProfile": "Demo-Profil",
-    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
-    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
-    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
-    "memberCount": "{count} von {max} Mitgliedern",
-    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
-    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
-    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
-    "remoteOrUnmapped": "Remote oder ohne Standort",
-    "posted": "Eingestellt am {date}",
-    "mappedResults": "Ergebnisse auf der Karte"
-  },
-  "team": {
-    "unknownName": "Unbekanntes Team"
   }
 }

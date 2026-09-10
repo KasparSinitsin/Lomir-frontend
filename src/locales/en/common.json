@@ -129,6 +129,10 @@
       "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     }
   },
+  "collapse": {
+    "showAll": "Show all",
+    "showLess": "Show less"
+  },
   "communication": {
     "sectionTitle": "Communication",
     "languageLabel": "Lomir App Language",
@@ -155,6 +159,18 @@
     "archiveRemainingHours": "{count, plural, one {# hour} other {# hours}}",
     "archiveRemainingDays": "{count, plural, one {# day} other {# days}}",
     "archiveRemainingUnderAnHour": "less than an hour"
+  },
+  "demo": {
+    "teamTooltip": "Demo Team: for testing purposes, no real team",
+    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "roleLabel": "Demo Role",
+    "profileTooltip": "Demo Profile: for testing purposes, no real person"
+  },
+  "distance": {
+    "awayFromYou": "{km} km away from you",
+    "away": "{km} km away",
+    "awayWithinLimit": "{km} km away (< {limit} km)",
+    "awayBeyondLimit": "{km} km away (> {limit} km)"
   },
   "focusAreas": {
     "title": "Focus Areas",
@@ -257,6 +273,118 @@
       "toggleAria": "Toggle location mode"
     }
   },
+  "mapPopup": {
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeRole": "Open Role",
+    "close": "Close",
+    "viewDetails": "View details",
+    "openDetails": "Open details",
+    "resultAria": "{name} map result",
+    "clickTeamDetails": "Click to view team details",
+    "clickRoleDetails": "Click to view role details",
+    "clickUserDetails": "Click to view user details",
+    "openTeamInvitation": "Open team invitation details",
+    "openRoleInvitation": "Open role invitation details",
+    "openTeamApplication": "Open team application details",
+    "openRoleApplication": "Open role application details",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nwithin {km} km from Role Location",
+    "entityRemote": "{entity} (remote)",
+    "entityNoLocation": "{entity} without Location info",
+    "typeUserProfile": "User Profile",
+    "demoTeam": "Demo Team",
+    "demoRole": "Demo Role",
+    "demoProfile": "Demo Profile",
+    "invitedToFillNamedRole": "You were invited to fill {roleName} in this team",
+    "appliedForNamedRole": "You applied for {roleName} in this team",
+    "memberWithCount": "You are a member of this team with {count} / {max} members",
+    "memberCount": "{count} of {max} members",
+    "openRoles": "{count, plural, one {# open role posted in this team} other {# open roles posted in this team}}",
+    "memberOfTeamNamed": "You are a member of this team: {teamName}",
+    "noMapCoordinates": "No visible results on this page include map coordinates yet.",
+    "remoteOrUnmapped": "Remote or unmapped",
+    "posted": "Posted {date}",
+    "mappedResults": "Mapped results"
+  },
+  "matchDetail": {
+    "itemsTwo": "{first} and {second}",
+    "tagsOfTotal": "{shared} of {total} focus areas",
+    "tagsOfTotalRequired": "{shared} of {total} required focus areas",
+    "badgesOfTotal": "{shared} of {total} badges",
+    "tagsShared": "{count, plural, one {# focus area} other {# focus areas}}",
+    "badgesShared": "{count, plural, one {# badge} other {# badges}}",
+    "itemsAndLocation": "{items} in common and {location}",
+    "itemsOnly": "{items} in common",
+    "roleItemsAndLocation": "{items} met, {location}",
+    "roleItemsOnly": "{items} met",
+    "location": {
+      "same": "same location or remote-friendly team",
+      "within100": "within 100 km of each other",
+      "within300": "within 300 km of each other",
+      "within1000": "within 1000 km of each other",
+      "tooFar": "locations too far apart"
+    },
+    "locationAlone": {
+      "same": "Same location or remote-friendly team",
+      "within100": "Within 100 km of each other",
+      "within300": "Within 300 km of each other",
+      "within1000": "Within 1000 km of each other",
+      "tooFar": "Locations too far apart"
+    },
+    "roleLocation": {
+      "inside": "within the role's location radius",
+      "near": "up to 20 km beyond the role's radius",
+      "outside": "outside the role's location radius"
+    },
+    "roleLocationAlone": {
+      "inside": "Within the role's location radius",
+      "near": "Up to 20 km beyond the role's radius",
+      "outside": "Outside the role's location radius"
+    },
+    "bars": {
+      "locationWeight": "Location factors into the score with {weight}%.",
+      "locationRoleRule": "Within the role's radius = 100%. Up to 20 km beyond = 25%. Farther = 0%.",
+      "locationGenericRule": "Remote teams = 100%. Same city = 100%. Within 100 km = 75%.",
+      "locationGenericRuleFar": "Within 300 km = 50%. Within 1000 km = 25%. Farther away = 0%.",
+      "tagsWeight": "Focus Areas factor into the score with {weight}%.",
+      "tagsMet": "{shared} out of {total} required focus areas met.",
+      "tagsSharedCount": "{shared} out of {total} focus areas are shared.",
+      "tagsNone": "No focus areas were available to compare.",
+      "badgesWeight": "Badges factor into the score with {weight}%.",
+      "badgesMet": "{shared} out of {total} required badges met.",
+      "badgesSharedCount": "{shared} out of {total} badges are shared.",
+      "badgesNone": "No badges were available to compare."
+    }
+  },
+  "matchScore": {
+    "betweenYouAnd": "{pct}% profile match of you and {name}",
+    "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
+    "plain": "{pct}% profile match",
+    "roleNamed": "{pct}% matching score of {name} with the {role} role",
+    "roleNamedAnon": "{pct}% matching score of this person with the {role} role",
+    "roleWithMember": "{pct}% matching score for {name} with this role",
+    "roleWithThisMember": "{pct}% matching score for this member with this role",
+    "shared": "{pct}% profile match — {sharedTags, plural, one {# shared tag} other {# shared tags}}, {sharedBadges, plural, one {# shared badge} other {# shared badges}}",
+    "sharedFocus": "{pct}% profile match — {count, plural, one {# shared focus area} other {# shared focus areas}}",
+    "tierGood": "{pct}% good match",
+    "tierGreat": "{pct}% great match",
+    "tierLow": "{pct}% low match",
+    "withProfileOf": "{pct}% match with {name}'s profile",
+    "withYourProfile": "{pct}% match with your profile",
+    "yourProfileWith": "{pct}% match of your profile with {name}"
+  },
+  "matchSummary": {
+    "counted": "{matchCount}/{total} matching",
+    "none": "None matching",
+    "all": "All matching",
+    "countedWithYou": "{matchCount}/{total} matching with you",
+    "countedWithName": "{matchCount}/{total} matching with {name}",
+    "noneWithYou": "None matching with you",
+    "noneWithName": "None matching with {name}",
+    "allWithYou": "All matching with you",
+    "allWithName": "All matching with {name}"
+  },
   "modal": {
     "close": "Close modal"
   },
@@ -355,6 +483,34 @@
       "tooltip": "Map View"
     }
   },
+  "roleStatus": {
+    "vacant": "Vacant",
+    "filled": "Filled",
+    "closed": "Closed",
+    "open": "Open Role",
+    "vacantRoleFallback": "Vacant Role",
+    "roleInvitationFallback": "Role Invitation",
+    "filledRole": "Filled Role",
+    "closedRole": "Closed Role"
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member",
+    "unknown": "Unknown"
+  },
+  "team": {
+    "unknownName": "Unknown Team"
+  },
+  "user": {
+    "privateProfile": "Private Profile",
+    "unknown": "Unknown",
+    "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
+    "profileVisibilityPublic": "Public Profile - visible for everyone",
+    "profileVisibilityPrivate": "Private Profile - only visible for you",
+    "profileImageAlt": "Profile picture of {name}",
+    "profileImageAltGeneric": "Profile picture"
+  },
   "visibility": {
     "title": "Visibility",
     "visible": "Visible for all Users",
@@ -366,107 +522,5 @@
     "profileVisibleDescription": "Your profile will be discoverable by others",
     "profileHiddenDescription": "Your profile will be hidden from search results",
     "toggleAria": "Toggle visibility"
-  },
-  "demo": {
-    "teamTooltip": "Demo Team: for testing purposes, no real team",
-    "roleTooltip": "Demo Role: for testing purposes, no real role",
-    "roleLabel": "Demo Role",
-    "profileTooltip": "Demo Profile: for testing purposes, no real person"
-  },
-  "matchScore": {
-    "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
-    "shared": "{pct}% profile match — {sharedTags, plural, one {# shared tag} other {# shared tags}}, {sharedBadges, plural, one {# shared badge} other {# shared badges}}",
-    "sharedFocus": "{pct}% profile match — {count, plural, one {# shared focus area} other {# shared focus areas}}",
-    "plain": "{pct}% profile match",
-    "roleWithMember": "{pct}% matching score for {name} with this role",
-    "roleWithThisMember": "{pct}% matching score for this member with this role",
-    "withYourProfile": "{pct}% match with your profile",
-    "withProfileOf": "{pct}% match with {name}'s profile",
-    "tierGreat": "{pct}% great match",
-    "tierGood": "{pct}% good match",
-    "tierLow": "{pct}% low match"
-  },
-  "distance": {
-    "awayFromYou": "{km} km away from you",
-    "away": "{km} km away",
-    "awayWithinLimit": "{km} km away (< {limit} km)",
-    "awayBeyondLimit": "{km} km away (> {limit} km)"
-  },
-  "roles": {
-    "owner": "Owner",
-    "admin": "Admin",
-    "member": "Member",
-    "unknown": "Unknown"
-  },
-  "collapse": {
-    "showAll": "Show all",
-    "showLess": "Show less"
-  },
-  "user": {
-    "privateProfile": "Private Profile",
-    "unknown": "Unknown",
-    "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
-    "profileVisibilityPublic": "Public Profile - visible for everyone",
-    "profileVisibilityPrivate": "Private Profile - only visible for you",
-    "profileImageAlt": "Profile picture of {name}",
-    "profileImageAltGeneric": "Profile picture"
-  },
-  "matchSummary": {
-    "counted": "{matchCount}/{total} matching",
-    "none": "None matching",
-    "all": "All matching",
-    "countedWithYou": "{matchCount}/{total} matching with you",
-    "countedWithName": "{matchCount}/{total} matching with {name}",
-    "noneWithYou": "None matching with you",
-    "noneWithName": "None matching with {name}",
-    "allWithYou": "All matching with you",
-    "allWithName": "All matching with {name}"
-  },
-  "roleStatus": {
-    "vacant": "Vacant",
-    "filled": "Filled",
-    "closed": "Closed",
-    "open": "Open Role",
-    "vacantRoleFallback": "Vacant Role",
-    "roleInvitationFallback": "Role Invitation",
-    "filledRole": "Filled Role",
-    "closedRole": "Closed Role"
-  },
-  "mapPopup": {
-    "typeTeam": "Team",
-    "typeUser": "Person",
-    "typeRole": "Open Role",
-    "close": "Close",
-    "viewDetails": "View details",
-    "openDetails": "Open details",
-    "resultAria": "{name} map result",
-    "clickTeamDetails": "Click to view team details",
-    "clickRoleDetails": "Click to view role details",
-    "clickUserDetails": "Click to view user details",
-    "openTeamInvitation": "Open team invitation details",
-    "openRoleInvitation": "Open role invitation details",
-    "openTeamApplication": "Open team application details",
-    "openRoleApplication": "Open role application details",
-    "entityInLocation": "{entity} in {location}",
-    "entityInLocationWithRadius": "{entity} in {location}\nwithin {km} km from Role Location",
-    "entityRemote": "{entity} (remote)",
-    "entityNoLocation": "{entity} without Location info",
-    "typeUserProfile": "User Profile",
-    "demoTeam": "Demo Team",
-    "demoRole": "Demo Role",
-    "demoProfile": "Demo Profile",
-    "invitedToFillNamedRole": "You were invited to fill {roleName} in this team",
-    "appliedForNamedRole": "You applied for {roleName} in this team",
-    "memberWithCount": "You are a member of this team with {count} / {max} members",
-    "memberCount": "{count} of {max} members",
-    "openRoles": "{count, plural, one {# open role posted in this team} other {# open roles posted in this team}}",
-    "memberOfTeamNamed": "You are a member of this team: {teamName}",
-    "noMapCoordinates": "No visible results on this page include map coordinates yet.",
-    "remoteOrUnmapped": "Remote or unmapped",
-    "posted": "Posted {date}",
-    "mappedResults": "Mapped results"
-  },
-  "team": {
-    "unknownName": "Unknown Team"
   }
 }

@@ -29,9 +29,6 @@ const getCount = (...values) => {
   return null;
 };
 
-const pluralize = (count, singular, plural = `${singular}s`) =>
-  `${count} ${count === 1 ? singular : plural}`;
-
 const TAG_WEIGHT = 40;
 const BADGE_WEIGHT = 30;
 const LOCATION_WEIGHT = 30;
@@ -133,86 +130,150 @@ const MatchScoreSection = ({
       ? Math.round((sharedBadgeCount / totalBadgeCount) * 100)
       : null;
   // ── Headline text ─────────────────────────────────────────
-  const comparisonSuffix = comparisonLabel
-    ? ` of you and ${comparisonLabel}`
-    : "";
+  //
+  // Every branch below resolves a key that is spelled out literally. The old
+  // version assembled English here - " of you and X", "the X role", an
+  // English plural rule - which is the `toPossessive` class this project has
+  // now hit three times. German needs whole sentences, so each case gets one.
   const normalizedRoleLabel = String(roleLabel ?? "").trim();
-  const formattedRoleLabel = normalizedRoleLabel
-    ? normalizedRoleLabel.toLowerCase().startsWith("the ")
-      ? normalizedRoleLabel.toLowerCase().endsWith(" role")
-        ? normalizedRoleLabel
-        : `${normalizedRoleLabel} role`
-      : normalizedRoleLabel.toLowerCase().endsWith(" role")
-        ? `the ${normalizedRoleLabel}`
-        : `the ${normalizedRoleLabel} role`
-    : null;
-  // ── Headline title (overridable via headlineProp) ────────────
+  const hasRoleLabel = Boolean(normalizedRoleLabel);
+
   let headline;
   if (headlineProp) {
     headline = headlineProp;
-  } else if (normalizedMatchType === "role_match" && formattedRoleLabel) {
-    headline = `${tier.pct}% matching score of ${comparisonLabel || "this person"} with ${formattedRoleLabel}`;
+  } else if (normalizedMatchType === "role_match" && hasRoleLabel) {
+    headline = comparisonLabel
+      ? t("matchScore.roleNamed", {
+          pct: tier.pct,
+          name: comparisonLabel,
+          role: normalizedRoleLabel,
+        })
+      : t("matchScore.roleNamedAnon", {
+          pct: tier.pct,
+          role: normalizedRoleLabel,
+        });
   } else if (normalizedMatchType === "role_match") {
     headline = comparisonLabel
-      ? `${tier.pct}% match of your profile with ${comparisonLabel}`
-      : `${tier.pct}% match of your profile`;
+      ? t("matchScore.yourProfileWith", { pct: tier.pct, name: comparisonLabel })
+      : t("matchScore.withYourProfile", { pct: tier.pct });
   } else {
-    headline = `${tier.pct}% profile match${comparisonSuffix}`;
+    headline = comparisonLabel
+      ? t("matchScore.betweenYouAnd", { pct: tier.pct, name: comparisonLabel })
+      : t("matchScore.plain", { pct: tier.pct });
   }
 
   // ── Detail line (always computed from matchDetails) ───────────
+  //
+  // Two slots, never a string join: the items are combined by a key
+  // ("{first} und {second}"), and the frame that carries them is a key too
+  // ("{items} gemeinsam, {location}"). Nothing here concatenates a sentence,
+  // and no branch capitalises a first letter - German "Standorte" is already
+  // a noun and English gets its own standalone variant instead.
+  const joinItems = (items) =>
+    items.length === 2
+      ? t("matchDetail.itemsTwo", { first: items[0], second: items[1] })
+      : items[0];
+
+  const genericLocationKey =
+    distPct === 100 ? "same" :
+    distPct >= 75   ? "within100" :
+    distPct >= 50   ? "within300" :
+    distPct >= 25   ? "within1000" :
+    distPct === 0   ? "tooFar" :
+    null;
+
+  const roleLocationKey =
+    distPct === 100 ? "inside" :
+    distPct === 25  ? "near" :
+    distPct === 0   ? "outside" :
+    null;
+
+  // Every one of these twenty keys is written out in full. A key assembled
+  // from `genericLocationKey` would be shorter and would be INVISIBLE to
+  // `npm run i18n:check` - `matchScoreUtils` documents that trap and this
+  // file has to respect it. The "Alone" variants exist because English
+  // capitalises a fragment to start a sentence and German cannot: each
+  // standalone case needs its own wording, not a `charAt(0).toUpperCase()`.
+  const genericLocation = (alone) => {
+    if (!genericLocationKey) return null;
+    if (alone) {
+      if (genericLocationKey === "same") return t("matchDetail.locationAlone.same");
+      if (genericLocationKey === "within100") return t("matchDetail.locationAlone.within100");
+      if (genericLocationKey === "within300") return t("matchDetail.locationAlone.within300");
+      if (genericLocationKey === "within1000") return t("matchDetail.locationAlone.within1000");
+      return t("matchDetail.locationAlone.tooFar");
+    }
+    if (genericLocationKey === "same") return t("matchDetail.location.same");
+    if (genericLocationKey === "within100") return t("matchDetail.location.within100");
+    if (genericLocationKey === "within300") return t("matchDetail.location.within300");
+    if (genericLocationKey === "within1000") return t("matchDetail.location.within1000");
+    return t("matchDetail.location.tooFar");
+  };
+  const roleLocation = (alone) => {
+    if (!roleLocationKey) return null;
+    if (alone) {
+      if (roleLocationKey === "inside") return t("matchDetail.roleLocationAlone.inside");
+      if (roleLocationKey === "near") return t("matchDetail.roleLocationAlone.near");
+      return t("matchDetail.roleLocationAlone.outside");
+    }
+    if (roleLocationKey === "inside") return t("matchDetail.roleLocation.inside");
+    if (roleLocationKey === "near") return t("matchDetail.roleLocation.near");
+    return t("matchDetail.roleLocation.outside");
+  };
+
   let detailLine = null;
-  if (normalizedMatchType === "role_match" && formattedRoleLabel) {
-    const roleItems = [];
+  if (normalizedMatchType === "role_match" && hasRoleLabel) {
+    const items = [];
     if (totalTagCount > 0 && sharedTagCount !== null)
-      roleItems.push(`${sharedTagCount} of ${totalTagCount} required focus areas`);
+      items.push(t("matchDetail.tagsOfTotalRequired", {
+        shared: sharedTagCount,
+        total: totalTagCount,
+      }));
     if (totalBadgeCount > 0 && sharedBadgeCount !== null)
-      roleItems.push(`${sharedBadgeCount} of ${totalBadgeCount} badges`);
-    const roleLocationHint =
-      distPct === 100 ? "within the role's location radius" :
-      distPct === 25  ? "up to 20 km beyond the role's radius" :
-      distPct === 0   ? "outside the role's location radius" :
-      null;
-    const roleParts = roleItems.length > 0 ? [roleItems.join(", ") + " met"] : [];
-    if (roleLocationHint) roleParts.push(roleLocationHint);
-    if (roleParts.length > 0) detailLine = roleParts.join(", ");
-  } else if (normalizedMatchType === "role_match") {
-    const commonItems = [];
-    if (totalTagCount > 0 && sharedTagCount !== null)
-      commonItems.push(`${sharedTagCount} of ${totalTagCount} focus areas`);
-    if (totalBadgeCount > 0 && sharedBadgeCount !== null)
-      commonItems.push(`${sharedBadgeCount} of ${totalBadgeCount} badges`);
-    const locationHint =
-      distPct === 100 ? "same location or remote-friendly team" :
-      distPct >= 75   ? "within 100 km of each other" :
-      distPct >= 50   ? "within 300 km of each other" :
-      distPct >= 25   ? "within 1000 km of each other" :
-      distPct === 0   ? "locations too far apart" :
-      null;
-    if (commonItems.length > 0 && locationHint) {
-      detailLine = `${commonItems.join(", ")} in common and ${locationHint}`;
-    } else if (commonItems.length > 0) {
-      detailLine = `${commonItems.join(", ")} in common`;
-    } else if (locationHint) {
-      detailLine = locationHint.charAt(0).toUpperCase() + locationHint.slice(1);
+      items.push(t("matchDetail.badgesOfTotal", {
+        shared: sharedBadgeCount,
+        total: totalBadgeCount,
+      }));
+
+    if (items.length > 0 && roleLocation(false)) {
+      detailLine = t("matchDetail.roleItemsAndLocation", {
+        items: joinItems(items),
+        location: roleLocation(false),
+      });
+    } else if (items.length > 0) {
+      detailLine = t("matchDetail.roleItemsOnly", { items: joinItems(items) });
+    } else if (roleLocation(true)) {
+      detailLine = roleLocation(true);
     }
   } else {
-    const commonItems = [];
-    if (sharedTagCount > 0) commonItems.push(pluralize(sharedTagCount, "focus area"));
-    if (sharedBadgeCount > 0) commonItems.push(pluralize(sharedBadgeCount, "badge"));
-    const locationHint =
-      distPct === 100 ? "same location or remote-friendly team" :
-      distPct >= 75   ? "within 100 km of each other" :
-      distPct >= 50   ? "within 300 km of each other" :
-      distPct >= 25   ? "within 1000 km of each other" :
-      distPct === 0   ? "locations too far apart" :
-      null;
-    if (commonItems.length > 0 && locationHint) {
-      detailLine = `${commonItems.join(", ")} in common and ${locationHint}`;
-    } else if (commonItems.length > 0) {
-      detailLine = `${commonItems.join(", ")} in common`;
-    } else if (locationHint) {
-      detailLine = locationHint.charAt(0).toUpperCase() + locationHint.slice(1);
+    const items = [];
+    if (normalizedMatchType === "role_match") {
+      if (totalTagCount > 0 && sharedTagCount !== null)
+        items.push(t("matchDetail.tagsOfTotal", {
+          shared: sharedTagCount,
+          total: totalTagCount,
+        }));
+      if (totalBadgeCount > 0 && sharedBadgeCount !== null)
+        items.push(t("matchDetail.badgesOfTotal", {
+          shared: sharedBadgeCount,
+          total: totalBadgeCount,
+        }));
+    } else {
+      if (sharedTagCount > 0)
+        items.push(t("matchDetail.tagsShared", { count: sharedTagCount }));
+      if (sharedBadgeCount > 0)
+        items.push(t("matchDetail.badgesShared", { count: sharedBadgeCount }));
+    }
+
+    if (items.length > 0 && genericLocation(false)) {
+      detailLine = t("matchDetail.itemsAndLocation", {
+        items: joinItems(items),
+        location: genericLocation(false),
+      });
+    } else if (items.length > 0) {
+      detailLine = t("matchDetail.itemsOnly", { items: joinItems(items) });
+    } else if (genericLocation(true)) {
+      detailLine = genericLocation(true);
     }
   }
 
@@ -225,17 +286,17 @@ const MatchScoreSection = ({
       tooltip:
         normalizedMatchType === "role_match" ? (
           <>
-            Location factors into the score with {LOCATION_WEIGHT}%.
+            {t("matchDetail.bars.locationWeight", { weight: LOCATION_WEIGHT })}
             <br />
-            Within the role's radius = 100%. Up to 20 km beyond = 25%. Farther = 0%.
+            {t("matchDetail.bars.locationRoleRule")}
           </>
         ) : (
           <>
-            Location factors into the score with {LOCATION_WEIGHT}%.
+            {t("matchDetail.bars.locationWeight", { weight: LOCATION_WEIGHT })}
             <br />
-            Remote teams = 100%. Same city = 100%. Within 100 km = 75%.
+            {t("matchDetail.bars.locationGenericRule")}
             <br />
-            Within 300 km = 50%. Within 1000 km = 25%. Farther away = 0%.
+            {t("matchDetail.bars.locationGenericRuleFar")}
           </>
         ),
     },
@@ -252,13 +313,19 @@ const MatchScoreSection = ({
             : 0),
       tooltip: (
         <>
-          Focus Areas factor into the score with {TAG_WEIGHT}%.
+          {t("matchDetail.bars.tagsWeight", { weight: TAG_WEIGHT })}
           <br />
           {totalTagCount > 0 && sharedTagCount !== null
             ? normalizedMatchType === "role_match"
-              ? `${sharedTagCount} out of ${totalTagCount} required focus areas met.`
-              : `${sharedTagCount} out of ${totalTagCount} focus areas are shared.`
-            : "No focus areas were available to compare."}
+              ? t("matchDetail.bars.tagsMet", {
+                  shared: sharedTagCount,
+                  total: totalTagCount,
+                })
+              : t("matchDetail.bars.tagsSharedCount", {
+                  shared: sharedTagCount,
+                  total: totalTagCount,
+                })
+            : t("matchDetail.bars.tagsNone")}
         </>
       ),
     },
@@ -273,13 +340,19 @@ const MatchScoreSection = ({
           : 0),
       tooltip: (
         <>
-          Badges factor into the score with {BADGE_WEIGHT}%.
+          {t("matchDetail.bars.badgesWeight", { weight: BADGE_WEIGHT })}
           <br />
           {totalBadgeCount > 0 && sharedBadgeCount !== null
             ? normalizedMatchType === "role_match"
-              ? `${sharedBadgeCount} out of ${totalBadgeCount} required badges met.`
-              : `${sharedBadgeCount} out of ${totalBadgeCount} badges are shared.`
-            : "No badges were available to compare."}
+              ? t("matchDetail.bars.badgesMet", {
+                  shared: sharedBadgeCount,
+                  total: totalBadgeCount,
+                })
+              : t("matchDetail.bars.badgesSharedCount", {
+                  shared: sharedBadgeCount,
+                  total: totalBadgeCount,
+                })
+            : t("matchDetail.bars.badgesNone")}
         </>
       ),
     },
