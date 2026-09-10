@@ -1360,16 +1360,20 @@ const TeamDetailsModal = ({
 
             {/* Leave Team Button */}
             {canLeaveTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsLeaveDialogOpen(true)}
-                className="hover:bg-red-100 hover:text-red-700 p-2"
-                aria-label={t("teams:teamDetails.leaveAria")}
-                title={t("teams:teamDetails.leaveTooltip")}
+              <Tooltip
+                content={t("teams:teamDetails.leaveTooltip")}
+                position="top"
               >
-                <LogOut size={20} />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsLeaveDialogOpen(true)}
+                  className="hover:bg-red-100 hover:text-red-700 p-2"
+                  aria-label={t("teams:teamDetails.leaveAria")}
+                >
+                  <LogOut size={20} />
+                </Button>
+              </Tooltip>
             )}
           </div>
         ) : (
