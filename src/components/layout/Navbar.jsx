@@ -726,7 +726,7 @@ const Navbar = () => {
                   {user.avatarUrl && !imageError ? (
                     <img
                       src={user.avatarUrl}
-                      alt={t("nav.profileImageAlt")}
+                      alt={t("user.profileImageAltGeneric")}
                       className="rounded-full object-cover w-full h-full"
                       onError={() => setImageError(true)}
                     />

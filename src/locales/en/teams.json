@@ -44,15 +44,15 @@
       "remote": "Remote"
     },
     "status": {
-      "invitedToTeam": "You were invited to this team",
-      "invitedToTeamOn": "You were invited to this team\non {date}",
+      "invitedToTeam": "You were invited to join this team",
+      "invitedToTeamOn": "You were invited to join this team\non {date}",
       "invitedToFillRole": "You are invited to fill a role in this team",
       "invitedToFillRoleOn": "You were invited to fill a role in this team on {date}",
       "appliedToTeam": "You applied to join this team",
       "appliedToTeamOn": "You applied to join this team\non {date}",
       "appliedCombined": "You applied to join this team and fill a role",
       "appliedCombinedOn": "You applied to join this team and fill a role\non {date}",
-      "appliedForRole": "You applied for a role within this team",
+      "appliedForRole": "You applied to fill a role in this team",
       "appliedForThisRole": "You applied for this role",
       "appliedForThisRoleOn": "You applied for this role\non {date}",
       "youAreOwner": "You are the owner of this team",
