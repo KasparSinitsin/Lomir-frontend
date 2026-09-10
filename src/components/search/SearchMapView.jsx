@@ -1678,7 +1678,12 @@ const TeamMetaLine = ({
   onOpenInvitation = null,
   onOpenApplication = null,
 }) => {
-  const { t } = useTranslation();
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
 
   if (point.type !== "team") return null;
 
@@ -1808,8 +1813,8 @@ const TeamMetaLine = ({
         <TeamMetaItem
           tooltip={
             point.isPublic
-              ? "Public Team - visible for everyone"
-              : "Private Team - only visible for Members"
+              ? t("teams:teamCard.indicators.publicTeam")
+              : t("teams:teamCard.indicators.privateTeam")
           }
           withTooltip={withTooltips}
         >
@@ -1825,6 +1830,9 @@ const TeamMetaLine = ({
 };
 
 const UserSubline = ({ point, showMatchScore = false }) => {
+  // Above the early return -- a hook placed below it is a conditional hook.
+  const { t } = useTranslation();
+
   if (point.type !== "user") return null;
 
   const scoreItem = showMatchScore ? (
@@ -1841,7 +1849,13 @@ const UserSubline = ({ point, showMatchScore = false }) => {
       {scoreItem}
       {point.username && <span>@{point.username}</span>}
       {point.isOwnProfile && (
-        <Tooltip content={point.isPublicProfile ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
+        <Tooltip
+          content={
+            point.isPublicProfile
+              ? t("user.profileVisibilityPublic")
+              : t("user.profileVisibilityPrivate")
+          }
+        >
           <span className="inline-flex">
             {point.isPublicProfile
               ? <EyeIcon size={10} className="text-green-600" aria-hidden="true" />
@@ -1861,7 +1875,12 @@ const RoleSubline = ({
   onOpenApplication = null,
   teamOnly = false,
 }) => {
-  const { t } = useTranslation();
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
 
   if (point.type !== "role") return null;
 
@@ -1900,7 +1919,7 @@ const RoleSubline = ({
       <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
         {scoreItem}
         {isValidDate && (
-          <Tooltip content={`Posted ${formatDateMedium(postedDate)}`}>
+          <Tooltip content={t("mapPopup.posted", { date: formatDateMedium(postedDate) })}>
             <span className="inline-flex items-center gap-1">
               <Calendar size={10} aria-hidden="true" />
               <span>{formatDateNumeric(postedDate)}</span>
@@ -1954,7 +1973,7 @@ const RoleSubline = ({
     <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
       {scoreItem}
       {isValidDate && (
-        <Tooltip content={`Posted ${formatDateMedium(postedDate)}`}>
+        <Tooltip content={t("mapPopup.posted", { date: formatDateMedium(postedDate) })}>
           <span className="inline-flex items-center gap-1">
             <Calendar size={10} aria-hidden="true" />
             <span>{formatDateNumeric(postedDate)}</span>
@@ -1987,7 +2006,7 @@ const RoleSubline = ({
         <Tooltip
           content={
             point.isViewerTeamMember
-              ? `You are a member of this team: ${point.teamName}`
+              ? t("mapPopup.memberOfTeamNamed", { teamName: point.teamName })
               : point.teamName
           }
           wrapperClassName="inline-flex min-w-0 max-w-[9rem] overflow-hidden"
@@ -2136,7 +2155,12 @@ const SearchMapView = ({
   // Map popups show a location string resolved by `locationUtils`, which reads
   // the active language from the i18n instance rather than from props. This
   // hook is what makes the map re-render on `changeLanguage`.
-  const { t } = useTranslation();
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const showToast = useToast();
   const teamModal = useTeamModalSafe();
   const userModal = useUserModalSafe();
@@ -2224,8 +2248,8 @@ const SearchMapView = ({
   }, [refreshUserStatusData]);
 
   const handleApplicationReminder = useCallback(async () => {
-    showToast("Reminder feature coming soon!", "violet");
-  }, [showToast]);
+    showToast(t("teams:myTeams.reminderComingSoon"), "violet");
+  }, [showToast, t]);
 
   const itemsWithUserLocationDetails = useMemo(
     () =>
@@ -2899,7 +2923,9 @@ const SearchMapView = ({
 
           <aside ref={asideRef} className={`flex flex-col border-t border-base-200 bg-base-100/75 p-4 lg:absolute lg:right-0 lg:top-0 lg:z-[500] lg:max-h-[520px] lg:w-[260px] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:bg-white/70 lg:backdrop-blur-sm${!asideAtFullHeight ? " lg:rounded-bl-xl" : ""}`}>
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-base-content">Mapped results</h3>
+              <h3 className="text-sm font-bold text-base-content">
+                {t("mapPopup.mappedResults")}
+              </h3>
               <span className="text-xs text-base-content/60">
                 {markerPoints.length}/{normalizedPoints.length}
               </span>

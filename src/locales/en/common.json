@@ -386,7 +386,9 @@
   "user": {
     "privateProfile": "Private Profile",
     "unknown": "Unknown",
-    "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page."
+    "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
+    "profileVisibilityPublic": "Public Profile - visible for everyone",
+    "profileVisibilityPrivate": "Private Profile - only visible for you"
   },
   "matchSummary": {
     "counted": "{matchCount}/{total} matching",
@@ -436,7 +438,9 @@
     "openRoles": "{count, plural, one {# open role posted in this team} other {# open roles posted in this team}}",
     "memberOfTeamNamed": "You are a member of this team: {teamName}",
     "noMapCoordinates": "No visible results on this page include map coordinates yet.",
-    "remoteOrUnmapped": "Remote or unmapped"
+    "remoteOrUnmapped": "Remote or unmapped",
+    "posted": "Posted {date}",
+    "mappedResults": "Mapped results"
   },
   "team": {
     "unknownName": "Unknown Team"
