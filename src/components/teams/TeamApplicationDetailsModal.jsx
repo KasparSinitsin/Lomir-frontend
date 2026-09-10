@@ -170,7 +170,11 @@ const TeamApplicationDetailsModal = ({
   // ============ State ============
   const showToast = useToast();
   const loading = false;
-  const { t } = useTranslation();
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
