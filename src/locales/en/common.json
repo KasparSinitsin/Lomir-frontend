@@ -121,7 +121,8 @@
       "showAll": "Show all",
       "showLess": "Show less",
       "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
-      "title": "Badges"
+      "title": "Badges",
+      "desired": "Desired Badges"
     },
     "tooltip": {
       "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
@@ -178,7 +179,8 @@
     "tagTooltip": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
     "groupTooltip": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
     "tagTooltipMembers": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
-    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}"
+    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "desired": "Desired Focus Areas"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -239,7 +241,12 @@
       "matchesYourLocation": "Matches your location",
       "matchesLocationOf": "Matches {name}'s location",
       "outsideYourRange": "Outside your location range",
-      "outsideRangeOf": "Outside {name}'s location range"
+      "outsideRangeOf": "Outside {name}'s location range",
+      "preference": "Location Preference",
+      "noLocationSet": "No location set",
+      "notCompared": "Location not compared",
+      "matchShort": "Match",
+      "withinKmFromRole": "within {km} km from Role Location"
     },
     "locationMode": {
       "label": "Team Location",
@@ -362,7 +369,8 @@
   },
   "demo": {
     "teamTooltip": "Demo Team: for testing purposes, no real team",
-    "roleTooltip": "Demo Role: for testing purposes, no real role"
+    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "roleLabel": "Demo Role"
   },
   "matchScore": {
     "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
@@ -416,7 +424,9 @@
     "closed": "Closed",
     "open": "Open Role",
     "vacantRoleFallback": "Vacant Role",
-    "roleInvitationFallback": "Role Invitation"
+    "roleInvitationFallback": "Role Invitation",
+    "filledRole": "Filled Role",
+    "closedRole": "Closed Role"
   },
   "mapPopup": {
     "typeTeam": "Team",

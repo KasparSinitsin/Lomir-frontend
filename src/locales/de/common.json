@@ -121,7 +121,8 @@
       "showAll": "Alle anzeigen",
       "showLess": "Weniger anzeigen",
       "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
-      "title": "Badges"
+      "title": "Badges",
+      "desired": "Gewünschte Badges"
     },
     "tooltip": {
       "badge": "{name}: {credits}ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
@@ -178,7 +179,8 @@
     "tagTooltip": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
     "groupTooltip": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
     "tagTooltipMembers": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
-    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}"
+    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "desired": "Gewünschte Fokusbereiche"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -239,7 +241,12 @@
       "matchesYourLocation": "Passt zu deinem Standort",
       "matchesLocationOf": "Passt zum Standort von {name}",
       "outsideYourRange": "Außerhalb deines Umkreises",
-      "outsideRangeOf": "Außerhalb des Umkreises von {name}"
+      "outsideRangeOf": "Außerhalb des Umkreises von {name}",
+      "preference": "Standort-Präferenz",
+      "noLocationSet": "Kein Standort angegeben",
+      "notCompared": "Standort nicht verglichen",
+      "matchShort": "Passt",
+      "withinKmFromRole": "im Umkreis von {km} km um den Rollenstandort"
     },
     "locationMode": {
       "label": "Team-Standort",
@@ -362,7 +369,8 @@
   },
   "demo": {
     "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team",
-    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle"
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "roleLabel": "Demo-Rolle"
   },
   "matchScore": {
     "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
@@ -416,7 +424,9 @@
     "closed": "Geschlossen",
     "open": "Offene Rolle",
     "vacantRoleFallback": "Vakante Rolle",
-    "roleInvitationFallback": "Rolleneinladung"
+    "roleInvitationFallback": "Rolleneinladung",
+    "filledRole": "Besetzte Rolle",
+    "closedRole": "Geschlossene Rolle"
   },
   "mapPopup": {
     "typeTeam": "Team",

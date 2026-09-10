@@ -1143,7 +1143,9 @@ const VacantRoleDetailsModal = ({
   };
 
   const layoutRoleName =
-    displayRole?.roleName ?? displayRole?.role_name ?? "Vacant Role";
+    displayRole?.roleName ??
+    displayRole?.role_name ??
+    t("roleStatus.vacantRoleFallback");
   const layoutRolePostedDate =
     displayRole?.createdAt ?? displayRole?.created_at ?? null;
 
@@ -1177,7 +1179,9 @@ const VacantRoleDetailsModal = ({
 
   // Normalize camelCase/snake_case
   const roleName =
-    displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
+    displayRole.roleName ??
+    displayRole.role_name ??
+    t("roleStatus.vacantRoleFallback");
   const bio = displayRole.bio ?? "";
   const _postalCode = displayRole.postalCode ?? displayRole.postal_code;
   const maxDistanceKm =
@@ -1319,12 +1323,12 @@ const VacantRoleDetailsModal = ({
   });
   const creatorName =
     shouldAnonymizeCreator
-      ? "Private Profile"
+      ? t("user.privateProfile")
       : creatorFirstName && creatorLastName
       ? `${creatorFirstName} ${creatorLastName}`
       : creatorUsername || null;
   const creatorDisplayName = shouldAnonymizeCreator
-    ? "Private Profile"
+    ? t("user.privateProfile")
     : creatorName
     ? formatDisplayName({
         first_name: creatorFirstName,
@@ -1382,12 +1386,12 @@ const VacantRoleDetailsModal = ({
       }
     : filledRoleUser;
   const filledRoleDisplayName = shouldAnonymizeFilledRoleUser
-    ? "Private Profile"
+    ? t("user.privateProfile")
     : filledRoleUser && getDisplayName(filledRoleUser) !== "Unknown"
       ? getDisplayName(filledRoleUser)
       : null;
   const filledRoleCompactDisplayName = shouldAnonymizeFilledRoleUser
-    ? "Private Profile"
+    ? t("user.privateProfile")
     : filledRoleUser
     ? formatDisplayName(filledRoleUser)
     : filledRoleDisplayName;
@@ -1488,7 +1492,11 @@ const VacantRoleDetailsModal = ({
     }
   };
 
-  const modalStatusTitle = isFilledRole ? "Filled Role" : isClosedRole ? "Closed Role" : "Vacant Role";
+  const modalStatusTitle = isFilledRole
+    ? t("roleStatus.filledRole")
+    : isClosedRole
+      ? t("roleStatus.closedRole")
+      : t("roleStatus.vacantRoleFallback");
   const demoAvatarOverlay = isSyntheticRole(displayRole) ? (
     <DemoAvatarOverlay
       textClassName="text-[9px]"
@@ -1577,7 +1585,7 @@ const VacantRoleDetailsModal = ({
   );
 
   const getRoleInitials = () => {
-    const name = roleName || "Vacant Role";
+    const name = roleName || t("roleStatus.vacantRoleFallback");
     const words = name.trim().split(/\s+/);
     if (words.length >= 2) {
       return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
@@ -1668,6 +1676,10 @@ const VacantRoleDetailsModal = ({
 
     if (roleId) params.set("roleId", roleId);
     if (teamId) params.set("excludeTeamId", teamId);
+    // NOT a label: this goes into the `roleName` search query parameter, so
+    // it must stay English. Translating it would send a German word to a
+    // backend that matches on the English one. Same shape as the stored
+    // `=== "Vacant Role"` default in CreateVacantRoleModal.
     const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
     if (searchRoleName) params.set("roleName", searchRoleName);
     const searchTeamName = teamName ?? "";
@@ -1677,6 +1689,11 @@ const VacantRoleDetailsModal = ({
   };
 
   const badgesByCategory = badges.reduce((acc, badge) => {
+    // "Other" stays English: it is a lookup key into CATEGORY_COLORS and
+    // getCategoryIcon (badgeConstants.js:60), not a label. The categories it
+    // sits beside are backend data and are untranslated too, so translating
+    // only the fallback would also read as inconsistent. Translating the
+    // category display is its own piece of work.
     const cat = badge.category || "Other";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(badge);
@@ -1813,8 +1830,8 @@ const VacantRoleDetailsModal = ({
       short: formatDateNumeric(date),
       full: formatDateMedium(date),
       label: isInternalRoleApplication
-        ? "You applied to fill this role"
-        : "You applied to join this team and fill this role",
+        ? t("teams:vacantRoleDetails.appliedInternal")
+        : t("teams:vacantRoleDetails.appliedExternal"),
       iconClassName: isInternalRoleApplication ? "text-orange-500" : "text-violet-500",
     };
   })();
@@ -1841,8 +1858,8 @@ const VacantRoleDetailsModal = ({
       short: formatDateNumeric(date),
       full: formatDateMedium(date),
       label: isInternalInvitation
-        ? "You were invited to fill this role"
-        : "You were invited to join this team and fill this role",
+        ? t("teams:vacantRoleDetails.invitedInternal")
+        : t("teams:vacantRoleDetails.invitedExternal"),
       iconClassName: isInternalInvitation ? "text-orange-500" : "text-pink-500",
     };
   })();
@@ -1853,7 +1870,6 @@ const VacantRoleDetailsModal = ({
       return {
         short: formatMonthNumeric(date),
         full: formatDateLong(date),
-        label: "Posted on",
       };
     } catch {
       return null;
@@ -1892,7 +1908,7 @@ const VacantRoleDetailsModal = ({
         hasRoleHeaderActions ? (
           <div className="flex items-center gap-1">
             {onEdit && (
-              <Tooltip content="Edit this role's details">
+              <Tooltip content={t("teams:vacantRoleDetails.editTooltip")}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1903,7 +1919,7 @@ const VacantRoleDetailsModal = ({
               </Tooltip>
             )}
             {isRoleOpen && onStatusChange && (
-              <Tooltip content="Close this role — stop accepting new applicants">
+              <Tooltip content={t("teams:vacantRoleDetails.closeRoleTooltip")}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1914,7 +1930,7 @@ const VacantRoleDetailsModal = ({
               </Tooltip>
             )}
             {!isRoleOpen && onStatusChange && (
-              <Tooltip content="Reopen this role to accept new applicants">
+              <Tooltip content={t("teams:vacantRoleDetails.reopenRoleTooltip")}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1925,7 +1941,7 @@ const VacantRoleDetailsModal = ({
               </Tooltip>
             )}
             {canFindRoleMatches && (
-              <Tooltip content="Find matching people outside this team">
+              <Tooltip content={t("teams:vacantRoleDetails.findMatchesTooltip")}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1933,7 +1949,7 @@ const VacantRoleDetailsModal = ({
                   className="flex items-center gap-1"
                 >
                   <UserSearch size={16} />
-                  <span className="hidden sm:inline">Find Matches</span>
+                  <span className="hidden sm:inline">{t("teams:vacantRoleDetails.findMatches")}</span>
                 </Button>
               </Tooltip>
             )}
@@ -1944,7 +1960,7 @@ const VacantRoleDetailsModal = ({
       <div className="space-y-6">
         {loadingRoleDetails && !hydratedRole && (
           <div className="text-sm text-base-content/50">
-            Loading full role details...
+            {t("teams:vacantRoleDetails.loadingDetails")}
           </div>
         )}
 
@@ -1955,7 +1971,9 @@ const VacantRoleDetailsModal = ({
               <Tooltip
                 content={
                   filledRoleUserId && !shouldAnonymizeFilledRoleUser
-                    ? `Click to view ${filledRoleDisplayName || "this user"}'s profile`
+                    ? filledRoleDisplayName
+                      ? t("teams:vacantRoleDetails.viewProfileOf", { name: filledRoleDisplayName })
+                      : t("teams:vacantRoleDetails.viewProfileUnnamed")
                     : undefined
                 }
               >
@@ -2053,7 +2071,7 @@ const VacantRoleDetailsModal = ({
                   <PenLine size={14} className="flex-shrink-0" />
                   {creatorUserId && !shouldAnonymizeCreator ? (
                     <Tooltip
-                      content={`Created by ${creatorName}. Click to view their profile`}
+                      content={t("teams:vacantRoleDetails.createdByTooltip", { name: creatorName })}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"
                     >
                       <button
@@ -2075,7 +2093,7 @@ const VacantRoleDetailsModal = ({
                   <UserCheck size={14} className="flex-shrink-0 text-success" />
                   {filledRoleUserId && !shouldAnonymizeFilledRoleUser ? (
                     <Tooltip
-                      content={`Filled by ${filledRoleDisplayName}. Click to view their profile`}
+                      content={t("teams:vacantRoleDetails.filledByTooltip", { name: filledRoleDisplayName })}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"
                     >
                       <button
@@ -2099,7 +2117,7 @@ const VacantRoleDetailsModal = ({
                   <Users size={14} className="flex-shrink-0" />
                   {canOpenTeamModal ? (
                     <Tooltip
-                      content={`Click to view ${teamName}`}
+                      content={t("teams:vacantRoleDetails.viewTeamTooltip", { teamName })}
                       wrapperClassName="inline-flex min-w-0 max-w-full items-center"
                     >
                       <button
@@ -2118,14 +2136,14 @@ const VacantRoleDetailsModal = ({
 
               {viewerRoleApplicationDate && (
                 <Tooltip
-                  content={`${viewerRoleApplicationDate.label}\non ${viewerRoleApplicationDate.full}`}
+                  content={t("teams:vacantRoleDetails.dateTooltip", { label: viewerRoleApplicationDate.label, date: viewerRoleApplicationDate.full })}
                   position="bottom"
                   wrapperClassName="inline-flex"
                 >
                   <button
                     type="button"
                     className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                    aria-label={`${viewerRoleApplicationDate.label} on ${viewerRoleApplicationDate.full}. Open application details`}
+                    aria-label={t("teams:vacantRoleDetails.applicationDateAria", { label: viewerRoleApplicationDate.label, date: viewerRoleApplicationDate.full })}
                     onClick={() => {
                       if (onViewApplicationDetails) {
                         onViewApplicationDetails();
@@ -2148,14 +2166,14 @@ const VacantRoleDetailsModal = ({
 
               {viewerRoleInvitationDate && (
                 <Tooltip
-                  content={`${viewerRoleInvitationDate.label}\non ${viewerRoleInvitationDate.full}`}
+                  content={t("teams:vacantRoleDetails.dateTooltip", { label: viewerRoleInvitationDate.label, date: viewerRoleInvitationDate.full })}
                   position="bottom"
                   wrapperClassName="inline-flex"
                 >
                   <button
                     type="button"
                     className="group flex items-center gap-1 cursor-pointer rounded-sm transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                    aria-label={`${viewerRoleInvitationDate.label} on ${viewerRoleInvitationDate.full}. Open invitation details`}
+                    aria-label={t("teams:vacantRoleDetails.invitationDateAria", { label: viewerRoleInvitationDate.label, date: viewerRoleInvitationDate.full })}
                     onClick={() => setIsViewerInvitationDetailsOpen(true)}
                   >
                     <Mail
@@ -2173,7 +2191,7 @@ const VacantRoleDetailsModal = ({
                 <span className="flex items-center gap-1.5 flex-shrink-0">
                   {rolePostedDate && (
                     <Tooltip
-                      content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                      content={t("mapPopup.posted", { date: rolePostedDate.full })}
                       position="bottom"
                       wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${roleDateIsNarrow ? "flex" : "flex sm:hidden"}`}
                     >
@@ -2183,11 +2201,11 @@ const VacantRoleDetailsModal = ({
                   )}
                   {isSyntheticRole(displayRole) && (
                     <Tooltip
-                      content={DEMO_ROLE_TOOLTIP}
+                      content={t("demo.roleTooltip")}
                       wrapperClassName="flex items-start text-base-content/50 whitespace-nowrap"
                     >
                       <FlaskConical size={14} className={`flex-shrink-0 mt-px${roleDateIsNarrow ? "" : " sm:mr-0.5"}`} />
-                      {!roleDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Role</span>}
+                      {!roleDateIsNarrow && <span className="hidden sm:inline leading-[1.15]">{t("demo.roleLabel")}</span>}
                     </Tooltip>
                   )}
                 </span>
@@ -2201,7 +2219,7 @@ const VacantRoleDetailsModal = ({
               className={`flex-shrink-0${roleDateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
             >
               <Tooltip
-                content={`${rolePostedDate.label} ${rolePostedDate.full}`}
+                content={t("mapPopup.posted", { date: rolePostedDate.full })}
                 position="bottom"
                 wrapperClassName="flex items-center text-base-content/70 cursor-help"
               >
@@ -2223,8 +2241,9 @@ const VacantRoleDetailsModal = ({
           comparisonUserId &&
           effectiveMatchScore === null && (
             <div className="rounded-xl border border-base-300 bg-base-100/60 p-4 text-sm text-base-content/60">
-              Calculating match details for{" "}
-              {filledRoleDisplayName || "the filled member"}...
+              {filledRoleDisplayName
+                ? t("teams:vacantRoleDetails.calculatingMatchFor", { name: filledRoleDisplayName })
+                : t("teams:vacantRoleDetails.calculatingMatchUnnamed")}
             </div>
           )}
 
@@ -2248,8 +2267,8 @@ const VacantRoleDetailsModal = ({
               )}
               <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
                 <h3 className="font-medium leading-[1.1]">
-                  <span className="sm:hidden">Location</span>
-                  <span className="hidden sm:inline">Location Preference</span>
+                  <span className="sm:hidden">{t("location.section.title")}</span>
+                  <span className="hidden sm:inline">{t("location.section.preference")}</span>
                 </h3>
                 {shouldShowComparisonSummary && (() => {
                   let status = null;
@@ -2257,7 +2276,7 @@ const VacantRoleDetailsModal = ({
                     status = (
                       <span className="flex items-center gap-1.5 text-sm text-success">
                         <CheckCheck size={14} className="flex-shrink-0" />
-                        <span>No location boundaries</span>
+                        <span>{t("location.section.noLocationBoundaries")}</span>
                       </span>
                     );
                   } else if (distanceKm !== null && withinRange !== null) {
@@ -2271,7 +2290,7 @@ const VacantRoleDetailsModal = ({
                             size={14}
                             className="flex-shrink-0"
                           />
-                          <span className="sm:hidden">Match</span>
+                          <span className="sm:hidden">{t("location.section.matchShort")}</span>
                           <span className="hidden sm:inline">
                             {locationMatchText}
                           </span>
@@ -2291,14 +2310,14 @@ const VacantRoleDetailsModal = ({
                       status = (
                         <span className="flex items-center gap-1.5 text-sm text-slate-500">
                           <X size={14} className="flex-shrink-0" />
-                          <span className="leading-[1.1]">No location set</span>
+                          <span className="leading-[1.1]">{t("location.section.noLocationSet")}</span>
                         </span>
                       );
                     } else {
                       status = (
                         <span className="flex items-center gap-1.5 text-sm text-slate-500">
                           <Minus size={14} className="flex-shrink-0" />
-                          <span className="leading-[1.1]">Location not compared</span>
+                          <span className="leading-[1.1]">{t("location.section.notCompared")}</span>
                         </span>
                       );
                     }
@@ -2318,7 +2337,7 @@ const VacantRoleDetailsModal = ({
                   <CircleDot size={14} />
                   <span className="sm:hidden">&lt; {maxDistanceKm} km</span>
                   <span className="hidden sm:inline">
-                    within {maxDistanceKm} km from Role Location
+                    {t("location.section.withinKmFromRole", { km: maxDistanceKm })}
                   </span>
                 </span>
               )}
@@ -2332,8 +2351,8 @@ const VacantRoleDetailsModal = ({
             <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
               <h3 className="font-medium leading-[1.1]">
-                <span className="sm:hidden">Focus Areas</span>
-                <span className="hidden sm:inline">Desired Focus Areas</span>
+                <span className="sm:hidden">{t("focusAreas.title")}</span>
+                <span className="hidden sm:inline">{t("focusAreas.desired")}</span>
               </h3>
               {shouldShowComparisonSummary && tags.length > 0 && (() => {
                 const matchCount = tags.filter((t) => {
@@ -2371,6 +2390,8 @@ const VacantRoleDetailsModal = ({
             (() => {
               const groups = {};
               for (const tag of tags) {
+                // English for the same reason as badgesByCategory above:
+                // SUPERCATEGORY_ORDER.indexOf() sorts on this value.
                 const supercat = tag.supercategory || "Other";
                 if (!groups[supercat]) groups[supercat] = [];
                 groups[supercat].push(tag);
@@ -2462,7 +2483,7 @@ const VacantRoleDetailsModal = ({
             })()
           ) : (
             <p className="text-sm text-base-content/50">
-              No specific focus areas required
+              {t("teams:vacantRoleDetails.noFocusAreasRequired")}
             </p>
           )}
         </div>
@@ -2473,8 +2494,8 @@ const VacantRoleDetailsModal = ({
             <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
               <h3 className="font-medium leading-[1.1]">
-                <span className="sm:hidden">Badges</span>
-                <span className="hidden sm:inline">Desired Badges</span>
+                <span className="sm:hidden">{t("badges.section.title")}</span>
+                <span className="hidden sm:inline">{t("badges.section.desired")}</span>
               </h3>
               {shouldShowComparisonSummary && badges.length > 0 && (() => {
                 const matchCount = badges.filter((b) => {
@@ -2576,7 +2597,7 @@ const VacantRoleDetailsModal = ({
             </div>
           ) : (
             <p className="text-sm text-base-content/50">
-              No specific badges required
+              {t("teams:vacantRoleDetails.noBadgesRequired")}
             </p>
           )}
         </div>
@@ -2592,7 +2613,7 @@ const VacantRoleDetailsModal = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Mail size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Applications for this role</h3>
+                  <h3 className="font-medium">{t("teams:vacantRoleDetails.applicationsHeading")}</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
                   ({roleApplications.length})
@@ -2622,7 +2643,7 @@ const VacantRoleDetailsModal = ({
                   const username = applicantProfile.username ?? "";
                   const displayName = firstName && lastName
                     ? `${firstName} ${lastName}`
-                    : firstName || lastName || username || "Unknown";
+                    : firstName || lastName || username || t("user.unknown");
                   const applicationRoleMatch = application.role || {};
                   const applicantScore =
                     applicantMatch?.matchScore ??
@@ -2654,7 +2675,7 @@ const VacantRoleDetailsModal = ({
                     applicantProfile,
                     applicantDistanceKm,
                   );
-                  const applicantTooltipName = firstName || displayName;
+                  const applicantTooltipName = firstName || lastName || username || null;
                   const applicantTooltip = applicantTooltipName
                     ? t("teams:vacantRoleDetails.viewApplicationOf", { name: applicantTooltipName })
                     : t("teams:vacantRoleDetails.viewApplicationUnnamed");
@@ -2725,7 +2746,7 @@ const VacantRoleDetailsModal = ({
                               )}
                               {applicantIsTeamMember && (
                                 <Tooltip
-                                  content="Member of this team"
+                                  content={t("teams:vacantRoleDetails.memberOfThisTeam")}
                                   wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
@@ -2759,7 +2780,7 @@ const VacantRoleDetailsModal = ({
                   ) : (
                     <ChevronRight size={14} />
                   )}
-                  {isApplicationsExpanded ? "Show less" : "Show all"}
+                  {isApplicationsExpanded ? t("collapse.showLess") : t("collapse.showAll")}
                 </button>
               )}
             </div>
@@ -2777,7 +2798,7 @@ const VacantRoleDetailsModal = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <SendHorizontal size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Invited for this role</h3>
+                  <h3 className="font-medium">{t("teams:vacantRoleDetails.invitedHeading")}</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
                   ({roleInvitations.length})
@@ -2807,7 +2828,7 @@ const VacantRoleDetailsModal = ({
                   const username = inviteeProfile.username ?? "";
                   const displayName = firstName && lastName
                     ? `${firstName} ${lastName}`
-                    : firstName || lastName || username || "Unknown";
+                    : firstName || lastName || username || t("user.unknown");
                   const invitationRoleMatch = invitation.role || {};
                   const inviteeScore =
                     inviteeMatch?.matchScore ??
@@ -2839,7 +2860,7 @@ const VacantRoleDetailsModal = ({
                     invitation?.date ??
                     invitation?.sent_at,
                   );
-                  const inviteeTooltipName = firstName || displayName;
+                  const inviteeTooltipName = firstName || lastName || username || null;
                   const inviteeTooltip = inviteeTooltipName
                     ? t("teams:vacantRoleDetails.viewInvitationOf", { name: inviteeTooltipName })
                     : t("teams:vacantRoleDetails.viewInvitationUnnamed");
@@ -2910,7 +2931,7 @@ const VacantRoleDetailsModal = ({
                               )}
                               {inviteeIsTeamMember && (
                                 <Tooltip
-                                  content="Member of this team"
+                                  content={t("teams:vacantRoleDetails.memberOfThisTeam")}
                                   wrapperClassName="flex items-center gap-1 min-w-0"
                                 >
                                   <Users
@@ -2944,7 +2965,7 @@ const VacantRoleDetailsModal = ({
                   ) : (
                     <ChevronRight size={14} />
                   )}
-                  {isInvitationsExpanded ? "Show less" : "Show all"}
+                  {isInvitationsExpanded ? t("collapse.showLess") : t("collapse.showAll")}
                 </button>
               )}
             </div>
@@ -2959,7 +2980,7 @@ const VacantRoleDetailsModal = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Available team members</h3>
+                  <h3 className="font-medium">{t("teams:vacantRoleDetails.availableTeamMembers")}</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
                   ({roleMemberEntries.length})
@@ -2972,7 +2993,7 @@ const VacantRoleDetailsModal = ({
                 onClick={() => setIsTeamMembersExpanded(true)}
               >
                 <ChevronRight size={14} />
-                Show matches
+                {t("teams:vacantRoleDetails.showMatches")}
               </button>
             </div>
           )}
@@ -2987,7 +3008,7 @@ const VacantRoleDetailsModal = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <Users size={18} className="mr-2 text-primary flex-shrink-0" />
-                  <h3 className="font-medium">Available team members</h3>
+                  <h3 className="font-medium">{t("teams:vacantRoleDetails.availableTeamMembers")}</h3>
                 </div>
                 <span className="text-sm text-base-content/50">
                   ({availableRoleTeamMembers.length})
@@ -3024,7 +3045,12 @@ const VacantRoleDetailsModal = ({
                     memberDistanceKm,
                   );
                   const memberTooltipName =
-                    member.firstName ?? member.first_name ?? displayName ?? null;
+                    member.firstName ??
+                    member.first_name ??
+                    member.lastName ??
+                    member.last_name ??
+                    member.username ??
+                    null;
                   const memberTooltip = memberTooltipName
                     ? t("teams:vacantRoleDetails.viewMatchScoreOf", { name: memberTooltipName })
                     : t("teams:vacantRoleDetails.viewMatchScoreUnnamed");
@@ -3132,7 +3158,7 @@ const VacantRoleDetailsModal = ({
                   ) : (
                     <ChevronRight size={14} />
                   )}
-                  {isTeamMembersExpanded ? "Show less" : "Show all"}
+                  {isTeamMembersExpanded ? t("collapse.showLess") : t("collapse.showAll")}
                 </button>
               )}
             </div>
@@ -3149,7 +3175,7 @@ const VacantRoleDetailsModal = ({
                   onClick={() => setIsViewerInvitationDetailsOpen(true)}
                   icon={<Mail size={16} />}
                 >
-                  Click to view Invitation details
+                  {t("teams:vacantRoleDetails.viewInvitationDetails")}
                 </Button>
               </div>
             ) : onViewApplicationDetails ? (
@@ -3160,7 +3186,7 @@ const VacantRoleDetailsModal = ({
                   onClick={onViewApplicationDetails}
                   icon={<SendHorizontal size={16} />}
                 >
-                  Click to view application details
+                  {t("teams:vacantRoleDetails.viewApplicationDetails")}
                 </Button>
               </div>
             ) : effectiveViewerRoleApplication ? (
@@ -3171,7 +3197,7 @@ const VacantRoleDetailsModal = ({
                   onClick={() => setIsViewerApplicationDetailsOpen(true)}
                   icon={<SendHorizontal size={16} />}
                 >
-                  Click to view application details
+                  {t("teams:vacantRoleDetails.viewApplicationDetails")}
                 </Button>
               </div>
             ) : (
@@ -3186,7 +3212,7 @@ const VacantRoleDetailsModal = ({
                       teamId={teamId}
                       roleId={roleId}
                       className="w-full"
-                      buttonLabel="Apply to join team and to fill this role"
+                      buttonLabel={t("teams:vacantRoleDetails.applyToJoinAndFill")}
                       onSuccess={(applicationData, submitResponse) => {
                         const submittedApplication = submitResponse?.data ?? {};
                         setViewerRoleApplicationRecord(
@@ -3228,7 +3254,7 @@ const VacantRoleDetailsModal = ({
                       onClick={() => setIsInternalApplicationOpen(true)}
                       icon={<UserSearch size={16} />}
                     >
-                      Apply to fill this role within your team
+                      {t("teams:vacantRoleDetails.applyWithinTeam")}
                     </Button>
                   </div>
                 )}
@@ -3325,7 +3351,8 @@ const VacantRoleDetailsModal = ({
           );
         } catch (error) {
           throw new Error(
-            error.response?.data?.message || "Failed to submit role application"
+            error.response?.data?.message ||
+              t("teams:vacantRoleDetails.submitFailed")
           );
         }
       }}
