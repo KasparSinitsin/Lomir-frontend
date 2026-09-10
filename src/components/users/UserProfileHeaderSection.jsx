@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
@@ -7,7 +8,6 @@ import {
   FlaskConical,
 } from "lucide-react";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -32,6 +32,7 @@ const UserProfileHeaderSection = ({
   matchScore = null,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const [imageError, setImageError] = useState(false);
   const [dateIsNarrow, setDateIsNarrow] = useState(false);
   const dateIsNarrowRef = useRef(false);
@@ -158,7 +159,13 @@ const UserProfileHeaderSection = ({
         </div>
         {matchTier && (
           <Tooltip
-            content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            content={
+              matchTier.tier === "great"
+                ? t("matchScore.tierGreat", { pct: matchTier.pct })
+                : matchTier.tier === "good"
+              ? t("matchScore.tierGood", { pct: matchTier.pct })
+              : t("matchScore.tierLow", { pct: matchTier.pct })
+            }
             position="bottom"
             wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
           >
@@ -216,7 +223,7 @@ const UserProfileHeaderSection = ({
               )}
               {isSyntheticUser(user) && (
                 <Tooltip
-                  content={DEMO_PROFILE_TOOLTIP}
+                  content={t("demo.profileTooltip")}
                   wrapperClassName="flex items-start text-base-content/50"
                 >
                   <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />

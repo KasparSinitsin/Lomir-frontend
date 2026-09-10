@@ -138,15 +138,6 @@ export const isSyntheticRole = (role) => {
   return hasSyntheticFlag(role);
 };
 
-export const DEMO_PROFILE_TOOLTIP =
-  "Demo Profile: For testing purposes, no real person";
-
-export const DEMO_TEAM_TOOLTIP =
-  "Demo Team: for testing purposes, no real team";
-
-export const DEMO_ROLE_TOOLTIP =
-  "Demo Role: for testing purposes, no real role";
-
 export const normalizeHiddenBadgeIds = (user) => {
   if (!user) return [];
 

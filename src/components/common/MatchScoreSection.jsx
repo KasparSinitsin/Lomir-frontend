@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Tag, Award, MapPin } from "lucide-react";
 import Tooltip from "./Tooltip";
 import { getMatchTier } from "../../utils/matchScoreUtils";
@@ -84,6 +85,8 @@ const MatchScoreSection = ({
   headline: headlineProp = null,
   headlineTooltip = null,
 }) => {
+  const { t } = useTranslation();
+
   if (matchScore == null) return null;
 
   const tier = getMatchTier(matchScore);
@@ -216,7 +219,7 @@ const MatchScoreSection = ({
   // ── Progress bar rows ─────────────────────────────────────
   const rows = [
     {
-      label: "Location",
+      label: t("location.section.title"),
       icon: MapPin,
       value: distPct ?? 0,
       tooltip:
@@ -237,7 +240,7 @@ const MatchScoreSection = ({
         ),
     },
     {
-      label: "Focus Areas",
+      label: t("focusAreas.title"),
       icon: Tag,
       value:
         tagPct ??
@@ -260,7 +263,7 @@ const MatchScoreSection = ({
       ),
     },
     {
-      label: "Badges",
+      label: t("badges.section.title"),
       icon: Award,
       value:
         badgePct ??

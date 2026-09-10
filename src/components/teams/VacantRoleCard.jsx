@@ -35,8 +35,6 @@ import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import Tooltip from "../common/Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
-  DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
@@ -900,7 +898,7 @@ const VacantRoleCard = ({
     <>
       {roleIsDemo && (
         <Tooltip
-          content={DEMO_ROLE_TOOLTIP}
+          content={t("common:demo.roleTooltip")}
           wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
         >
           <FlaskConical size={9} className="flex-shrink-0" />
@@ -908,7 +906,7 @@ const VacantRoleCard = ({
       )}
       {filledMemberIsDemo && (
         <Tooltip
-          content={DEMO_PROFILE_TOOLTIP}
+          content={t("common:demo.profileTooltip")}
           wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
         >
           <FlaskConical size={9} className="flex-shrink-0" />
@@ -1113,7 +1111,7 @@ const VacantRoleCard = ({
         {miniLocationSubtitleItem}
         {roleIsDemo && (
           <Tooltip
-            content={DEMO_ROLE_TOOLTIP}
+            content={t("common:demo.roleTooltip")}
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
@@ -1124,7 +1122,7 @@ const VacantRoleCard = ({
         )}
         {filledMemberIsDemo && (
           <Tooltip
-            content={DEMO_PROFILE_TOOLTIP}
+            content={t("common:demo.profileTooltip")}
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical

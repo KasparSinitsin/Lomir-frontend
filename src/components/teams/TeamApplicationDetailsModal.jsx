@@ -23,7 +23,6 @@ import InlineUserLink from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
 import TeamAvatar from "./TeamAvatar";
 import {
-  DEMO_TEAM_TOOLTIP,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
@@ -490,7 +489,7 @@ const TeamApplicationDetailsModal = ({
     return {
       isRemote,
       locationText: isRemote
-        ? "Remote"
+        ? t("location.section.remote")
         : locationParts.length > 0
           ? locationParts.join(", ")
           : fallbackLocation,
@@ -825,7 +824,7 @@ const TeamApplicationDetailsModal = ({
                 )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
-                    content={DEMO_TEAM_TOOLTIP}
+                    content={t("demo.teamTooltip")}
                     wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
                     <FlaskConical size={10} className="flex-shrink-0" />

@@ -396,7 +396,10 @@ const TeamCard = ({
       const appTeam = application.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Vacant Role",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("common:roleStatus.vacantRoleFallback"),
           description: role.bio ?? role.roleBio ?? appTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? appTeam.is_remote ?? appTeam.isRemote,
           city: role.city ?? appTeam.city,
@@ -422,7 +425,10 @@ const TeamCard = ({
       const invTeam = invitation.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Role Invitation",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("common:roleStatus.roleInvitationFallback"),
           description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? invTeam.is_remote ?? invTeam.isRemote,
           city: role.city ?? invTeam.city,
@@ -1540,7 +1546,7 @@ const TeamCard = ({
       item?.role_id
     );
 
-    return hasRoleReference ? "Vacant Role" : null;
+    return hasRoleReference ? t("common:roleStatus.vacantRoleFallback") : null;
   };
 
   const teamInvitationRoleName =

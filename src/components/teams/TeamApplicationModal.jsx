@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import {
   Send,
@@ -25,8 +26,6 @@ import RoleBadgePill from "../common/RoleBadgePill";
 import Tooltip from "../common/Tooltip";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import {
-  DEMO_ROLE_TOOLTIP,
-  DEMO_TEAM_TOOLTIP,
   isSyntheticRole,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
@@ -56,6 +55,7 @@ const TeamApplicationModal = ({
   loading = false,
   isInternal = false,
 }) => {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -433,7 +433,7 @@ const TeamApplicationModal = ({
                   )}
                   {showDemoTeam && (
                     <Tooltip
-                      content={DEMO_TEAM_TOOLTIP}
+                      content={t("demo.teamTooltip")}
                       wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                     >
                       <FlaskConical
@@ -557,7 +557,7 @@ const TeamApplicationModal = ({
                           )}
                           {isSyntheticRole(selectedRole) && (
                             <Tooltip
-                              content={DEMO_ROLE_TOOLTIP}
+                              content={t("demo.roleTooltip")}
                               wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                             >
                               <FlaskConical
@@ -649,7 +649,7 @@ const TeamApplicationModal = ({
                                 </CardMetaItem>
                                 {showDemoRole && (
                                   <Tooltip
-                                    content={DEMO_ROLE_TOOLTIP}
+                                    content={t("demo.roleTooltip")}
                                     wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                   >
                                     <FlaskConical
@@ -663,7 +663,7 @@ const TeamApplicationModal = ({
                             {!locationText && showDemoRole && (
                               <CardMetaRow>
                                 <Tooltip
-                                  content={DEMO_ROLE_TOOLTIP}
+                                  content={t("demo.roleTooltip")}
                                   wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                 >
                                   <FlaskConical

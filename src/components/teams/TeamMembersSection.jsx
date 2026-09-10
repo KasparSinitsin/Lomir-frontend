@@ -18,7 +18,7 @@ import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
 import UserAvatar from "../users/UserAvatar";
-import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
+import { isSyntheticUser } from "../../utils/userHelpers";
 
 const getTeamMemberId = (member) =>
   member?.userId ??
@@ -360,7 +360,7 @@ const TeamMembersSection = ({
 
                       {showDemoAvatarOverlay && (
                         <Tooltip
-                          content={DEMO_PROFILE_TOOLTIP}
+                          content={t("common:demo.profileTooltip")}
                           wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                         >
                           <FlaskConical size={10} className="shrink-0" />

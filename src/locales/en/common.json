@@ -121,7 +121,8 @@
       "showAll": "Show all",
       "showLess": "Show less",
       "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
-      "title": "Badges"
+      "title": "Badges",
+      "desired": "Desired Badges"
     },
     "tooltip": {
       "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
@@ -178,7 +179,8 @@
     "tagTooltip": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
     "groupTooltip": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
     "tagTooltipMembers": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
-    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}"
+    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "desired": "Desired Focus Areas"
   },
   "footer": {
     "copyright": "Lomir - Team Up App © {year}",
@@ -235,7 +237,16 @@
       "notSpecified": "Not specified",
       "distanceAway": "{distance} away",
       "unavailable": "Location not available",
-      "unavailableShort": "Not available"
+      "unavailableShort": "Not available",
+      "matchesYourLocation": "Matches your location",
+      "matchesLocationOf": "Matches {name}'s location",
+      "outsideYourRange": "Outside your location range",
+      "outsideRangeOf": "Outside {name}'s location range",
+      "preference": "Location Preference",
+      "noLocationSet": "No location set",
+      "notCompared": "Location not compared",
+      "matchShort": "Match",
+      "withinKmFromRole": "within {km} km from Role Location"
     },
     "locationMode": {
       "label": "Team Location",
@@ -358,13 +369,22 @@
   },
   "demo": {
     "teamTooltip": "Demo Team: for testing purposes, no real team",
-    "roleTooltip": "Demo Role: for testing purposes, no real role"
+    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "roleLabel": "Demo Role",
+    "profileTooltip": "Demo Profile: for testing purposes, no real person"
   },
   "matchScore": {
     "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
     "shared": "{pct}% profile match — {sharedTags, plural, one {# shared tag} other {# shared tags}}, {sharedBadges, plural, one {# shared badge} other {# shared badges}}",
     "sharedFocus": "{pct}% profile match — {count, plural, one {# shared focus area} other {# shared focus areas}}",
-    "plain": "{pct}% profile match"
+    "plain": "{pct}% profile match",
+    "roleWithMember": "{pct}% matching score for {name} with this role",
+    "roleWithThisMember": "{pct}% matching score for this member with this role",
+    "withYourProfile": "{pct}% match with your profile",
+    "withProfileOf": "{pct}% match with {name}'s profile",
+    "tierGreat": "{pct}% great match",
+    "tierGood": "{pct}% good match",
+    "tierLow": "{pct}% low match"
   },
   "distance": {
     "awayFromYou": "{km} km away from you",
@@ -407,7 +427,10 @@
     "filled": "Filled",
     "closed": "Closed",
     "open": "Open Role",
-    "vacantRoleFallback": "Vacant Role"
+    "vacantRoleFallback": "Vacant Role",
+    "roleInvitationFallback": "Role Invitation",
+    "filledRole": "Filled Role",
+    "closedRole": "Closed Role"
   },
   "mapPopup": {
     "typeTeam": "Team",

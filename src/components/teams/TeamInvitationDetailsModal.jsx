@@ -32,7 +32,7 @@ import { formatDateMedium } from "../../utils/dateHelpers";
 import InlineUserLink from "../users/InlineUserLink";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import TeamAvatar from "./TeamAvatar";
-import { DEMO_TEAM_TOOLTIP, isSyntheticTeam } from "../../utils/userHelpers";
+import { isSyntheticTeam } from "../../utils/userHelpers";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   extractRoleMatchData,
@@ -304,7 +304,7 @@ const TeamInvitationDetailsModal = ({
     return {
       isRemote,
       locationText: isRemote
-        ? "Remote"
+        ? t("location.section.remote")
         : locationParts.length > 0
           ? locationParts.join(", ")
           : fallbackLocation,
@@ -666,7 +666,7 @@ const TeamInvitationDetailsModal = ({
               disabled={isControlsDisabled}
               icon={<X size={16} />}
             >
-              {isDeclineLoading ? "Declining..." : "Decline"}
+              {isDeclineLoading ? t("teams:invitationDetails.declining") : t("teams:invitationDetails.decline")}
             </Button>
           </Tooltip>
         </div>
@@ -783,7 +783,7 @@ const TeamInvitationDetailsModal = ({
                 )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
-                    content={DEMO_TEAM_TOOLTIP}
+                    content={t("demo.teamTooltip")}
                     wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
                     <FlaskConical size={10} className="flex-shrink-0" />

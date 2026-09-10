@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useLayoutEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   Send,
@@ -30,9 +31,6 @@ import TeamInvitesModal from "../teams/TeamInvitesModal";
 import TeamApplicationsModal from "../teams/TeamApplicationsModal";
 import VacantRoleDetailsModal from "./VacantRoleDetailsModalLazy";
 import {
-  DEMO_PROFILE_TOOLTIP,
-  DEMO_ROLE_TOOLTIP,
-  DEMO_TEAM_TOOLTIP,
   isSyntheticUser,
   isSyntheticRole,
   isSyntheticTeam,
@@ -231,6 +229,7 @@ const TeamInviteModal = ({
   prefillTeamName = null,
   prefillRoleName = null,
 }) => {
+  const { t } = useTranslation();
   const normalizedPrefillTeamId = normalizeId(prefillTeamId);
   const normalizedPrefillRoleId = normalizeId(prefillRoleId);
   const [teams, setTeams] = useState([]);
@@ -1374,7 +1373,7 @@ const TeamInviteModal = ({
               )}
               {showDemoTeam && (
                 <Tooltip
-                  content={DEMO_TEAM_TOOLTIP}
+                  content={t("demo.teamTooltip")}
                   wrapperClassName="flex shrink-0 items-center gap-1 min-w-0 text-base-content/50"
                 >
                   <FlaskConical
@@ -1507,7 +1506,7 @@ const TeamInviteModal = ({
                   )}
                   {showInviteeDemoProfile && (
                     <Tooltip
-                      content={DEMO_PROFILE_TOOLTIP}
+                      content={t("demo.profileTooltip")}
                       wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
                     >
                       <FlaskConical size={12} className="flex-shrink-0" />
@@ -1720,7 +1719,7 @@ const TeamInviteModal = ({
                             )}
                             {isSyntheticRole(selectedRole) && (
                               <Tooltip
-                                content={DEMO_ROLE_TOOLTIP}
+                                content={t("demo.roleTooltip")}
                                 wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                               >
                                 <FlaskConical
@@ -1846,7 +1845,7 @@ const TeamInviteModal = ({
                               )}
                               {showDemoRole && (
                                 <Tooltip
-                                  content={DEMO_ROLE_TOOLTIP}
+                                  content={t("demo.roleTooltip")}
                                   wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                                 >
                                   <FlaskConical

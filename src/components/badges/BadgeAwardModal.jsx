@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Award,
   Send,
@@ -39,7 +40,6 @@ import { badgeService } from "../../services/badgeService";
 import { tagService } from "../../services/tagService";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
-import { DEMO_PROFILE_TOOLTIP } from "../../utils/userHelpers";
 import { formatDateMedium } from "../../utils/dateHelpers";
 
 /**
@@ -103,6 +103,7 @@ const BadgeAwardModal = ({
   onUserClick,
   onAwardComplete,
 }) => {
+  const { t } = useTranslation();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -581,7 +582,7 @@ const BadgeAwardModal = ({
                   )}
                   {awardeeIsDemo && (
                     <Tooltip
-                      content={DEMO_PROFILE_TOOLTIP}
+                      content={t("demo.profileTooltip")}
                       wrapperClassName="flex items-center gap-0.5 text-base-content/50 text-xs"
                     >
                       <FlaskConical size={12} className="flex-shrink-0" />

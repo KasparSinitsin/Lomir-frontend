@@ -1,4 +1,5 @@
 import Tooltip from "../common/Tooltip";
+import { useTranslation } from "react-i18next";
 import { CountBadge } from "../common/NotificationBadge";
 import UserAvatar from "../users/UserAvatar";
 import TeamAvatar from "../teams/TeamAvatar";
@@ -6,8 +7,6 @@ import { ChevronLeft, Users, User, FlaskConical } from "lucide-react";
 import {
   isSyntheticTeam,
   isSyntheticUser,
-  DEMO_PROFILE_TOOLTIP,
-  DEMO_TEAM_TOOLTIP,
 } from "../../utils/userHelpers";
 import { formatRelativeChatTimestamp } from "../../utils/dateHelpers";
 
@@ -26,6 +25,7 @@ const ConversationHeader = ({
   onTeamClick,
   onUserClick,
 }) => {
+  const { t } = useTranslation();
   return (
               <div
                 className={`flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 ${
@@ -130,7 +130,7 @@ const ConversationHeader = ({
                             </span>
                             {isSyntheticTeam(teamData) && (
                               <Tooltip
-                                content={DEMO_TEAM_TOOLTIP}
+                                content={t("demo.teamTooltip")}
                                 wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
                               >
                                 <FlaskConical size={10} className="flex-shrink-0" />
@@ -150,7 +150,7 @@ const ConversationHeader = ({
                             <span className="truncate">DM Chat</span>
                             {isSyntheticUser(conversationPartner) && (
                               <Tooltip
-                                content={DEMO_PROFILE_TOOLTIP}
+                                content={t("demo.profileTooltip")}
                                 wrapperClassName="flex items-center gap-0.5 text-base-content/50 flex-shrink-0"
                               >
                                 <FlaskConical size={10} className="flex-shrink-0" />

@@ -4,7 +4,6 @@ import { Calendar, MapPin, FlaskConical } from "lucide-react";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import Tooltip from "./Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getDisplayName as getUserDisplayName,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -57,8 +56,9 @@ const PersonRequestCard = ({
 }) => {
   // Location text is resolved by `locationUtils`, which reads the active
   // language from the i18n instance rather than from props. This hook is
-  // what makes the component re-render on `changeLanguage`.
-  useTranslation();
+  // what makes the component re-render on `changeLanguage`; `t` is used
+  // directly as well, for the demo-profile tooltip.
+  const { t } = useTranslation();
 
   // ============ Helper Functions ============
   const isPrivateUser = privateProfile ?? isPrivateProfileUser(user);
@@ -236,7 +236,7 @@ const PersonRequestCard = ({
                 {sublineExtra}
                 {showDemoProfile && (
                   <Tooltip
-                    content={DEMO_PROFILE_TOOLTIP}
+                    content={t("demo.profileTooltip")}
                     wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
                     <FlaskConical size={10} className="flex-shrink-0" />

@@ -31,7 +31,7 @@ import {
   mergeResolvedTeamData,
 } from "../../utils/chatEntityResolvers";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
-import { isSyntheticTeam, DEMO_TEAM_TOOLTIP } from "../../utils/userHelpers";
+import { isSyntheticTeam } from "../../utils/userHelpers";
 import {
   getDisplayName as getDeletedUserDisplayName,
   isDeletedUser,
@@ -787,7 +787,7 @@ const AwardCard = ({
                       </Tooltip>
                       {isTeamSynthetic && (
                         <Tooltip
-                          content={DEMO_TEAM_TOOLTIP}
+                          content={t("demo.teamTooltip")}
                           wrapperClassName="flex items-center text-base-content/50 ml-0.5"
                         >
                           <FlaskConical size={11} className="flex-shrink-0" />
@@ -840,7 +840,7 @@ const AwardCard = ({
                 </Tooltip>
                 {isTeamSynthetic && (
                   <Tooltip
-                    content={DEMO_TEAM_TOOLTIP}
+                    content={t("demo.teamTooltip")}
                     wrapperClassName="flex items-center text-base-content/50 ml-0.5"
                   >
                     <FlaskConical size={11} className="flex-shrink-0" />
