@@ -51,7 +51,11 @@ const TeamEditForm = ({
   loading = false,
   onAvatarDeleted,
 }) => {
-  const { t } = useTranslation();
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const [uploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =

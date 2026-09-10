@@ -162,7 +162,11 @@ const TeamInvitationDetailsModal = ({
 
   // ============ State ============
   const showToast = useToast();
-  const { t } = useTranslation();
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const [loading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // "acceptRole" | "switchRole" | "acceptTeam" | "decline" | null
   const [error, setError] = useState(null);
