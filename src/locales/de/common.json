@@ -388,7 +388,9 @@
     "unknown": "Unbekannt",
     "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
     "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
-    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar"
+    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
+    "profileImageAlt": "Profilbild von {name}",
+    "profileImageAltGeneric": "Profilbild"
   },
   "matchSummary": {
     "counted": "{matchCount}/{total} passend",
