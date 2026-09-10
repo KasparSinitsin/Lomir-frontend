@@ -260,7 +260,13 @@ const UserCard = ({
         {scoreSubtitleItem && <span className="flex-shrink-0">{scoreSubtitleItem}</span>}
         {user.username && <span className="truncate min-w-0">@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
-          <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
+          <Tooltip
+            content={
+              isUserProfilePublic()
+                ? t("user.profileVisibilityPublic")
+                : t("user.profileVisibilityPrivate")
+            }
+          >
             {isUserProfilePublic() ? (
               <Eye size={9} className="text-green-600" />
             ) : (
@@ -285,7 +291,11 @@ const UserCard = ({
         subtitle={listSubtitle}
         image={getProfileImage()}
         imageFallback={getUserInitials(user)}
-        imageAlt={`${user.username || "User"}'s profile`}
+        imageAlt={
+          user.username
+            ? t("user.profileImageAlt", { name: user.username })
+            : t("user.profileImageAltGeneric")
+        }
         onClick={openUserDetails}
         viewMode="list"
         className=""
@@ -321,8 +331,8 @@ const UserCard = ({
             <Tooltip
               content={
                 isUserProfilePublic()
-                  ? "Public Profile - visible for everyone"
-                  : "Private Profile - only visible for you"
+                  ? t("user.profileVisibilityPublic")
+                  : t("user.profileVisibilityPrivate")
               }
             >
               {isUserProfilePublic() ? (
@@ -368,7 +378,11 @@ const UserCard = ({
       hoverable
       image={getProfileImage()}
       imageFallback={getUserInitials(user)}
-      imageAlt={`${user.username || "User"}'s profile`}
+      imageAlt={
+        user.username
+          ? t("user.profileImageAlt", { name: user.username })
+          : t("user.profileImageAltGeneric")
+      }
       imageSize="medium"
       imageShape="circle"
       onClick={openUserDetails}
