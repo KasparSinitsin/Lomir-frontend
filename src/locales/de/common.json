@@ -421,6 +421,15 @@
     "noneWithName": "Keine Übereinstimmung mit {name}",
     "noneWithYou": "Keine Übereinstimmung mit dir"
   },
+  "messageInput": {
+    "attachmentImage": "Bild",
+    "attachmentImageOrFile": "Bild / Datei",
+    "cancelReplyAria": "Antwort verwerfen",
+    "placeholder": "Schreibe eine Nachricht …",
+    "replyPreviewAlt": "Antwortvorschau",
+    "replyingTo": "Antwort an {name}",
+    "replyingToMessage": "Antwort auf eine Nachricht"
+  },
   "modal": {
     "close": "Dialog schließen"
   },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CircleX,
@@ -76,6 +77,17 @@ const MessageInput = ({
   replyingTo = null,
   onClearReply,
 }) => {
+  const { t } = useTranslation();
+
+  /**
+   * The sender of a replied-to message may have neither a first name nor a
+   * username. The English fallback was the bare word "message", interpolated
+   * into the same slot as a name - which reads "Replying to message" and, in
+   * German, "Antwort an message". The nameless case gets its own sentence.
+   */
+  const replySenderName =
+    replyingTo?.senderFirstName || replyingTo?.senderUsername || "";
+
   const [message, setMessage] = useState("");
   const [mentionQuery, setMentionQuery] = useState(null);
   const [mentionStart, setMentionStart] = useState(null);
@@ -242,16 +254,15 @@ const MessageInput = ({
           <Reply size={14} className="text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-primary truncate">
-              Replying to{" "}
-              {replyingTo.senderFirstName ||
-                replyingTo.senderUsername ||
-                "message"}
+              {replySenderName
+                ? t("messageInput.replyingTo", { name: replySenderName })
+                : t("messageInput.replyingToMessage")}
             </p>
             {replyImageUrl ? (
               <div className="mt-1 flex min-w-0 items-center gap-2">
                 <img
                   src={replyImageUrl}
-                  alt="Reply preview"
+                  alt={t("messageInput.replyPreviewAlt")}
                   className="h-10 w-10 shrink-0 rounded-md object-cover"
                 />
                 <div className="min-w-0 flex-1">
@@ -274,7 +285,7 @@ const MessageInput = ({
                   ) : (
                     !replyingTo.content && (
                       <p className="text-xs text-base-content/60 truncate">
-                        Image
+                        {t("messageInput.attachmentImage")}
                       </p>
                     )
                   )}
@@ -294,7 +305,7 @@ const MessageInput = ({
               <p className="text-xs text-base-content/60 truncate">
                 {replyingTo.content
                   ? renderReplyText(replyingTo.content.slice(0, 100))
-                  : "Image / File"}
+                  : t("messageInput.attachmentImageOrFile")}
               </p>
             )}
           </div>
@@ -302,7 +313,7 @@ const MessageInput = ({
             type="button"
             onClick={onClearReply}
             className="btn btn-ghost btn-xs btn-circle shrink-0"
-            aria-label="Cancel reply"
+            aria-label={t("messageInput.cancelReplyAria")}
           >
             <X size={14} />
           </button>
@@ -326,7 +337,7 @@ const MessageInput = ({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           className="input input-bordered flex-grow"
-          placeholder="Type a message..."
+          placeholder={t("messageInput.placeholder")}
           maxLength={500}
           disabled={disabled}
         />

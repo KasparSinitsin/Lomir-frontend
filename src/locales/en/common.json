@@ -421,6 +421,15 @@
     "noneWithName": "None matching with {name}",
     "noneWithYou": "None matching with you"
   },
+  "messageInput": {
+    "attachmentImage": "Image",
+    "attachmentImageOrFile": "Image / File",
+    "cancelReplyAria": "Cancel reply",
+    "placeholder": "Type a message...",
+    "replyPreviewAlt": "Reply preview",
+    "replyingTo": "Replying to {name}",
+    "replyingToMessage": "Replying to a message"
+  },
   "modal": {
     "close": "Close modal"
   },
