@@ -135,10 +135,14 @@
   "chatHeader": {
     "backToList": "Back to conversation list",
     "directChat": "DM Chat",
+    "directMessageChat": "Direct Message Chat",
     "teamChat": "Team Chat",
     "teamChatMembers": "Team Chat with {count, plural, one {# Member} other {# Members}}",
     "viewDetails": "View {name} details",
     "viewDetailsGeneric": "View details"
+  },
+  "chatMessage": {
+    "emptyError": "Message cannot be empty."
   },
   "chatUploader": {
     "addAttachmentAria": "Add attachment",

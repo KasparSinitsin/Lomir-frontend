@@ -135,10 +135,14 @@
   "chatHeader": {
     "backToList": "Zurück zur Unterhaltungsliste",
     "directChat": "Direktnachricht",
+    "directMessageChat": "Direktnachricht",
     "teamChat": "Team-Chat",
     "teamChatMembers": "Team-Chat mit {count, plural, one {# Mitglied} other {# Mitgliedern}}",
     "viewDetails": "Details von {name} ansehen",
     "viewDetailsGeneric": "Details ansehen"
+  },
+  "chatMessage": {
+    "emptyError": "Die Nachricht darf nicht leer sein."
   },
   "chatUploader": {
     "addAttachmentAria": "Anhang hinzufügen",

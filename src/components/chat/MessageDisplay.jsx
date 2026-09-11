@@ -183,7 +183,7 @@ const MessageDisplay = ({
     const nextContent = editingContent.trim();
 
     if (!nextContent) {
-      setEditingError("Message cannot be empty.");
+      setEditingError(t("chatMessage.emptyError"));
       return;
     }
 

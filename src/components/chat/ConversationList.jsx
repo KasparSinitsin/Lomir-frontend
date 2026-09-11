@@ -881,14 +881,14 @@ const ConversationList = ({
                           )}
                           <Users size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
-                            {renderHighlightedText("Team Chat", searchQuery)}
+                            {renderHighlightedText(t("chatHeader.teamChat"), searchQuery)}
                           </span>
                         </>
                       ) : (
                         <>
                           <User size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
-                            {renderHighlightedText("Direct Message Chat", searchQuery)}
+                            {renderHighlightedText(t("chatHeader.directMessageChat"), searchQuery)}
                           </span>
                         </>
                       )}
