@@ -158,6 +158,17 @@
       "message": "Delete this message? It will be replaced with a deleted-message marker in this chat.",
       "title": "Delete Message"
     },
+    "errors": {
+      "deleteConversationFailed": "Failed to delete conversation. Please try again.",
+      "deleteMessageFailed": "Failed to delete message. Please try again.",
+      "editMessageFailed": "Failed to edit message. Please try again.",
+      "leaveTeamFailed": "Failed to leave team. Please try again.",
+      "noTeamChatAccess": "You no longer have access to this team chat.",
+      "uploadFileFailed": "Failed to upload file. Please try again.",
+      "uploadFileRejected": "Failed to upload file",
+      "uploadImageFailed": "Failed to upload image. Please try again.",
+      "uploadImageRejected": "Failed to upload image"
+    },
     "leaveTeam": {
       "confirmLabel": "Leave",
       "fallbackTeamName": "this team",
