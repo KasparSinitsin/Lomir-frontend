@@ -77,7 +77,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { messageService } from "../../services/messageService";
 import useViewerPendingRequests from "../../hooks/useViewerPendingRequests";
 import { buildRoleInvitationAcceptedMessage } from "../../utils/roleEventMessages";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, matchTierSentence } from "../../utils/matchScoreUtils";
 import {
   getDisplayName,
   getUserInitials,
@@ -1603,22 +1603,6 @@ const VacantRoleDetailsModal = ({
     }) || null;
   };
 
-  /**
-   * The tier sentence for a match ring, in the active language.
-   *
-   * All three keys are spelled out literally on purpose: `matchScoreUtils`
-   * documents that a key assembled from `tier` would be invisible to
-   * `npm run i18n:check`. Shared by the header ring and the three list rings
-   * so a future change cannot translate one and forget the others - which is
-   * exactly how the three `title` attributes stayed English.
-   */
-  const matchTierSentence = (tier) =>
-    tier?.tier === "great"
-      ? t("matchScore.tierGreat", { pct: tier.pct })
-      : tier?.tier === "good"
-        ? t("matchScore.tierGood", { pct: tier.pct })
-        : t("matchScore.tierLow", { pct: tier.pct });
-
   const getPersonLocationText = (person, fallbackDistanceKm = null) => {
     if (!person) {
       return fallbackDistanceKm != null
@@ -2048,7 +2032,7 @@ const VacantRoleDetailsModal = ({
             )}
             {MatchTierIcon && (
               <Tooltip
-                content={matchTierSentence(matchTier)}
+                content={matchTierSentence(t, matchTier)}
                 position="bottom"
                 wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
               >
@@ -2725,7 +2709,7 @@ const VacantRoleDetailsModal = ({
                           {ApplicantMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${applicantMatchTier.bg}`}
-                              title={matchTierSentence(applicantMatchTier)}
+                              title={matchTierSentence(t, applicantMatchTier)}
                             >
                               <ApplicantMatchIcon
                                 size={7}
@@ -2913,7 +2897,7 @@ const VacantRoleDetailsModal = ({
                           {InviteeMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${inviteeMatchTier.bg}`}
-                              title={matchTierSentence(inviteeMatchTier)}
+                              title={matchTierSentence(t, inviteeMatchTier)}
                             >
                               <InviteeMatchIcon
                                 size={7}
@@ -3115,7 +3099,7 @@ const VacantRoleDetailsModal = ({
                           {MemberMatchIcon && (
                             <div
                               className={`absolute -top-0.5 -left-0.5 w-[14px] h-[14px] rounded-full ring-2 ring-white flex items-center justify-center ${memberMatchTier.bg}`}
-                              title={matchTierSentence(memberMatchTier)}
+                              title={matchTierSentence(t, memberMatchTier)}
                             >
                               <MemberMatchIcon
                                 size={7}
