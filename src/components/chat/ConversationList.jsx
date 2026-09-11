@@ -776,13 +776,16 @@ const ConversationList = ({
                     {/* Name - Clickable for both team and direct conversations */}
                     <Tooltip
                       content={
-                        isUserClickable
-                          ? `Click to view ${displayName}'s details`
-                          : isTeam
-                            ? `Click to view ${displayName} details`
-                            : displayName?.length > 22
-                              ? displayName
-                              : undefined
+                        // Same sentence as the avatar tooltip three elements
+                        // up: they point at the same conversation, so saying
+                        // it two different ways was only ever an accident.
+                        // The possessive form this replaced also produced
+                        // "Click to view 's details" when the name was empty.
+                        isUserClickable || isTeam
+                          ? detailsTooltip(displayName)
+                          : displayName?.length > 22
+                            ? displayName
+                            : undefined
                       }
                       wrapperClassName="block min-w-0 flex-1 overflow-hidden"
                     >
