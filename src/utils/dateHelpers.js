@@ -187,30 +187,33 @@ const dateFormatter = (options) => (value) => {
 };
 
 /**
- * The all-numeric formats keep the slash in every language.
+ * The all-numeric formats follow the locale completely - order AND separator.
  *
- * German writes 04.09.26 and English 09/04/26 - two things differ, the field
- * order and the separator. Only the *order* is information; the separator is
- * part of how the UI looks, and letting it change per language would mean the
- * same control renders in two visual styles. So Intl decides the order, from
- * CLDR, and the separator is set here.
+ * ⚠️ This used to force a slash in every language, on the reasoning that
+ * "only the order is information; the separator is how the UI looks". That
+ * reasoning does not survive contact with a German reader. German writes
+ * 04.06.26 and the app printed 04/06/26, which is not merely un-German: the
+ * slash is itself a signal. It says "American convention" to a German eye,
+ * so 04/06/26 invites being read as 6 April - the exact ambiguity the field
+ * order is supposed to resolve. Consistency of look was bought with a date
+ * that can be misread. Found in the browser, 2026-09-11.
  *
- * Works by dropping the locale's own separators from formatToParts and
- * rejoining. Sound for the languages Lomir offers, where every literal
- * between the fields *is* a separator; a language that inserts a word between
- * the parts would need this revisited.
+ * Intl already produces the right thing for both languages; the only thing
+ * needed was to stop taking it apart.
+ *
+ * ⚠️ English is unaffected by this change and still reads 06/04/26, because
+ * `getActiveLocale()` returns the bare code "en", which CLDR resolves to US
+ * conventions - MONTH FIRST. Slashes are right for English; the order is a
+ * separate open question. "en-GB" would give 04/06/26. Not changed here
+ * because it is a product decision, not a formatting bug.
  */
-const slashFormatter = (options) => (value) => {
+const numericFormatter = (options) => (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
-  return getDateFormatter(options)
-    .formatToParts(date)
-    .filter((part) => part.type !== "literal")
-    .map((part) => part.value)
-    .join("/");
+  return getDateFormatter(options).format(date);
 };
 
-export const formatDateNumeric = slashFormatter({
+export const formatDateNumeric = numericFormatter({
   day: "2-digit", month: "2-digit", year: "2-digit",
 });
 export const formatDateMedium = dateFormatter({
@@ -222,7 +225,7 @@ export const formatDateLong = dateFormatter({
 export const formatMonthYear = dateFormatter({
   month: "long", year: "numeric",
 });
-export const formatMonthNumeric = slashFormatter({
+export const formatMonthNumeric = numericFormatter({
   month: "2-digit", year: "2-digit",
 });
 
