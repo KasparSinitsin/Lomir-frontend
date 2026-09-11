@@ -132,6 +132,14 @@
       "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     }
   },
+  "chatHeader": {
+    "backToList": "Zurück zur Unterhaltungsliste",
+    "directChat": "Direktnachricht",
+    "teamChat": "Team-Chat",
+    "teamChatMembers": "Team-Chat mit {count, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "viewDetails": "Details von {name} ansehen",
+    "viewDetailsGeneric": "Details ansehen"
+  },
   "chatUploader": {
     "addAttachmentAria": "Anhang hinzufügen",
     "cancel": "Abbrechen",

@@ -26,6 +26,20 @@ const ConversationHeader = ({
   onUserClick,
 }) => {
   const { t } = useTranslation();
+
+  /**
+   * Both halves of a person's name are optional, so the join can be empty.
+   * An empty interpolation would render "View  details", and in German the
+   * sentence would lose its object entirely - hence a separate key rather
+   * than an interpolated blank.
+   */
+  const detailsTooltip = (name) =>
+    name ? t("chatHeader.viewDetails", { name }) : t("chatHeader.viewDetailsGeneric");
+
+  const partnerName = [conversationPartner?.firstName, conversationPartner?.lastName]
+    .filter(Boolean)
+    .join(" ");
+
   return (
               <div
                 className={`flex items-center justify-between border-b border-base-200 p-3 md:p-4 bg-base-100 ${
@@ -35,14 +49,14 @@ const ConversationHeader = ({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {/* Back/List toggle button - visible on small screens */}
                   <Tooltip
-                    content="Back to conversation list"
+                    content={t("chatHeader.backToList")}
                     position="bottom"
                     wrapperClassName="md:hidden inline-flex items-center flex-shrink-0"
                   >
                     <button
                       onClick={onBack}
                       className="flex items-center justify-center p-2 hover:bg-base-200 rounded-lg transition-colors"
-                      aria-label="Back to conversation list"
+                      aria-label={t("chatHeader.backToList")}
                     >
                       <ChevronLeft size={20} />
                     </button>
@@ -52,7 +66,7 @@ const ConversationHeader = ({
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {conversationType === "team" && teamData ? (
                       <Tooltip
-                        content={`View ${teamData.name} details`}
+                        content={detailsTooltip(teamData.name)}
                         position="bottom"
                         wrapperClassName="inline-flex items-center flex-shrink-0"
                       >
@@ -76,7 +90,7 @@ const ConversationHeader = ({
                       </Tooltip>
                     ) : conversationPartner ? (
                       <Tooltip
-                        content={`View ${[conversationPartner.firstName, conversationPartner.lastName].filter(Boolean).join(" ")} details`}
+                        content={detailsTooltip(partnerName)}
                         position="bottom"
                         wrapperClassName="inline-flex items-center flex-shrink-0"
                       >
@@ -106,8 +120,8 @@ const ConversationHeader = ({
                       <Tooltip
                         content={
                           conversationType === "team"
-                            ? `View ${teamData?.name} details`
-                            : `View ${[conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")} details`
+                            ? detailsTooltip(teamData?.name)
+                            : detailsTooltip(partnerName)
                         }
                         position="bottom"
                         wrapperClassName="block min-w-0"
@@ -116,7 +130,7 @@ const ConversationHeader = ({
                           className="font-medium truncate text-sm cursor-pointer hover:text-primary transition-colors"
                           onClick={conversationType === "team" ? onTeamClick : onUserClick}
                         >
-                          {conversationType === "team" ? teamData?.name : [conversationPartner?.firstName, conversationPartner?.lastName].filter(Boolean).join(" ")}
+                          {conversationType === "team" ? teamData?.name : partnerName}
                         </h3>
                       </Tooltip>
                       {conversationType === "team" ? (
@@ -125,8 +139,10 @@ const ConversationHeader = ({
                             <Users size={12} className="flex-shrink-0" />
                             <span className="truncate">
                               {teamData?.members
-                                ? `Team Chat with ${teamData.members.length} ${teamData.members.length === 1 ? "Member" : "Members"}`
-                                : "Team Chat"}
+                                ? t("chatHeader.teamChatMembers", {
+                                    count: teamData.members.length,
+                                  })
+                                : t("chatHeader.teamChat")}
                             </span>
                             {isSyntheticTeam(teamData) && (
                               <Tooltip
@@ -147,7 +163,7 @@ const ConversationHeader = ({
                         <div className="text-xs text-base-content/60 flex items-center justify-between gap-1.5 flex-nowrap">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <User size={12} className="flex-shrink-0" />
-                            <span className="truncate">DM Chat</span>
+                            <span className="truncate">{t("chatHeader.directChat")}</span>
                             {isSyntheticUser(conversationPartner) && (
                               <Tooltip
                                 content={t("demo.profileTooltip")}
