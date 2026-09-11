@@ -191,7 +191,6 @@
     "invitedToFillRoleOn": "Du wurdest eingeladen, eine Rolle in diesem Team zu übernehmen\nam {date}",
     "invitedToTeam": "Du wurdest zu diesem Team eingeladen",
     "invitedToTeamOn": "Du wurdest zu diesem Team eingeladen\nam {date}",
-    "thisTeam": "dieses Team",
     "deleteTitle": "Team löschen",
     "deleteConfirm": "Team löschen",
     "deleteLoading": "Wird gelöscht...",

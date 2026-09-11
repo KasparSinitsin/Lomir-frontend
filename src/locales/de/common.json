@@ -11,16 +11,16 @@
       "awardedBy": "Verliehen von",
       "awardedTo": "Verliehen an",
       "byShort": "von",
-      "toShort": "an",
       "delete": "Badge-Auszeichnung löschen",
       "hide": "Badge vor anderen verbergen",
-      "unhide": "Badge für andere sichtbar machen",
       "personal": "Persönlich",
       "privateProfile": "Privates Profil",
       "project": "Projekt",
       "projectLabel": "Projekt:",
       "team": "Team",
       "teamLabel": "Team:",
+      "toShort": "an",
+      "unhide": "Badge für andere sichtbar machen",
       "unknown": "Unbekannt",
       "viewProfile": "Profil ansehen",
       "viewTeam": "Team ansehen"
@@ -119,118 +119,139 @@
       "visionary": "Visionär"
     },
     "section": {
+      "desired": "Gewünschte Badges",
       "empty": "Noch keine Badges erhalten",
       "hidden": "Die Badges dieses Nutzers sind ausgeblendet.",
       "showAll": "Alle anzeigen",
       "showLess": "Weniger anzeigen",
       "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
-      "title": "Badges",
-      "desired": "Gewünschte Badges"
+      "title": "Badges"
     },
     "tooltip": {
       "badge": "{name}: {credits}ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
       "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     }
   },
+  "collapse": {
+    "showAll": "Alle anzeigen",
+    "showLess": "Weniger anzeigen"
+  },
   "communication": {
-    "sectionTitle": "Kommunikation",
+    "languageHelp": "Lomir verwendet diese Sprache für die App und für die E-Mails, die wir dir schicken. Ohne eigene Wahl richten wir uns nach dem Land in deinem Profil und sonst nach deinem Browser.",
     "languageLabel": "Sprache der Lomir-App",
-    "languageHelp": "Lomir verwendet diese Sprache für die App und für die E-Mails, die wir dir schicken. Ohne eigene Wahl richten wir uns nach dem Land in deinem Profil und sonst nach deinem Browser."
+    "sectionTitle": "Kommunikation"
   },
   "confirmModal": {
-    "confirm": "Bestätigen",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen"
   },
   "countrySelect": {
-    "placeholder": "Land auswählen",
-    "searchPlaceholder": "Zum Suchen tippen …",
-    "noResults": "Keine Länder gefunden",
-    "groupCommon": "Häufig",
+    "clear": "Auswahl löschen",
     "groupAll": "Alle Länder",
-    "clear": "Auswahl löschen"
+    "groupCommon": "Häufig",
+    "noResults": "Keine Länder gefunden",
+    "placeholder": "Land auswählen",
+    "searchPlaceholder": "Zum Suchen tippen …"
   },
   "datetime": {
-    "today": "Heute",
-    "yesterday": "Gestern",
-    "timeOfDay": "{time} Uhr",
+    "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
+    "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
+    "archiveRemainingUnderAnHour": "weniger als eine Stunde",
     "justNow": "vor weniger als einer Minute",
     "justNowShort": "vor < 1 Min.",
-    "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
-    "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
-    "archiveRemainingUnderAnHour": "weniger als eine Stunde"
+    "timeOfDay": "{time} Uhr",
+    "today": "Heute",
+    "yesterday": "Gestern"
+  },
+  "demo": {
+    "profileLabel": "Demo-Profil",
+    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person",
+    "roleLabel": "Demo-Rolle",
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team"
+  },
+  "distance": {
+    "away": "{km} km entfernt",
+    "awayBeyondLimit": "{km} km entfernt (> {limit} km)",
+    "awayFromYou": "{km} km von dir entfernt",
+    "awayWithinLimit": "{km} km entfernt (< {limit} km)"
   },
   "focusAreas": {
-    "title": "Fokusbereiche",
+    "alreadyAdded": "Fokusbereich bereits hinzugefügt",
+    "cancel": "Abbrechen",
+    "desired": "Gewünschte Fokusbereiche",
+    "editAria": "Bearbeiten",
     "empty": "Noch keine Fokusbereiche",
     "emptyTeam": "Noch keine Fokusbereiche hinzugefügt.",
+    "fallbackName": "Fokusbereich {id}",
+    "groupTooltip": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
+    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "loading": "Lädt …",
     "placeholder": "Fokusbereiche hinzufügen …",
     "placeholderTeam": "Fokusbereiche hinzufügen …",
-    "searchPlaceholder": "Zum Suchen von Fokusbereichen tippen …",
     "popularTitle": "Beliebte Fokusbereiche",
     "relatedTitle": "Verwandte Fokusbereiche",
-    "searchResultsTitle": "Suchergebnisse",
-    "alreadyAdded": "Fokusbereich bereits hinzugefügt",
-    "loading": "Lädt …",
-    "fallbackName": "Fokusbereich {id}",
     "remove": "{name} entfernen",
     "removeGeneric": "Fokusbereich entfernen",
+    "searchPlaceholder": "Zum Suchen von Fokusbereichen tippen …",
+    "searchResultsTitle": "Suchergebnisse",
     "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
-    "editAria": "Bearbeiten",
-    "cancel": "Abbrechen",
-    "updated": "Erfolgreich aktualisiert!",
-    "updateFailed": "Aktualisierung fehlgeschlagen",
     "tagTooltip": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
-    "groupTooltip": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
     "tagTooltipMembers": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
-    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
-    "desired": "Gewünschte Fokusbereiche"
+    "title": "Fokusbereiche",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "updated": "Erfolgreich aktualisiert!"
   },
   "footer": {
-    "copyright": "Lomir - Team Up App © {year}",
     "about": "Über uns",
-    "terms": "Nutzungsbedingungen",
-    "privacy": "Datenschutz",
-    "imprint": "Impressum",
     "contact": "Kontakt",
+    "copyright": "Lomir - Team Up App © {year}",
+    "imprint": "Impressum",
+    "instagram": "Instagram",
     "license": "Lizenz",
+    "privacy": "Datenschutz",
     "source": "Quellcode",
-    "instagram": "Instagram"
+    "terms": "Nutzungsbedingungen"
   },
   "imageUploader": {
-    "uploadImage": "Bild hochladen",
     "changeImage": "Bild ändern",
-    "previewAlt": "Vorschau",
-    "dropHere": "Bild hier ablegen",
     "dragAndDrop": "Bild hierher ziehen oder zum Hochladen klicken",
-    "remove": "Entfernen",
-    "newImageSelected": "Neues Bild ausgewählt. Zum Hochladen speichern.",
-    "maxSizeHint": "Max. {maxSize} MB. Quadratische Bilder werden empfohlen.",
-    "errorNotAnImage": "Bitte wähle eine Bilddatei aus",
+    "dropHere": "Bild hier ablegen",
     "errorAcceptedFormats": "Zulässige Formate: {formats}",
-    "errorTooLarge": "Das Bild muss kleiner als {maxSize} MB sein"
+    "errorNotAnImage": "Bitte wähle eine Bilddatei aus",
+    "errorTooLarge": "Das Bild muss kleiner als {maxSize} MB sein",
+    "maxSizeHint": "Max. {maxSize} MB. Quadratische Bilder werden empfohlen.",
+    "newImageSelected": "Neues Bild ausgewählt. Zum Hochladen speichern.",
+    "previewAlt": "Vorschau",
+    "remove": "Entfernen",
+    "uploadImage": "Bild hochladen"
   },
   "languageSelect": {
+    "noResults": "Keine Sprachen gefunden",
     "placeholder": "Sprache auswählen",
-    "searchPlaceholder": "Zum Suchen tippen …",
-    "noResults": "Keine Sprachen gefunden"
+    "searchPlaceholder": "Zum Suchen tippen …"
   },
   "location": {
-    "divider": "Standort",
-    "remoteToggle": "Das ist ein Remote-Team",
-    "remoteHelp": "Remote-Teams haben keinen festen Treffpunkt",
-    "country": "Land",
-    "countryOptional": "Land (optional)",
-    "postalCode": "Postleitzahl (optional)",
-    "postalCodePlaceholder": "z. B. 12345",
-    "clearPostalCode": "Postleitzahl löschen",
     "city": "Stadt / Ort (optional)",
     "cityPlaceholder": "z. B. Berlin",
     "clearCity": "Stadt löschen",
-    "selectCountryToLookUp": "Wähle ein Land aus, damit wir das nachschlagen können.",
+    "clearPostalCode": "Postleitzahl löschen",
+    "country": "Land",
+    "countryOptional": "Land (optional)",
+    "divider": "Standort",
+    "locationMode": {
+      "label": "Team-Standort",
+      "locationHelper": "Gib den Standort deines Teams an. Diese Angabe ist optional.",
+      "locationLabel": "Das ist ein Team mit festem Standort",
+      "remoteHelper": "Remote-Teams haben keinen festen Treffpunkt.",
+      "remoteLabel": "Das ist ein Remote-Team",
+      "toggleAria": "Standortmodus umschalten"
+    },
     "notFoundInCountry": "In {country} nicht gefunden.",
-    "suggestedCity": "{city} ist der Ort zur Postleitzahl {postalCode}.",
-    "useSuggestedCity": "Übernehmen",
-    "useSuggestedCityAria": "{city} übernehmen",
+    "postalCode": "Postleitzahl (optional)",
+    "postalCodePlaceholder": "z. B. 12345",
+    "remoteHelp": "Remote-Teams haben keinen festen Treffpunkt",
+    "remoteToggle": "Das ist ein Remote-Team",
     "section": {
       "distanceAway": "{distance} entfernt",
       "matchShort": "Passt",
@@ -252,14 +273,124 @@
       "unavailableShort": "Keine Angabe",
       "withinKmFromRole": "im Umkreis von {km} km um den Rollenstandort"
     },
-    "locationMode": {
-      "label": "Team-Standort",
-      "locationLabel": "Das ist ein Team mit festem Standort",
-      "remoteLabel": "Das ist ein Remote-Team",
-      "locationHelper": "Gib den Standort deines Teams an. Diese Angabe ist optional.",
-      "remoteHelper": "Remote-Teams haben keinen festen Treffpunkt.",
-      "toggleAria": "Standortmodus umschalten"
+    "selectCountryToLookUp": "Wähle ein Land aus, damit wir das nachschlagen können.",
+    "suggestedCity": "{city} ist der Ort zur Postleitzahl {postalCode}.",
+    "useSuggestedCity": "Übernehmen",
+    "useSuggestedCityAria": "{city} übernehmen"
+  },
+  "mapPopup": {
+    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
+    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
+    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
+    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
+    "close": "Schließen",
+    "demoProfile": "Demo-Profil",
+    "demoRole": "Demo-Rolle",
+    "demoTeam": "Demo-Team",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
+    "entityNoLocation": "{entity} ohne Standortangabe",
+    "entityRemote": "{entity} (remote)",
+    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
+    "mappedResults": "Ergebnisse auf der Karte",
+    "memberCount": "{count} von {max} Mitgliedern",
+    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
+    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
+    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
+    "openDetails": "Details öffnen",
+    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
+    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
+    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
+    "openTeamApplication": "Details der Team-Bewerbung öffnen",
+    "openTeamInvitation": "Details der Team-Einladung öffnen",
+    "posted": "Eingestellt am {date}",
+    "remoteOrUnmapped": "Remote oder ohne Standort",
+    "resultAria": "Kartenergebnis {name}",
+    "typeRole": "Offene Rolle",
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeUserProfile": "Profil",
+    "viewDetails": "Details ansehen"
+  },
+  "matchDetail": {
+    "itemsTwo": "{first} und {second}",
+    "tagsOfTotal": "{shared} von {total} Fokusbereichen",
+    "tagsOfTotalRequired": "{shared} von {total} geforderten Fokusbereichen",
+    "badgesOfTotal": "{shared} von {total} Badges",
+    "tagsShared": "{count, plural, one {# Fokusbereich} other {# Fokusbereiche}}",
+    "badgesShared": "{count, plural, one {# Badge} other {# Badges}}",
+    "itemsAndLocation": "{items} gemeinsam, {location}",
+    "itemsOnly": "{items} gemeinsam",
+    "roleItemsAndLocation": "{items} erfüllt, {location}",
+    "roleItemsOnly": "{items} erfüllt",
+    "location": {
+      "same": "gleicher Ort oder Remote-freundliches Team",
+      "within100": "unter 100 km entfernt",
+      "within300": "unter 300 km entfernt",
+      "within1000": "unter 1000 km entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "locationAlone": {
+      "same": "Gleicher Ort oder Remote-freundliches Team",
+      "within100": "Unter 100 km voneinander entfernt",
+      "within300": "Unter 300 km voneinander entfernt",
+      "within1000": "Unter 1000 km voneinander entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "roleLocation": {
+      "inside": "im Standort-Umkreis der Rolle",
+      "near": "bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "außerhalb des Standort-Umkreises der Rolle"
+    },
+    "roleLocationAlone": {
+      "inside": "Im Standort-Umkreis der Rolle",
+      "near": "Bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "Außerhalb des Standort-Umkreises der Rolle"
+    },
+    "bars": {
+      "locationWeight": "Der Standort geht mit {weight} % in den Score ein.",
+      "locationRoleRule": "Im Umkreis der Rolle = 100 %. Bis zu 20 km darüber hinaus = 25 %. Weiter = 0 %.",
+      "locationGenericRule": "Remote-Teams = 100 %. Gleiche Stadt = 100 %. Bis 100 km = 75 %.",
+      "locationGenericRuleFar": "Bis 300 km = 50 %. Bis 1000 km = 25 %. Weiter entfernt = 0 %.",
+      "tagsWeight": "Fokusbereiche gehen mit {weight} % in den Score ein.",
+      "tagsMet": "{shared} von {total} geforderten Fokusbereichen erfüllt.",
+      "tagsSharedCount": "{shared} von {total} Fokusbereichen sind gemeinsam.",
+      "tagsNone": "Es gab keine Fokusbereiche zum Vergleichen.",
+      "badgesWeight": "Badges gehen mit {weight} % in den Score ein.",
+      "badgesMet": "{shared} von {total} geforderten Badges erfüllt.",
+      "badgesSharedCount": "{shared} von {total} Badges sind gemeinsam.",
+      "badgesNone": "Es gab keine Badges zum Vergleichen."
     }
+  },
+  "matchScore": {
+    "betweenYouAnd": "{pct}% Profil-Übereinstimmung von dir und {name}",
+    "betweenYouAndThisTeam": "{pct}% Profil-Übereinstimmung von dir und diesem Team",
+    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
+    "plain": "{pct}% Profil-Übereinstimmung",
+    "roleNamed": "{pct}% Übereinstimmung von {name} mit der Rolle {role}",
+    "roleNamedAnon": "{pct}% Übereinstimmung dieser Person mit der Rolle {role}",
+    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
+    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
+    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
+    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
+    "tierGood": "{pct}% gute Übereinstimmung",
+    "tierGreat": "{pct}% sehr gute Übereinstimmung",
+    "tierLow": "{pct}% geringe Übereinstimmung",
+    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
+    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
+    "yourProfileWith": "{pct}% Übereinstimmung deines Profils mit {name}",
+    "yourProfileWithThisTeam": "{pct}% Übereinstimmung deines Profils mit diesem Team"
+  },
+  "matchSummary": {
+    "all": "Alle passend",
+    "allWithName": "Alle passend zu {name}",
+    "allWithYou": "Alle passend zu dir",
+    "counted": "{matchCount}/{total} passend",
+    "countedWithName": "{matchCount}/{total} passend zu {name}",
+    "countedWithYou": "{matchCount}/{total} passend zu dir",
+    "none": "Keine Übereinstimmung",
+    "noneWithName": "Keine Übereinstimmung mit {name}",
+    "noneWithYou": "Keine Übereinstimmung mit dir"
   },
   "modal": {
     "close": "Dialog schließen"
@@ -281,197 +412,122 @@
     "signUp": "Registrieren"
   },
   "notifications": {
-    "count": "{count, plural, one {# Benachrichtigung} other {# Benachrichtigungen}}",
-    "messages": {
-      "unread": "{count, plural, one {# ungelesene Nachricht} other {# ungelesene Nachrichten}}",
-      "teams": "{count, plural, one {in # Team} other {in # Teams}}",
-      "senders": "{count, plural, one {von # Person} other {von # Personen}}",
-      "mentions": "{count, plural, one {# Erwähnung} other {# Erwähnungen}}"
-    },
-    "invitationReceived": "{count, plural, one {# Team-Einladung} other {# Team-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
-    "roleInvitation": "{count, plural, one {# Rollen-Einladung} other {# Rollen-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
-    "roleApplicationDeferredInvite": "{count, plural, one {# Rollen-Angebot} other {# Rollen-Angebote}} erstellt{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
-    "roleAssigned": "{count, plural, one {# Rollenzuweisung} other {# Rollenzuweisungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
-    "invitationAccepted": "{count, plural, one {# Einladung} other {# Einladungen}} angenommen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
-    "applicationReceived": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zur Prüfung{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "applicationApproved": "{count, plural, one {Deine Team-Bewerbung wurde angenommen} other {# Team-Bewerbungen wurden angenommen}}{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "applicationCancelled": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "applicationReceived": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zur Prüfung{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "applicationRejected": "{count, plural, one {Deine Team-Bewerbung wurde} other {Deine Team-Bewerbungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}abgelehnt",
     "badgeAwarded": "{count, plural, one {# neue Badge-Auszeichnung} other {# neue Badge-Auszeichnungen}} für dich",
+    "count": "{count, plural, one {# Benachrichtigung} other {# Benachrichtigungen}}",
+    "invitationAccepted": "{count, plural, one {# Einladung} other {# Einladungen}} angenommen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "invitationCancelled": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}zurückgezogen",
+    "invitationDeclined": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}abgelehnt",
+    "invitationReceived": "{count, plural, one {# Team-Einladung} other {# Team-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "memberJoined": "{count, plural, one {# neues Mitglied} other {# neue Mitglieder}} ist {teamCount, plural, =0 {einem deiner Teams} =1 {einem deiner Teams} other {# deiner Teams}} beigetreten",
     "memberLeft": "{count, plural, one {# Mitglied hat} other {# Mitglieder haben}} {teamCount, plural, =0 {eines deiner Teams} =1 {eines deiner Teams} other {# deiner Teams}} verlassen",
     "memberRemoved": "Aus {teamCount, plural, =0 {einem Team} =1 {einem Team} other {# deiner Teams}} entfernt",
-    "roleChanged": "{count, plural, one {# Rollenänderung} other {# Rollenänderungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
-    "roleCreated": "{count, plural, one {# neue Rolle} other {# neue Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geöffnet",
-    "roleUpdated": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} bearbeitet",
-    "roleDeleted": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} gelöscht",
-    "roleClosed": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geschlossen",
-    "roleFilled": "{count, plural, one {# Rolle} other {# Rollen}} in {teamCount, plural, =0 {einem deiner Teams} =1 {einem deiner Teams} other {# deiner Teams}} besetzt",
-    "roleReopened": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} wieder geöffnet",
+    "messages": {
+      "mentions": "{count, plural, one {# Erwähnung} other {# Erwähnungen}}",
+      "senders": "{count, plural, one {von # Person} other {von # Personen}}",
+      "teams": "{count, plural, one {in # Team} other {in # Teams}}",
+      "unread": "{count, plural, one {# ungelesene Nachricht} other {# ungelesene Nachrichten}}"
+    },
     "ownershipTransferred": "{count, plural, one {# Eigentumsübertragung} other {# Eigentumsübertragungen}}",
-    "teamDeleted": "{count, plural, one {# Team} other {# Teams}} gelöscht",
-    "invitationDeclined": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}abgelehnt",
-    "invitationCancelled": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}zurückgezogen",
-    "applicationCancelled": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "roleApplicationCancelled": "{count, plural, one {# Rollenbewerbung} other {# Rollenbewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleApplicationDeferredInvite": "{count, plural, one {# Rollen-Angebot} other {# Rollen-Angebote}} erstellt{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleAssigned": "{count, plural, one {# Rollenzuweisung} other {# Rollenzuweisungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
+    "roleChanged": "{count, plural, one {# Rollenänderung} other {# Rollenänderungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
+    "roleClosed": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geschlossen",
+    "roleCreated": "{count, plural, one {# neue Rolle} other {# neue Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geöffnet",
+    "roleDeleted": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} gelöscht",
+    "roleFilled": "{count, plural, one {# Rolle} other {# Rollen}} in {teamCount, plural, =0 {einem deiner Teams} =1 {einem deiner Teams} other {# deiner Teams}} besetzt",
+    "roleInvitation": "{count, plural, one {# Rollen-Einladung} other {# Rollen-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleReopened": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} wieder geöffnet",
     "roleStatusChangedApplicant": "{count, plural, one {# Rolle, auf die du dich beworben hast, hat} other {# Rollen, auf die du dich beworben hast, haben}} sich geändert",
-    "roleStatusChangedInvitee": "{count, plural, one {# Rolle, zu der du eingeladen wurdest, hat} other {# Rollen, zu denen du eingeladen wurdest, haben}} sich geändert"
+    "roleStatusChangedInvitee": "{count, plural, one {# Rolle, zu der du eingeladen wurdest, hat} other {# Rollen, zu denen du eingeladen wurdest, haben}} sich geändert",
+    "roleUpdated": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} bearbeitet",
+    "teamDeleted": "{count, plural, one {# Team} other {# Teams}} gelöscht"
   },
   "pagination": {
-    "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}",
-    "noResults": "Keine Ergebnisse",
-    "goToPrevious": "Zur vorherigen Seite",
     "goToNext": "Zur nächsten Seite",
-    "previousPage": "Vorherige Seite",
-    "nextPage": "Nächste Seite",
-    "page": "Seite {page}",
+    "goToPrevious": "Zur vorherigen Seite",
     "morePages": "Weitere Seiten",
-    "perPage": "Pro Seite:"
+    "nextPage": "Nächste Seite",
+    "noResults": "Keine Ergebnisse",
+    "page": "Seite {page}",
+    "perPage": "Pro Seite:",
+    "previousPage": "Vorherige Seite",
+    "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}"
   },
   "privacy": {
-    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
-    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein.",
-    "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
+    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
     "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
     "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
-    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben."
+    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
+    "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
+    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein."
   },
   "resultView": {
-    "groupLabel": "Ansicht",
-    "switchTo": "Zu {view} wechseln",
     "card": {
-      "label": "Kachel",
       "aria": "Kachelansicht",
+      "label": "Kachel",
       "tooltip": "Kachelansicht"
     },
-    "mini": {
-      "label": "Mini-Kachel",
-      "aria": "Mini-Kachelansicht",
-      "tooltip": "Mini-Kachelansicht"
-    },
+    "groupLabel": "Ansicht",
     "list": {
-      "label": "Liste",
       "aria": "Listenansicht",
+      "label": "Liste",
       "tooltip": "Listenansicht"
     },
     "map": {
-      "label": "Karte",
       "aria": "Kartenansicht",
+      "label": "Karte",
       "tooltip": "Kartenansicht"
-    }
-  },
-  "visibility": {
-    "title": "Sichtbarkeit",
-    "visible": "Für alle Nutzer sichtbar",
-    "hidden": "Verborgen",
-    "visibleDescription": "Alle können das finden und ansehen",
-    "hiddenDescription": "Nur du kannst das sehen",
-    "teamVisibleDescription": "Alle können dein Team finden und ansehen",
-    "teamHiddenDescription": "Nur Mitglieder können dieses Team sehen",
-    "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
-    "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
-    "toggleAria": "Sichtbarkeit umschalten"
-  },
-  "demo": {
-    "profileLabel": "Demo-Profil",
-    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person",
-    "roleLabel": "Demo-Rolle",
-    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
-    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team"
-  },
-  "matchScore": {
-    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
-    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
-    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
-    "plain": "{pct}% Profil-Übereinstimmung",
-    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
-    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
-    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
-    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
-    "tierGreat": "{pct}% sehr gute Übereinstimmung",
-    "tierGood": "{pct}% gute Übereinstimmung",
-    "tierLow": "{pct}% geringe Übereinstimmung"
-  },
-  "distance": {
-    "awayFromYou": "{km} km von dir entfernt",
-    "away": "{km} km entfernt",
-    "awayWithinLimit": "{km} km entfernt (< {limit} km)",
-    "awayBeyondLimit": "{km} km entfernt (> {limit} km)"
-  },
-  "roles": {
-    "owner": "Eigentümer",
-    "admin": "Admin",
-    "member": "Mitglied",
-    "unknown": "Unbekannt"
-  },
-  "collapse": {
-    "showAll": "Alle anzeigen",
-    "showLess": "Weniger anzeigen"
-  },
-  "user": {
-    "privateProfile": "Privates Profil",
-    "unknown": "Unbekannt",
-    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
-    "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
-    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
-    "profileImageAlt": "Profilbild von {name}",
-    "profileImageAltGeneric": "Profilbild"
-  },
-  "matchSummary": {
-    "counted": "{matchCount}/{total} passend",
-    "none": "Keine Übereinstimmung",
-    "all": "Alle passend",
-    "countedWithYou": "{matchCount}/{total} passend zu dir",
-    "countedWithName": "{matchCount}/{total} passend zu {name}",
-    "noneWithYou": "Keine Übereinstimmung mit dir",
-    "noneWithName": "Keine Übereinstimmung mit {name}",
-    "allWithYou": "Alle passend zu dir",
-    "allWithName": "Alle passend zu {name}"
+    },
+    "mini": {
+      "aria": "Mini-Kachelansicht",
+      "label": "Mini-Kachel",
+      "tooltip": "Mini-Kachelansicht"
+    },
+    "switchTo": "Zu {view} wechseln"
   },
   "roleStatus": {
-    "vacant": "Vakant",
-    "filled": "Besetzt",
     "closed": "Geschlossen",
-    "open": "Offene Rolle",
-    "vacantRoleFallback": "Vakante Rolle",
-    "roleInvitationFallback": "Rolleneinladung",
+    "closedRole": "Geschlossene Rolle",
+    "filled": "Besetzt",
     "filledRole": "Besetzte Rolle",
-    "closedRole": "Geschlossene Rolle"
+    "open": "Offene Rolle",
+    "roleInvitationFallback": "Rolleneinladung",
+    "vacant": "Vakant",
+    "vacantRoleFallback": "Vakante Rolle"
   },
-  "mapPopup": {
-    "typeTeam": "Team",
-    "typeUser": "Person",
-    "typeRole": "Offene Rolle",
-    "close": "Schließen",
-    "viewDetails": "Details ansehen",
-    "openDetails": "Details öffnen",
-    "resultAria": "Kartenergebnis {name}",
-    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
-    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
-    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
-    "openTeamInvitation": "Details der Team-Einladung öffnen",
-    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
-    "openTeamApplication": "Details der Team-Bewerbung öffnen",
-    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
-    "entityInLocation": "{entity} in {location}",
-    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
-    "entityRemote": "{entity} (remote)",
-    "entityNoLocation": "{entity} ohne Standortangabe",
-    "typeUserProfile": "Profil",
-    "demoTeam": "Demo-Team",
-    "demoRole": "Demo-Rolle",
-    "demoProfile": "Demo-Profil",
-    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
-    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
-    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
-    "memberCount": "{count} von {max} Mitgliedern",
-    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
-    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
-    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
-    "remoteOrUnmapped": "Remote oder ohne Standort",
-    "posted": "Eingestellt am {date}",
-    "mappedResults": "Ergebnisse auf der Karte"
+  "roles": {
+    "admin": "Admin",
+    "member": "Mitglied",
+    "owner": "Eigentümer",
+    "unknown": "Unbekannt"
   },
   "team": {
     "unknownName": "Unbekanntes Team"
+  },
+  "user": {
+    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
+    "privateProfile": "Privates Profil",
+    "profileImageAlt": "Profilbild von {name}",
+    "profileImageAltGeneric": "Profilbild",
+    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
+    "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
+    "unknown": "Unbekannt"
+  },
+  "visibility": {
+    "hidden": "Verborgen",
+    "hiddenDescription": "Nur du kannst das sehen",
+    "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
+    "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
+    "teamHiddenDescription": "Nur Mitglieder können dieses Team sehen",
+    "teamVisibleDescription": "Alle können dein Team finden und ansehen",
+    "title": "Sichtbarkeit",
+    "toggleAria": "Sichtbarkeit umschalten",
+    "visible": "Für alle Nutzer sichtbar",
+    "visibleDescription": "Alle können das finden und ansehen"
   }
 }
