@@ -32,8 +32,14 @@ const ACCEPTED_TYPES = {
   "application/x-rar-compressed": { icon: File, label: "RAR" },
 };
 
-const ACCEPTED_EXTENSIONS =
-  ".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.rar";
+const ACCEPTED_LABELS = Object.values(ACCEPTED_TYPES).map((type) => type.label);
+
+/** "PDF, DOC, DOCX, …" - proper nouns, identical in both languages. */
+const ACCEPTED_FORMATS_LABEL = ACCEPTED_LABELS.join(", ");
+
+const ACCEPTED_EXTENSIONS = ACCEPTED_LABELS.map(
+  (label) => `.${label.toLowerCase()}`,
+).join(",");
 
 const ChatFileUploader = ({ onFileSelect, onClose }) => {
   const { t } = useTranslation();
@@ -45,9 +51,9 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
 
   const validateFile = useCallback((file) => {
     const maxSizeBytes = MAX_SIZE_MB * 1024 * 1024;
-    
+
     if (file.size > maxSizeBytes) {
-      return `File must be less than ${MAX_SIZE_MB}MB`;
+      return t("chatUploader.errorFileTooLarge", { maxSize: MAX_SIZE_MB });
     }
 
     // Check if file type is accepted
@@ -56,11 +62,13 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
     const isAcceptedExtension = ACCEPTED_EXTENSIONS.includes(extension);
 
     if (!isAcceptedType && !isAcceptedExtension) {
-      return "File type not supported. Accepted: PDF, Word, Excel, PowerPoint, TXT, ZIP";
+      return t("chatUploader.errorFileType", {
+        formats: ACCEPTED_FORMATS_LABEL,
+      });
     }
 
     return null;
-  }, []);
+  }, [t]);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -141,7 +149,7 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
     <div className="absolute bottom-full mb-2 left-0 p-4 bg-base-100 rounded-lg shadow-lg border border-base-300 z-50 w-72">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
-        <span className="font-medium text-sm">Share File</span>
+        <span className="font-medium text-sm">{t("chatUploader.shareFile")}</span>
         <button
           type="button"
           onClick={onClose}
@@ -175,10 +183,15 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
               <Upload size={32} className="text-base-content/50" />
             )}
             <p className="text-sm text-base-content/70">
-              {isDragging ? "Drop file here" : "Drag & drop or click to select"}
+              {isDragging
+                ? t("chatUploader.dropFileHere")
+                : t("chatUploader.dragDropClick")}
             </p>
             <p className="text-xs text-base-content/50">
-              Max {MAX_SIZE_MB}MB • PDF, Word, Excel, PPT, TXT, ZIP
+              {t("chatUploader.fileHint", {
+                maxSize: MAX_SIZE_MB,
+                formats: ACCEPTED_FORMATS_LABEL,
+              })}
             </p>
           </div>
         </div>
@@ -220,14 +233,14 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
             onClick={handleClear}
             className="btn btn-ghost btn-sm flex-1"
           >
-            Cancel
+            {t("chatUploader.cancel")}
           </button>
           <button
             type="button"
             onClick={handleConfirm}
             className="btn btn-primary btn-sm flex-1"
           >
-            Send
+            {t("chatUploader.send")}
           </button>
         </div>
       )}

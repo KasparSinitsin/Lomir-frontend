@@ -3,7 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Upload, X, ImagePlus } from "lucide-react";
 
 const MAX_SIZE_MB = 10;
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const ACCEPTED_TYPES = {
+  "image/jpeg": "JPEG",
+  "image/png": "PNG",
+  "image/gif": "GIF",
+  "image/webp": "WebP",
+};
+
+const ACCEPTED_FORMATS_LABEL = Object.values(ACCEPTED_TYPES).join(", ");
 
 const ChatImageUploader = ({ onImageSelect, onClose }) => {
   const { t } = useTranslation();
@@ -15,18 +22,23 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
   const dragCounter = useRef(0);
 
   const validateFile = useCallback((file) => {
-    if (!file.type.startsWith("image/")) {
-      return "Please select an image file";
-    }
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      return "Accepted formats: JPEG, PNG, GIF, WebP";
+    // One check, not two. A bare `image/*` test used to run first and
+    // answered "Please select an image file" - which is wrong for an
+    // Illustrator, HEIC or TIFF file, because the person DID select an
+    // image and is told nothing about why it was refused. Every file that
+    // failed that test also fails this one, so the list is always the
+    // better answer.
+    if (!Object.keys(ACCEPTED_TYPES).includes(file.type)) {
+      return t("imageUploader.errorAcceptedFormats", {
+        formats: ACCEPTED_FORMATS_LABEL,
+      });
     }
     const maxSizeBytes = MAX_SIZE_MB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
-      return `Image must be less than ${MAX_SIZE_MB}MB`;
+      return t("imageUploader.errorTooLarge", { maxSize: MAX_SIZE_MB });
     }
     return null;
-  }, []);
+  }, [t]);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -117,7 +129,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
     <div className="absolute bottom-full mb-2 left-0 p-4 bg-base-100 rounded-lg shadow-lg border border-base-300 z-50 w-72">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
-        <span className="font-medium text-sm">Share Image</span>
+        <span className="font-medium text-sm">{t("chatUploader.shareImage")}</span>
         <button
           type="button"
           onClick={onClose}
@@ -151,10 +163,15 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
               <Upload size={32} className="text-base-content/50" />
             )}
             <p className="text-sm text-base-content/70">
-              {isDragging ? "Drop image here" : "Drag & drop, click, or paste"}
+              {isDragging
+                ? t("imageUploader.dropHere")
+                : t("chatUploader.dragDropPaste")}
             </p>
             <p className="text-xs text-base-content/50">
-              Max {MAX_SIZE_MB}MB • JPEG, PNG, GIF, WebP
+              {t("chatUploader.imageHint", {
+                maxSize: MAX_SIZE_MB,
+                formats: ACCEPTED_FORMATS_LABEL,
+              })}
             </p>
           </div>
         </div>
@@ -162,7 +179,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
         <div className="relative">
           <img
             src={previewUrl}
-            alt="Preview"
+            alt={t("imageUploader.previewAlt")}
             className="w-full h-40 object-cover rounded-lg"
           />
           <button
@@ -192,14 +209,14 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
             onClick={handleClear}
             className="btn btn-ghost btn-sm flex-1"
           >
-            Cancel
+            {t("chatUploader.cancel")}
           </button>
           <button
             type="button"
             onClick={handleConfirm}
             className="btn btn-primary btn-sm flex-1"
           >
-            Send
+            {t("chatUploader.send")}
           </button>
         </div>
       )}
@@ -208,7 +225,7 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
       <input
         ref={fileInputRef}
         type="file"
-        accept={ACCEPTED_TYPES.join(",")}
+        accept={Object.keys(ACCEPTED_TYPES).join(",")}
         onChange={(e) => {
           if (e.target.files?.[0]) {
             handleFile(e.target.files[0]);

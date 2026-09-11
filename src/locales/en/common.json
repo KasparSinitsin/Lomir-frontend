@@ -132,6 +132,23 @@
       "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     }
   },
+  "chatUploader": {
+    "addAttachmentAria": "Add attachment",
+    "cancel": "Cancel",
+    "dragDropClick": "Drag & drop or click to select",
+    "dragDropPaste": "Drag & drop, click, or paste",
+    "dropFileHere": "Drop file here",
+    "errorFileTooLarge": "File must be less than {maxSize}MB",
+    "errorFileType": "File type not supported. Accepted: {formats}",
+    "fileHint": "Max {maxSize}MB • {formats}",
+    "imageHint": "Max {maxSize}MB • {formats}",
+    "optionEmoji": "Emoji",
+    "optionFile": "File",
+    "optionImage": "Image",
+    "send": "Send",
+    "shareFile": "Share File",
+    "shareImage": "Share Image"
+  },
   "collapse": {
     "showAll": "Show all",
     "showLess": "Show less"
@@ -217,7 +234,7 @@
     "changeImage": "Change image",
     "dragAndDrop": "Drag & drop or click to upload",
     "dropHere": "Drop image here",
-    "errorAcceptedFormats": "Accepted formats: {formats}",
+    "errorAcceptedFormats": "Please select an image file in one of these formats: {formats}",
     "errorNotAnImage": "Please select an image file",
     "errorTooLarge": "Image must be less than {maxSize}MB",
     "maxSizeHint": "Max {maxSize}MB. Square images recommended.",
