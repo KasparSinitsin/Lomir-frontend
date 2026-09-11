@@ -141,7 +141,7 @@ const UserProfileHeaderSection = ({
           {getProfileImage() && !imageError ? (
             <img
               src={getProfileImage()}
-              alt="Profile"
+              alt={t("user.profileImageAltGeneric")}
               className="object-cover w-full h-full rounded-full"
               onError={() => setImageError(true)}
             />
@@ -195,12 +195,12 @@ const UserProfileHeaderSection = ({
               {isUserProfilePublic() ? (
                 <>
                   <Eye size={14} className={`text-green-600${dateIsNarrow ? "" : " mr-1"}`} />
-                  {!dateIsNarrow && <span>Public</span>}
+                  {!dateIsNarrow && <span>{t("user.visibilityPublic")}</span>}
                 </>
               ) : (
                 <>
                   <EyeClosed size={14} className={`text-gray-500${dateIsNarrow ? "" : " mr-1"}`} />
-                  {!dateIsNarrow && <span>Private</span>}
+                  {!dateIsNarrow && <span>{t("user.visibilityPrivate")}</span>}
                 </>
               )}
             </div>
@@ -209,7 +209,7 @@ const UserProfileHeaderSection = ({
             <span className="flex items-center gap-1.5 flex-shrink-0">
               {getMemberSinceDate() && (
                 <Tooltip
-                  content={`Joined Lomir on ${getMemberSinceDate().full}`}
+                  content={t("user.joinedOn", { date: getMemberSinceDate().full })}
                   position="bottom"
                   wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${dateIsNarrow ? "flex" : "flex sm:hidden"}`}
                 >
@@ -238,7 +238,7 @@ const UserProfileHeaderSection = ({
           className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
         >
           <Tooltip
-            content={`Joined Lomir on ${getMemberSinceDate().full}`}
+            content={t("user.joinedOn", { date: getMemberSinceDate().full })}
             position="bottom"
             wrapperClassName="flex items-center text-base-content/70 cursor-help"
           >

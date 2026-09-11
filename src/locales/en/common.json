@@ -611,12 +611,47 @@
   "user": {
     "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
     "fallbackName": "User",
+    "joinedOn": "Joined Lomir on {date}",
     "privateProfile": "Private Profile",
     "profileImageAlt": "Profile picture of {name}",
     "profileImageAltGeneric": "Profile picture",
     "profileVisibilityPrivate": "Private Profile - only visible for you",
     "profileVisibilityPublic": "Public Profile - visible for everyone",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "visibilityPrivate": "Private",
+    "visibilityPublic": "Public"
+  },
+  "userDetails": {
+    "actions": {
+      "award": "Award",
+      "awardAria": "Award badge",
+      "awardTooltip": "Award this person a badge for their skills or contributions.",
+      "block": "Block",
+      "blockAria": "Block user",
+      "blockTooltip": "Block this person. They won't be able to message you or see your profile.",
+      "chat": "Chat",
+      "chatAria": "Start chat",
+      "chatTooltip": "Start a private chat with this person.",
+      "edit": "Edit",
+      "editAria": "Edit your profile",
+      "editTooltip": "Open your profile editor in a new tab and close these details.",
+      "invite": "Invite",
+      "inviteAria": "Invite to team",
+      "inviteTooltip": "Invite this person to one of your teams."
+    },
+    "blockDialog": {
+      "body": "{name} won’t be able to message you or see your profile anywhere on Lomir, and you won’t see theirs. You can undo this from Settings → Privacy.",
+      "confirmLabel": "Block",
+      "loadingLabel": "Blocking…",
+      "title": "Block this user?"
+    },
+    "blockFailed": "Failed to block this user.",
+    "closeTooltip": "Close user details and return to the previous view.",
+    "editTitle": "Edit Profile",
+    "loadFailed": "Failed to load user details. Please try again.",
+    "privateProfile": "This profile is private.",
+    "sendChatMessage": "Send Chat Message",
+    "title": "User Details"
   },
   "visibility": {
     "hidden": "Hidden",
