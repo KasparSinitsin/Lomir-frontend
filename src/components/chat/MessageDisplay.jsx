@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
@@ -55,6 +56,19 @@ const MessageDisplay = ({
   onConversationHeaderVisibilityChange,
   searchQuery = "",
 }) => {
+  const { t } = useTranslation();
+
+  /**
+   * The same tooltip appears at nine sites in this file, and again in
+   * ConversationHeader and ConversationList. A display name can resolve to
+   * an empty string, and an empty interpolation reads "View  details" - in
+   * German a sentence with no object - so the nameless case has its own key.
+   */
+  const detailsTooltip = (name) =>
+    name
+      ? t("chatHeader.viewDetails", { name })
+      : t("chatHeader.viewDetailsGeneric");
+
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
   const [conversationHeaderElement, setConversationHeaderElement] =
@@ -1038,7 +1052,7 @@ const MessageDisplay = ({
     if (!isFormerMember) {
       return (
         <Tooltip
-          content={isClickable ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+          content={isClickable ? detailsTooltip(getSenderDisplayName(senderInfo, false)) : undefined}
           wrapperClassName="inline-flex flex-shrink-0 mr-2"
         >
           <UserAvatar
@@ -1057,7 +1071,7 @@ const MessageDisplay = ({
     }
 
     const formerMemberTooltip = isClickable
-      ? `View ${getSenderDisplayName(senderInfo, false)} details`
+      ? detailsTooltip(getSenderDisplayName(senderInfo, false))
       : isFormerMember
         ? "Former team member"
         : undefined;
@@ -1094,7 +1108,7 @@ const MessageDisplay = ({
 
     return (
       <Tooltip
-        content={canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+        content={canClick ? detailsTooltip(getSenderDisplayName(senderInfo, false)) : undefined}
         position="top"
       >
         <div
@@ -1123,7 +1137,7 @@ const MessageDisplay = ({
 
     return (
       <Tooltip
-        content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+        content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
         wrapperClassName="inline-flex mb-2 mx-auto"
       >
         <UserAvatar
@@ -1147,7 +1161,7 @@ const MessageDisplay = ({
     const teamAvatarUrl = getTeamAvatarUrl(resolvedTeamData);
 
     return (
-      <Tooltip content={`View ${resolvedTeamData.name} details`} wrapperClassName="inline-flex mb-2">
+      <Tooltip content={detailsTooltip(resolvedTeamData.name)} wrapperClassName="inline-flex mb-2">
       <div
         className="avatar cursor-pointer hover:opacity-80 transition-opacity"
         onClick={handleTeamClick}
@@ -1253,7 +1267,7 @@ const MessageDisplay = ({
             >
               {renderConversationPartnerAvatar()}
               <Tooltip
-                content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+                content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
                 wrapperClassName="block"
               >
                 <h3
@@ -1276,7 +1290,7 @@ const MessageDisplay = ({
             >
               {renderTeamConversationAvatar()}
               <Tooltip
-                content={`View ${resolvedTeamData.name} details`}
+                content={detailsTooltip(resolvedTeamData.name)}
                 wrapperClassName="block"
               >
                 <h3
@@ -1371,7 +1385,7 @@ const MessageDisplay = ({
           >
             {renderConversationPartnerAvatar()}
             <Tooltip
-              content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+              content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
               wrapperClassName="block"
             >
               <h3
@@ -1395,7 +1409,7 @@ const MessageDisplay = ({
           >
             {renderTeamConversationAvatar()}
             <Tooltip
-              content={`View ${resolvedTeamData.name} details`}
+              content={detailsTooltip(resolvedTeamData.name)}
               wrapperClassName="block"
             >
               <h3
