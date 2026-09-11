@@ -3,6 +3,21 @@ import { useTranslation } from "react-i18next";
 import { Upload, X, ImagePlus, Trash2 } from "lucide-react";
 
 /**
+ * Display names for the types this app uses, so the message reads "WebP"
+ * rather than the "WEBP" a bare toUpperCase() produces. Any other type a
+ * caller passes falls back to its bare subtype.
+ */
+const TYPE_LABELS = {
+  "image/jpeg": "JPEG",
+  "image/png": "PNG",
+  "image/gif": "GIF",
+  "image/webp": "WebP",
+};
+
+const formatLabel = (type) =>
+  TYPE_LABELS[type] ?? type.replace("image/", "").toUpperCase();
+
+/**
  * ImageUploader Component
  *
  * A reusable drag & drop image upload component for avatars and other images.
@@ -92,16 +107,18 @@ const ImageUploader = ({
   // ============ Validation ============
   const validateFile = useCallback(
     (file) => {
-      // Check file type
-      if (!file.type.startsWith("image/")) {
+      // Check file type. Naming the accepted formats beats a generic "not
+      // an image": an Illustrator or HEIC file IS an image to the person who
+      // picked it, and every file that fails a bare `image/*` test fails the
+      // list too. The generic message survives only for the documented
+      // acceptedTypes=[] contract, where there is no list to name.
+      if (acceptedTypes.length > 0) {
+        if (!acceptedTypes.includes(file.type)) {
+          const typeNames = acceptedTypes.map(formatLabel).join(", ");
+          return t("imageUploader.errorAcceptedFormats", { formats: typeNames });
+        }
+      } else if (!file.type.startsWith("image/")) {
         return t("imageUploader.errorNotAnImage");
-      }
-
-      if (acceptedTypes.length > 0 && !acceptedTypes.includes(file.type)) {
-        const typeNames = acceptedTypes
-          .map((type) => type.replace("image/", "").toUpperCase())
-          .join(", ");
-        return t("imageUploader.errorAcceptedFormats", { formats: typeNames });
       }
 
       // Check file size

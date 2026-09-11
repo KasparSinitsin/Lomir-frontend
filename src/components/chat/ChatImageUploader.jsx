@@ -22,9 +22,12 @@ const ChatImageUploader = ({ onImageSelect, onClose }) => {
   const dragCounter = useRef(0);
 
   const validateFile = useCallback((file) => {
-    if (!file.type.startsWith("image/")) {
-      return t("imageUploader.errorNotAnImage");
-    }
+    // One check, not two. A bare `image/*` test used to run first and
+    // answered "Please select an image file" - which is wrong for an
+    // Illustrator, HEIC or TIFF file, because the person DID select an
+    // image and is told nothing about why it was refused. Every file that
+    // failed that test also fails this one, so the list is always the
+    // better answer.
     if (!Object.keys(ACCEPTED_TYPES).includes(file.type)) {
       return t("imageUploader.errorAcceptedFormats", {
         formats: ACCEPTED_FORMATS_LABEL,

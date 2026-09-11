@@ -234,7 +234,7 @@
     "changeImage": "Change image",
     "dragAndDrop": "Drag & drop or click to upload",
     "dropHere": "Drop image here",
-    "errorAcceptedFormats": "Accepted formats: {formats}",
+    "errorAcceptedFormats": "Please select an image file in one of these formats: {formats}",
     "errorNotAnImage": "Please select an image file",
     "errorTooLarge": "Image must be less than {maxSize}MB",
     "maxSizeHint": "Max {maxSize}MB. Square images recommended.",

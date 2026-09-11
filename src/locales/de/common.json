@@ -234,7 +234,7 @@
     "changeImage": "Bild ändern",
     "dragAndDrop": "Bild hierher ziehen oder zum Hochladen klicken",
     "dropHere": "Bild hier ablegen",
-    "errorAcceptedFormats": "Zulässige Formate: {formats}",
+    "errorAcceptedFormats": "Bitte wähle eine Bilddatei in einem dieser Formate aus: {formats}",
     "errorNotAnImage": "Bitte wähle eine Bilddatei aus",
     "errorTooLarge": "Das Bild muss kleiner als {maxSize} MB sein",
     "maxSizeHint": "Max. {maxSize} MB. Quadratische Bilder werden empfohlen.",
