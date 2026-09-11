@@ -382,8 +382,8 @@
     "memberOfThisTeam": "Member of this team",
     "availableTeamMembers": "Available team members",
     "showMatches": "Show matches",
-    "viewInvitationDetails": "Click to view Invitation details",
-    "viewApplicationDetails": "Click to view application details",
+    "viewInvitationDetails": "View invitation details",
+    "viewApplicationDetails": "View application details",
     "applyToJoinAndFill": "Apply to join team and to fill this role",
     "applyWithinTeam": "Apply to fill this role within your team",
     "submitFailed": "Failed to submit role application"
