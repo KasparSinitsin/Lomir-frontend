@@ -1966,7 +1966,7 @@ const TeamDetailsModal = ({
                     matchScore={effectiveTeamMatch.matchScore}
                     matchType={effectiveTeamMatch.matchType}
                     matchDetails={effectiveTeamMatch.matchDetails}
-                    comparisonLabel={t("teams:teamDetails.thisTeam")}
+                    comparisonKind="team"
                   />
 
                   {/* Team Location */}

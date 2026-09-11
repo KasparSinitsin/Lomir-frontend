@@ -359,6 +359,7 @@
   },
   "matchScore": {
     "betweenYouAnd": "{pct}% Profil-Übereinstimmung von dir und {name}",
+    "betweenYouAndThisTeam": "{pct}% Profil-Übereinstimmung von dir und diesem Team",
     "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
     "plain": "{pct}% Profil-Übereinstimmung",
     "roleNamed": "{pct}% Übereinstimmung von {name} mit der Rolle {role}",
@@ -372,7 +373,8 @@
     "tierLow": "{pct}% geringe Übereinstimmung",
     "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
     "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
-    "yourProfileWith": "{pct}% Übereinstimmung deines Profils mit {name}"
+    "yourProfileWith": "{pct}% Übereinstimmung deines Profils mit {name}",
+    "yourProfileWithThisTeam": "{pct}% Übereinstimmung deines Profils mit diesem Team"
   },
   "matchSummary": {
     "counted": "{matchCount}/{total} passend",

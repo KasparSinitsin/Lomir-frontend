@@ -78,6 +78,11 @@ const MatchScoreSection = ({
   matchType,
   matchDetails,
   comparisonLabel = null,
+  // "person" | "team". NEVER pass a noun phrase as comparisonLabel: German
+  // declines it and "mit dieses Team" is what comes out. A non-person
+  // comparison gets its own whole sentence, exactly like the `…Unnamed`
+  // tooltips had to. comparisonLabel is a NAME or null, nothing else.
+  comparisonKind = "person",
   roleLabel = null,
   headline: headlineProp = null,
   headlineTooltip = null,
@@ -153,13 +158,19 @@ const MatchScoreSection = ({
           role: normalizedRoleLabel,
         });
   } else if (normalizedMatchType === "role_match") {
-    headline = comparisonLabel
-      ? t("matchScore.yourProfileWith", { pct: tier.pct, name: comparisonLabel })
-      : t("matchScore.withYourProfile", { pct: tier.pct });
+    headline =
+      comparisonKind === "team"
+        ? t("matchScore.yourProfileWithThisTeam", { pct: tier.pct })
+        : comparisonLabel
+          ? t("matchScore.yourProfileWith", { pct: tier.pct, name: comparisonLabel })
+          : t("matchScore.withYourProfile", { pct: tier.pct });
   } else {
-    headline = comparisonLabel
-      ? t("matchScore.betweenYouAnd", { pct: tier.pct, name: comparisonLabel })
-      : t("matchScore.plain", { pct: tier.pct });
+    headline =
+      comparisonKind === "team"
+        ? t("matchScore.betweenYouAndThisTeam", { pct: tier.pct })
+        : comparisonLabel
+          ? t("matchScore.betweenYouAnd", { pct: tier.pct, name: comparisonLabel })
+          : t("matchScore.plain", { pct: tier.pct });
   }
 
   // ── Detail line (always computed from matchDetails) ───────────

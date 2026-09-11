@@ -655,7 +655,9 @@ const UserDetailsModal = ({
     if (user?.first_name) return user.first_name;
     if (user?.firstName) return user.firstName;
     if (user?.username) return user.username;
-    return "this person";
+    // No noun phrase here. A missing name means the sentence without a name
+    // (`matchScore.plain` / `withYourProfile`), never "von dir und this person".
+    return null;
   };
 
   const effectiveUserMatch = useMemo(() => {
