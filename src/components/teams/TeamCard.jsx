@@ -1405,7 +1405,7 @@ const TeamCard = ({
 
     return Number.isFinite(numeric) ? numeric : null;
   })();
-  const roleTitle = teamData.name || "Unknown Team";
+  const roleTitle = teamData.name || t("common:team.unknownName");
   const cardTitle = isRoleInvitationVariant ? (
     <button
       type="button"
