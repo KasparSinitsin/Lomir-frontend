@@ -1592,7 +1592,7 @@ const VacantRoleDetailsModal = ({
   };
 
   const getLocationText = () => {
-    if (isRemote) return "Remote — no geographic preference";
+    if (isRemote) return t("location.section.remoteNoPreference");
 
     return formatLocation(normalizeLocationData(displayRole), {
       displayType: "full",
