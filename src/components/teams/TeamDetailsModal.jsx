@@ -78,7 +78,7 @@ import {
   buildViewerTeamMatchProfile,
   enrichTeamMatchData,
 } from "../../utils/teamMatchUtils";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, matchTierSentence } from "../../utils/matchScoreUtils";
 import {
   calculateDistanceKm,
   locationsHaveDifferentKnownParts,
@@ -1680,7 +1680,7 @@ const TeamDetailsModal = ({
                     </div>
                     {teamMatchTier && (
                       <Tooltip
-                        content={`${teamMatchTier.pct}% ${teamMatchTier.label.toLowerCase()}`}
+                        content={matchTierSentence(t, teamMatchTier)}
                         position="bottom"
                         wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${teamMatchTier.bg}`}
                       >

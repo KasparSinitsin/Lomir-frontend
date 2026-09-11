@@ -12,7 +12,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, matchTierSentence } from "../../utils/matchScoreUtils";
 import {
   formatDateLong,
   formatMonthYear,
@@ -160,11 +160,7 @@ const UserProfileHeaderSection = ({
         {matchTier && (
           <Tooltip
             content={
-              matchTier.tier === "great"
-                ? t("matchScore.tierGreat", { pct: matchTier.pct })
-                : matchTier.tier === "good"
-              ? t("matchScore.tierGood", { pct: matchTier.pct })
-              : t("matchScore.tierLow", { pct: matchTier.pct })
+              matchTierSentence(t, matchTier)
             }
             position="bottom"
             wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
