@@ -1480,7 +1480,7 @@ const MessageDisplay = ({
                     canReactMessage ? (
                       <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 z-10">
                         <Tooltip
-                          content="React"
+                          content={t("messageBubble.respond")}
                           position="top"
                           wrapperClassName="inline-flex"
                         >
@@ -1519,7 +1519,7 @@ const MessageDisplay = ({
                               })
                             }
                             className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                            aria-label="React to message"
+                            aria-label={t("messageBubble.respondAria")}
                           >
                             <Reply
                               size={14}

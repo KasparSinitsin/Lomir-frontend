@@ -421,6 +421,26 @@
     "noneWithName": "Keine Übereinstimmung mit {name}",
     "noneWithYou": "Keine Übereinstimmung mit dir"
   },
+  "messageBubble": {
+    "attachmentFile": "Datei",
+    "cancel": "Abbrechen",
+    "dataExpired": "Diese Daten sind abgelaufen.",
+    "deleteMessage": "Nachricht löschen",
+    "edit": "Nachricht bearbeiten",
+    "edited": "Nachricht bearbeitet",
+    "formerUser": "Ehemaliges Lomir-Mitglied",
+    "mediaExpired": "Bild oder Datei ist nicht mehr verfügbar",
+    "messageDeleted": "Diese Nachricht wurde gelöscht.",
+    "messageUnavailable": "Nachricht nicht verfügbar",
+    "openImage": "Zum Öffnen und Herunterladen in neuem Tab klicken",
+    "originalDeleted": "Die ursprüngliche Nachricht wurde gelöscht",
+    "renderError": "Diese Nachricht konnte nicht dargestellt werden.",
+    "repliedImageAlt": "Bild der zitierten Nachricht",
+    "respond": "Antworten",
+    "respondAria": "Auf Nachricht antworten",
+    "save": "Speichern",
+    "sharedImageAlt": "Geteiltes Bild"
+  },
   "messageInput": {
     "attachmentImage": "Bild",
     "attachmentImageOrFile": "Bild / Datei",
