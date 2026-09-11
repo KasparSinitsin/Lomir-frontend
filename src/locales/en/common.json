@@ -33,7 +33,9 @@
       "personal": "Personal Attributes",
       "technical": "Technical Expertise"
     },
+    "creditsBare": "{credits}ct.",
     "creditsInline": "| {credits}ct.",
+    "creditsInlinePlus": "| +{credits}ct.",
     "descriptions": {
       "adaptable": "Flexibly responds to changing circumstances and requirements",
       "artisan": "Creates beautiful and high-quality work in any medium",
@@ -370,10 +372,11 @@
     "toggleAria": "Toggle visibility"
   },
   "demo": {
-    "teamTooltip": "Demo Team: for testing purposes, no real team",
-    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "profileLabel": "Demo Profile",
+    "profileTooltip": "Demo Profile: for testing purposes, no real person",
     "roleLabel": "Demo Role",
-    "profileTooltip": "Demo Profile: for testing purposes, no real person"
+    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "teamTooltip": "Demo Team: for testing purposes, no real team"
   },
   "matchScore": {
     "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",

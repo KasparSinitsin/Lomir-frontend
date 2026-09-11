@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -27,6 +28,7 @@ const BadgeCategoryCard = ({
   onBadgeClick,
   highlightBadgeName,
 }) => {
+  const { t } = useTranslation();
   // Get solid pastel background color for category
   const getPastelBackground = () => {
     return CATEGORY_SECTION_PASTELS[category] || DEFAULT_SECTION_PASTEL;
@@ -114,7 +116,7 @@ const BadgeCategoryCard = ({
               >
                 {badge.name}
                 {credits && (
-                  <span className="ml-1 opacity-80">| {credits}ct.</span>
+                  <span className="ml-1 opacity-80">{t("badges.creditsInline", { credits })}</span>
                 )}
               </span>
             );

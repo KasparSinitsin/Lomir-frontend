@@ -977,7 +977,7 @@ const BadgeAwardModal = ({
                         style={{ borderColor: badgeColor, color: badgeColor }}
                       >
                         {selectedTag.name}
-                        <span className="opacity-70">| +{credits}ct.</span>
+                        <span className="opacity-70">{t("badges.creditsInlinePlus", { credits })}</span>
                         <button
                           onClick={() => setSelectedTag(null)}
                           className="ml-1 hover:opacity-60 transition-opacity"

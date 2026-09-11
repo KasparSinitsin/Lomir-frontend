@@ -377,7 +377,7 @@ const TagsDisplaySection = ({
           {tag.name}
           {hasBadgeCredits && (
             <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
-              {tag.badgeCredits}ct.
+              {t("badges.creditsBare", { credits: tag.badgeCredits })}
             </span>
           )}
         </span>
