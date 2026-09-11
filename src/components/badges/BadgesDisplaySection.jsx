@@ -167,7 +167,7 @@ const BadgesDisplaySection = ({
                 <span style={{ color: badge.color }} className="font-medium">
                   {getBadgeName(badge.name, t)}
                   {credits && showCredits && (
-                    <span className="opacity-70"> | {credits}ct.</span>
+                    <span className="opacity-70"> {t("badges.creditsInline", { credits })}</span>
                   )}
                 </span>
                 {index < visibleBadges.length - 1 && ", "}
@@ -270,7 +270,7 @@ const BadgesDisplaySection = ({
                 >
                   {getBadgeName(badge.name, t)}
                   {credits && showCredits && (
-                    <span className="ml-1 opacity-80">| {credits}ct.</span>
+                    <span className="ml-1 opacity-80">{t("badges.creditsInline", { credits })}</span>
                   )}
                 </span>
               );
@@ -430,7 +430,7 @@ const BadgesDisplaySection = ({
                         {getBadgeName(badge.name, t)}
                         {credits && showCredits && (
                           <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
-                            {credits}ct.
+                            {t("badges.creditsBare", { credits })}
                           </span>
                         )}
                       </span>

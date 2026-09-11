@@ -311,10 +311,18 @@ const MatchScoreSection = ({
       </div>
 
       {/* Per-dimension bars */}
-      <div className="space-y-2">
+      {/*
+        One grid, not three flex rows. The first column is `auto`, so it sizes
+        to the WIDEST of the three labels and every bar still starts at the same
+        x. A fixed `w-24` used to do the aligning, but the label inside is
+        `whitespace-nowrap` and cannot shrink - German "Fokusbereiche" overflowed
+        the 96px and drew on top of its own bar. Content-sized, that cannot
+        happen in any language.
+      */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-2">
         {rows.map(({ label, value, icon, tooltip }) => (
-          <div key={label} className="flex items-center gap-2">
-            <Tooltip content={tooltip} wrapperClassName="w-24 flex-shrink-0">
+          <React.Fragment key={label}>
+            <Tooltip content={tooltip} wrapperClassName="flex-shrink-0">
               <span className="text-sm leading-[110%] text-base-content/60 flex items-center gap-1 cursor-help whitespace-nowrap">
                 {React.createElement(icon, {
                   size: 14,
@@ -323,7 +331,7 @@ const MatchScoreSection = ({
                 {label}
               </span>
             </Tooltip>
-            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${tier.bgMid}`}>
+            <div className={`h-1.5 rounded-full overflow-hidden ${tier.bgMid}`}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ${tier.bg}`}
                 style={{ width: `${value}%` }}
@@ -332,7 +340,7 @@ const MatchScoreSection = ({
             <span className="text-sm leading-[110%] font-medium text-base-content/60 w-8 text-right">
               {value}%
             </span>
-          </div>
+          </React.Fragment>
         ))}
       </div>
     </div>

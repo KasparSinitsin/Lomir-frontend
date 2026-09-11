@@ -227,7 +227,7 @@ const UserProfileHeaderSection = ({
                   wrapperClassName="flex items-start text-base-content/50"
                 >
                   <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />
-                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Profile</span>}
+                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">{t("demo.profileLabel")}</span>}
                 </Tooltip>
               )}
             </span>

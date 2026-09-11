@@ -33,6 +33,9 @@
       "personal": "Persönliche Eigenschaften",
       "technical": "Technische Expertise"
     },
+    "creditsBare": "{credits} ct.",
+    "creditsInline": "| {credits} ct.",
+    "creditsInlinePlus": "| +{credits} ct.",
     "descriptions": {
       "adaptable": "Reagiert flexibel auf sich ändernde Umstände und Anforderungen",
       "artisan": "Schafft schöne und hochwertige Werke in jedem Medium",
@@ -229,23 +232,24 @@
     "useSuggestedCity": "Übernehmen",
     "useSuggestedCityAria": "{city} übernehmen",
     "section": {
-      "title": "Standort",
-      "remote": "Remote",
-      "remoteTeam": "Remote-Team",
-      "noPhysicalLocation": "(Kein fester Treffpunkt)",
-      "noLocationBoundaries": "Keine räumliche Bindung",
-      "notSpecified": "Nicht angegeben",
       "distanceAway": "{distance} entfernt",
+      "matchShort": "Passt",
+      "matchesLocationOf": "Passt zum Standort von {name}",
+      "matchesYourLocation": "Passt zu deinem Standort",
+      "noLocationBoundaries": "Keine räumliche Bindung",
+      "noLocationSet": "Kein Standort angegeben",
+      "noPhysicalLocation": "(Kein fester Treffpunkt)",
+      "notCompared": "Standort nicht verglichen",
+      "notSpecified": "Nicht angegeben",
+      "outsideRangeOf": "Außerhalb des Umkreises von {name}",
+      "outsideYourRange": "Außerhalb deines Umkreises",
+      "preference": "Standort-Präferenz",
+      "remote": "Remote",
+      "remoteNoPreference": "Remote — keine geografische Präferenz",
+      "remoteTeam": "Remote-Team",
+      "title": "Standort",
       "unavailable": "Standort nicht verfügbar",
       "unavailableShort": "Keine Angabe",
-      "matchesYourLocation": "Passt zu deinem Standort",
-      "matchesLocationOf": "Passt zum Standort von {name}",
-      "outsideYourRange": "Außerhalb deines Umkreises",
-      "outsideRangeOf": "Außerhalb des Umkreises von {name}",
-      "preference": "Standort-Präferenz",
-      "noLocationSet": "Kein Standort angegeben",
-      "notCompared": "Standort nicht verglichen",
-      "matchShort": "Passt",
       "withinKmFromRole": "im Umkreis von {km} km um den Rollenstandort"
     },
     "locationMode": {
@@ -368,10 +372,11 @@
     "toggleAria": "Sichtbarkeit umschalten"
   },
   "demo": {
-    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team",
-    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "profileLabel": "Demo-Profil",
+    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person",
     "roleLabel": "Demo-Rolle",
-    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person"
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team"
   },
   "matchScore": {
     "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",

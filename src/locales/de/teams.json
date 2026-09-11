@@ -382,8 +382,8 @@
     "memberOfThisTeam": "Mitglied dieses Teams",
     "availableTeamMembers": "Verfügbare Teammitglieder",
     "showMatches": "Matches anzeigen",
-    "viewInvitationDetails": "Klicken, um die Einladungsdetails zu sehen",
-    "viewApplicationDetails": "Klicken, um die Bewerbungsdetails zu sehen",
+    "viewInvitationDetails": "Einladungsdetails ansehen",
+    "viewApplicationDetails": "Bewerbungsdetails ansehen",
     "applyToJoinAndFill": "Bewerben, um dem Team beizutreten und diese Rolle zu übernehmen",
     "applyWithinTeam": "Innerhalb deines Teams auf diese Rolle bewerben",
     "submitFailed": "Bewerbung auf die Rolle konnte nicht gesendet werden"
