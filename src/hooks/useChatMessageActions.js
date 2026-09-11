@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { messageService } from "../services/messageService";
 import { teamService } from "../services/teamService";
 import socketService from "../services/socketService";
@@ -38,6 +39,8 @@ const useChatMessageActions = ({
   setSelectedTeamId,
   setSelectedTeamData,
 }) => {
+  const { t } = useTranslation();
+
   const closePendingChatAction = () => {
     if (pendingChatActionLoading) return;
     setPendingChatAction(null);
@@ -75,7 +78,7 @@ const useChatMessageActions = ({
       return true;
     } catch (error) {
       console.error("Error leaving team:", error);
-      setError("Failed to leave team. Please try again.");
+      setError(t("chatPage.errors.leaveTeamFailed"));
       return false;
     }
   };
@@ -130,7 +133,7 @@ const useChatMessageActions = ({
       return true;
     } catch (error) {
       console.error("Error deleting conversation:", error);
-      setError("Failed to delete conversation. Please try again.");
+      setError(t("chatPage.errors.deleteConversationFailed"));
       return false;
     }
   };
@@ -162,7 +165,7 @@ const useChatMessageActions = ({
   const handleSendFile = async (file) => {
     if (!canSendInActiveConversation || !file) {
       if (!isCurrentUserActiveTeamMember) {
-        setError("You no longer have access to this team chat.");
+        setError(t("chatPage.errors.noTeamChatAccess"));
       }
       return;
     }
@@ -172,7 +175,7 @@ const useChatMessageActions = ({
       const uploadResult = await uploadToImageKit(file, "chatFiles");
 
       if (!uploadResult.success) {
-        setError(uploadResult.error || "Failed to upload file");
+        setError(uploadResult.error || t("chatPage.errors.uploadFileRejected"));
         return;
       }
 
@@ -201,14 +204,14 @@ const useChatMessageActions = ({
       setReplyingTo(null);
     } catch (error) {
       console.error("Error uploading file:", error);
-      setError("Failed to upload file. Please try again.");
+      setError(t("chatPage.errors.uploadFileFailed"));
     }
   };
 
   const handleSendImage = async (file) => {
     if (!canSendInActiveConversation || !file) {
       if (!isCurrentUserActiveTeamMember) {
-        setError("You no longer have access to this team chat.");
+        setError(t("chatPage.errors.noTeamChatAccess"));
       }
       return;
     }
@@ -218,7 +221,7 @@ const useChatMessageActions = ({
       const uploadResult = await uploadToImageKit(file, "chatImages");
 
       if (!uploadResult.success) {
-        setError(uploadResult.error || "Failed to upload image");
+        setError(uploadResult.error || t("chatPage.errors.uploadImageRejected"));
         return;
       }
 
@@ -247,7 +250,7 @@ const useChatMessageActions = ({
       setReplyingTo(null);
     } catch (error) {
       console.error("Error uploading image:", error);
-      setError("Failed to upload image. Please try again.");
+      setError(t("chatPage.errors.uploadImageFailed"));
     }
   };
 
@@ -287,7 +290,7 @@ const useChatMessageActions = ({
       return true;
     } catch (err) {
       console.error("Failed to delete message:", err);
-      setError("Failed to delete message. Please try again.");
+      setError(t("chatPage.errors.deleteMessageFailed"));
 
       // Optional: re-fetch messages for correctness after failure
       // (you can leave this out if you don’t want)
@@ -419,7 +422,7 @@ const useChatMessageActions = ({
         );
       }
       console.error("Failed to edit message:", err);
-      setError("Failed to edit message. Please try again.");
+      setError(t("chatPage.errors.editMessageFailed"));
       throw err;
     }
   };
@@ -428,7 +431,7 @@ const useChatMessageActions = ({
     if (!content.trim() || !conversationId) return;
     if (!canSendInActiveConversation) {
       if (!isCurrentUserActiveTeamMember) {
-        setError("You no longer have access to this team chat.");
+        setError(t("chatPage.errors.noTeamChatAccess"));
       }
       return;
     }

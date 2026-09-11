@@ -158,6 +158,17 @@
       "message": "Diese Nachricht löschen? Sie wird in diesem Chat durch einen Hinweis auf eine gelöschte Nachricht ersetzt.",
       "title": "Nachricht löschen"
     },
+    "errors": {
+      "deleteConversationFailed": "Unterhaltung konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "deleteMessageFailed": "Nachricht konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "editMessageFailed": "Nachricht konnte nicht bearbeitet werden. Bitte versuche es erneut.",
+      "leaveTeamFailed": "Team konnte nicht verlassen werden. Bitte versuche es erneut.",
+      "noTeamChatAccess": "Du hast keinen Zugriff mehr auf diesen Team-Chat.",
+      "uploadFileFailed": "Datei konnte nicht hochgeladen werden. Bitte versuche es erneut.",
+      "uploadFileRejected": "Datei konnte nicht hochgeladen werden",
+      "uploadImageFailed": "Bild konnte nicht hochgeladen werden. Bitte versuche es erneut.",
+      "uploadImageRejected": "Bild konnte nicht hochgeladen werden"
+    },
     "leaveTeam": {
       "confirmLabel": "Verlassen",
       "fallbackTeamName": "dieses Team",
