@@ -132,6 +132,14 @@
       "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     }
   },
+  "chatHeader": {
+    "backToList": "Back to conversation list",
+    "directChat": "DM Chat",
+    "teamChat": "Team Chat",
+    "teamChatMembers": "Team Chat with {count, plural, one {# Member} other {# Members}}",
+    "viewDetails": "View {name} details",
+    "viewDetailsGeneric": "View details"
+  },
   "chatUploader": {
     "addAttachmentAria": "Add attachment",
     "cancel": "Cancel",

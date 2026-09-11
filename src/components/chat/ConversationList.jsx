@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Archive,
@@ -331,6 +332,19 @@ const ConversationList = ({
   chatVisible = true,
   currentUser = null,
 }) => {
+  const { t } = useTranslation();
+
+  /**
+   * The same tooltip appears at nine sites in this file, and again in
+   * ConversationHeader and ConversationList. A display name can resolve to
+   * an empty string, and an empty interpolation reads "View  details" - in
+   * German a sentence with no object - so the nameless case has its own key.
+   */
+  const detailsTooltip = (name) =>
+    name
+      ? t("chatHeader.viewDetails", { name })
+      : t("chatHeader.viewDetailsGeneric");
+
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
@@ -707,9 +721,9 @@ const ConversationList = ({
                 <Tooltip
                   content={
                     isTeam
-                      ? `View ${conversationData?.name} details`
+                      ? detailsTooltip(conversationData?.name)
                       : isUserClickable
-                        ? `View ${displayName} details`
+                        ? detailsTooltip(displayName)
                         : undefined
                   }
                   wrapperClassName="inline-flex items-center mr-3"
