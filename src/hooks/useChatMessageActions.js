@@ -50,7 +50,10 @@ const useChatMessageActions = ({
     }
 
     const teamId = activeConversation.team.id;
-    const teamName = activeConversation.team.name || "this team";
+    // Deliberately no fallback here: an unnamed team is rendered by Chat.jsx,
+    // which has the hook and can translate it. A literal put in at this point
+    // would win over that and leave English in a German dialog.
+    const teamName = activeConversation.team.name;
 
     setPendingChatAction({ type: "leave-team", teamId, teamName });
   };

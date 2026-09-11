@@ -144,6 +144,36 @@
   "chatMessage": {
     "emptyError": "Die Nachricht darf nicht leer sein."
   },
+  "chatPage": {
+    "conversationUnavailable": "Diese Unterhaltung ist nicht mehr verfügbar.",
+    "deleteConversation": {
+      "confirmLabel": "Entfernen",
+      "loadingLabel": "Wird entfernt …",
+      "message": "Diesen Chat aus deiner Unterhaltungsliste entfernen? Dein Nachrichtenverlauf mit dieser Unterhaltung wird hier nicht mehr angezeigt.",
+      "title": "Chat entfernen"
+    },
+    "deleteMessage": {
+      "confirmLabel": "Löschen",
+      "loadingLabel": "Wird gelöscht …",
+      "message": "Diese Nachricht löschen? Sie wird in diesem Chat durch einen Hinweis auf eine gelöschte Nachricht ersetzt.",
+      "title": "Nachricht löschen"
+    },
+    "leaveTeam": {
+      "confirmLabel": "Verlassen",
+      "fallbackTeamName": "dieses Team",
+      "loadingLabel": "Wird verlassen …",
+      "message": "„{teamName}“ verlassen? Dadurch wird der Chat aus deiner Unterhaltungsliste entfernt.",
+      "title": "Team-Chat verlassen"
+    },
+    "loadConversationsFailed": "Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
+    "searchAria": "Chats durchsuchen",
+    "searchClearAria": "Chat-Suche löschen",
+    "searchCountMatches": "{filtered} von {total} Chats · {matches, plural, one {# Treffer} other {# Treffer}}",
+    "searchCountSearching": "{filtered} von {total} Chats · Nachrichten werden durchsucht …",
+    "searchNoResults": "Keine Personennamen, Teamnamen oder Nachrichten passen zu „{query}“. Versuche einen anderen Suchbegriff.",
+    "searchPlaceholder": "Chats durchsuchen …",
+    "title": "Chats"
+  },
   "chatUploader": {
     "addAttachmentAria": "Anhang hinzufügen",
     "cancel": "Abbrechen",

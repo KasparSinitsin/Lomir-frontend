@@ -144,6 +144,36 @@
   "chatMessage": {
     "emptyError": "Message cannot be empty."
   },
+  "chatPage": {
+    "conversationUnavailable": "This conversation is no longer available.",
+    "deleteConversation": {
+      "confirmLabel": "Remove",
+      "loadingLabel": "Removing...",
+      "message": "Remove this chat from your conversation list? Your message history with this conversation will no longer be shown here.",
+      "title": "Remove Chat"
+    },
+    "deleteMessage": {
+      "confirmLabel": "Delete",
+      "loadingLabel": "Deleting...",
+      "message": "Delete this message? It will be replaced with a deleted-message marker in this chat.",
+      "title": "Delete Message"
+    },
+    "leaveTeam": {
+      "confirmLabel": "Leave",
+      "fallbackTeamName": "this team",
+      "loadingLabel": "Leaving...",
+      "message": "Leave \"{teamName}\"? This removes the chat from your conversation list.",
+      "title": "Leave Team Chat"
+    },
+    "loadConversationsFailed": "Failed to load conversations. Please try again.",
+    "searchAria": "Search chats",
+    "searchClearAria": "Clear chat search",
+    "searchCountMatches": "{filtered} of {total} chats · {matches, plural, one {# match} other {# matches}}",
+    "searchCountSearching": "{filtered} of {total} chats · searching messages...",
+    "searchNoResults": "No user names, team names, or messages match \"{query}\". Try a different search term.",
+    "searchPlaceholder": "Search chats...",
+    "title": "Chats"
+  },
   "chatUploader": {
     "addAttachmentAria": "Add attachment",
     "cancel": "Cancel",

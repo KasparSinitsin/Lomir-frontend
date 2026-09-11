@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   LogOut,
   Trash2,
@@ -59,6 +60,7 @@ const isTransientEmptyDirectConversation = (conversation) =>
     EMPTY_DIRECT_CONVERSATION_PREVIEW;
 
 const Chat = () => {
+  const { t } = useTranslation();
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -385,7 +387,7 @@ const Chat = () => {
       activeConversationRef.current,
     );
     if (isBlockedId(activePartnerId)) {
-      setError("This conversation is no longer available.");
+      setError(t("chatPage.conversationUnavailable"));
       setActiveConversation(null);
       setMessages([]);
       clearTypingUsers();
@@ -410,9 +412,9 @@ const Chat = () => {
   // fetch-effect error message).
   useEffect(() => {
     if (conversationsLoadError) {
-      setError("Failed to load conversations. Please try again.");
+      setError(t("chatPage.loadConversationsFailed"));
     }
-  }, [conversationsLoadError]);
+  }, [conversationsLoadError, t]);
 
   // Once the conversation list has loaded, either auto-select the first chat
   // (landed on /chat with none chosen) or seed a virtual DM entry when the URL
@@ -627,28 +629,30 @@ const Chat = () => {
   const pendingChatActionType = pendingChatAction?.type;
   const pendingChatActionConfig = {
     "delete-message": {
-      title: "Delete Message",
-      message:
-        "Delete this message? It will be replaced with a deleted-message marker in this chat.",
-      confirmLabel: "Delete",
-      loadingLabel: "Deleting...",
+      title: t("chatPage.deleteMessage.title"),
+      message: t("chatPage.deleteMessage.message"),
+      confirmLabel: t("chatPage.deleteMessage.confirmLabel"),
+      loadingLabel: t("chatPage.deleteMessage.loadingLabel"),
       variant: "error",
       icon: <Trash2 size={16} />,
     },
     "delete-conversation": {
-      title: "Remove Chat",
-      message:
-        "Remove this chat from your conversation list? Your message history with this conversation will no longer be shown here.",
-      confirmLabel: "Remove",
-      loadingLabel: "Removing...",
+      title: t("chatPage.deleteConversation.title"),
+      message: t("chatPage.deleteConversation.message"),
+      confirmLabel: t("chatPage.deleteConversation.confirmLabel"),
+      loadingLabel: t("chatPage.deleteConversation.loadingLabel"),
       variant: "error",
       icon: <Trash2 size={16} />,
     },
     "leave-team": {
-      title: "Leave Team Chat",
-      message: `Leave "${pendingChatAction?.teamName || "this team"}"? This removes the chat from your conversation list.`,
-      confirmLabel: "Leave",
-      loadingLabel: "Leaving...",
+      title: t("chatPage.leaveTeam.title"),
+      message: t("chatPage.leaveTeam.message", {
+        teamName:
+          pendingChatAction?.teamName ||
+          t("chatPage.leaveTeam.fallbackTeamName"),
+      }),
+      confirmLabel: t("chatPage.leaveTeam.confirmLabel"),
+      loadingLabel: t("chatPage.leaveTeam.loadingLabel"),
       variant: "error",
       icon: <LogOut size={16} />,
     },
@@ -659,7 +663,7 @@ const Chat = () => {
     Boolean(conversationId) &&
     showChatView &&
     (Boolean(activeConversation) || loadingMessages);
-  const chatSearchPlaceholder = "Search chats...";
+  const chatSearchPlaceholder = t("chatPage.searchPlaceholder");
   const chatSearchInputWidth = `${Math.max(
     chatSearchQuery.length,
     chatSearchPlaceholder.length,
@@ -673,7 +677,7 @@ const Chat = () => {
           type="search"
           className="min-w-0 text-sm"
           placeholder={chatSearchPlaceholder}
-          aria-label="Search chats"
+          aria-label={t("chatPage.searchAria")}
           value={chatSearchQuery}
           onChange={(event) => setChatSearchQuery(event.target.value)}
           style={{
@@ -687,7 +691,7 @@ const Chat = () => {
             type="button"
             className="btn btn-ghost btn-xs ml-auto h-6 min-h-0 w-6 p-0"
             onClick={() => setChatSearchQuery("")}
-            aria-label="Clear chat search"
+            aria-label={t("chatPage.searchClearAria")}
           >
             <X size={14} />
           </button>
@@ -695,17 +699,23 @@ const Chat = () => {
       </label>
       {isChatSearchActive && !isNoSearchResults && (
         <p className="mt-1 text-xs text-base-content/60 sm:text-right">
-          {filteredConversations.length} of {conversations.length} chats
           {searchingChatMessages
-            ? " · searching messages..."
-            : ` · ${totalSearchMatches} ${totalSearchMatches === 1 ? "match" : "matches"}`}
+            ? t("chatPage.searchCountSearching", {
+                filtered: filteredConversations.length,
+                total: conversations.length,
+              })
+            : t("chatPage.searchCountMatches", {
+                filtered: filteredConversations.length,
+                total: conversations.length,
+                matches: totalSearchMatches,
+              })}
         </p>
       )}
     </div>
   );
   return (
     <PageContainer
-      title="Chats"
+      title={t("chatPage.title")}
       action={chatSearchAction}
       className="p-0"
       variant="muted"
@@ -715,7 +725,9 @@ const Chat = () => {
         type="violet"
         message={
           searchNoResultsToastQuery
-            ? `No user names, team names, or messages match "${searchNoResultsToastQuery}". Try a different search term.`
+            ? t("chatPage.searchNoResults", {
+                query: searchNoResultsToastQuery,
+              })
             : null
         }
         onClose={() => setSearchNoResultsToastQuery(null)}
@@ -738,7 +750,7 @@ const Chat = () => {
               onClick={closePendingChatAction}
               disabled={pendingChatActionLoading}
             >
-              Cancel
+              {t("confirmModal.cancel")}
             </Button>
             <Button
               variant={pendingChatActionConfig?.variant || "primary"}
