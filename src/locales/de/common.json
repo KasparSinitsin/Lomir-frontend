@@ -611,12 +611,47 @@
   "user": {
     "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
     "fallbackName": "Person",
+    "joinedOn": "Bei Lomir seit {date}",
     "privateProfile": "Privates Profil",
     "profileImageAlt": "Profilbild von {name}",
     "profileImageAltGeneric": "Profilbild",
     "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
     "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
-    "unknown": "Unbekannt"
+    "unknown": "Unbekannt",
+    "visibilityPrivate": "Privat",
+    "visibilityPublic": "Öffentlich"
+  },
+  "userDetails": {
+    "actions": {
+      "award": "Auszeichnen",
+      "awardAria": "Mit einem Badge auszeichnen",
+      "awardTooltip": "Diese Person für ihre Fähigkeiten oder Beiträge mit einem Badge auszeichnen.",
+      "block": "Blockieren",
+      "blockAria": "Person blockieren",
+      "blockTooltip": "Diese Person blockieren. Sie kann dir dann keine Nachrichten mehr schicken und dein Profil nicht mehr sehen.",
+      "chat": "Chat",
+      "chatAria": "Chat beginnen",
+      "chatTooltip": "Eine private Unterhaltung mit dieser Person beginnen.",
+      "edit": "Bearbeiten",
+      "editAria": "Dein Profil bearbeiten",
+      "editTooltip": "Öffnet deinen Profil-Editor in einem neuen Tab und schließt diese Details.",
+      "invite": "Einladen",
+      "inviteAria": "In ein Team einladen",
+      "inviteTooltip": "Diese Person in eines deiner Teams einladen."
+    },
+    "blockDialog": {
+      "body": "{name} kann dir dann keine Nachrichten mehr schicken und dein Profil nirgendwo auf Lomir sehen, und du siehst das Profil dieser Person nicht mehr. Rückgängig machen kannst du das unter Einstellungen → Privatsphäre.",
+      "confirmLabel": "Blockieren",
+      "loadingLabel": "Wird blockiert …",
+      "title": "Diese Person blockieren?"
+    },
+    "blockFailed": "Die Person konnte nicht blockiert werden.",
+    "closeTooltip": "Profildetails schließen und zur vorherigen Ansicht zurückkehren.",
+    "editTitle": "Profil bearbeiten",
+    "loadFailed": "Profildetails konnten nicht geladen werden. Bitte versuche es erneut.",
+    "privateProfile": "Dieses Profil ist privat.",
+    "sendChatMessage": "Chat-Nachricht senden",
+    "title": "Profildetails"
   },
   "visibility": {
     "hidden": "Verborgen",

@@ -471,8 +471,8 @@ const UserDetailsModal = ({
     }
 
     setShowDeletedUserPlaceholder(false);
-    setError("Failed to load user details. Please try again.");
-  }, [isNumericUserId, viewedUserProfileQuery.error]);
+    setError(t("userDetails.loadFailed"));
+  }, [isNumericUserId, viewedUserProfileQuery.error, t]);
 
   useEffect(() => {
     if (!viewedUserTagsQuery.error) return;
@@ -633,7 +633,7 @@ const UserDetailsModal = ({
       onClose?.();
     } catch (error) {
       setBlockError(
-        error.response?.data?.message || "Failed to block this user.",
+        error.response?.data?.message || t("userDetails.blockFailed"),
       );
     } finally {
       setBlocking(false);
@@ -648,7 +648,7 @@ const UserDetailsModal = ({
     if (user?.first_name && user?.last_name) {
       return `${user.first_name} ${user.last_name}`;
     }
-    return user?.username || "User";
+    return user?.username || t("user.fallbackName");
   };
 
   const getUserComparisonLabel = () => {
@@ -860,7 +860,7 @@ const UserDetailsModal = ({
   const modalTitle = (
     <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
       {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
-      {isEditing ? "Edit Profile" : "User Details"}
+      {isEditing ? t("userDetails.editTitle") : t("userDetails.title")}
     </h2>
   );
 
@@ -868,7 +868,7 @@ const UserDetailsModal = ({
     <div className="flex items-center gap-1">
       {showEdit && (
         <Tooltip
-          content="Open your profile editor in a new tab and close these details."
+          content={t("userDetails.actions.editTooltip")}
           position="bottom"
         >
           <Button
@@ -880,40 +880,40 @@ const UserDetailsModal = ({
             }}
             className="hover:bg-[#7ace82] hover:text-[#036b0c]"
             icon={<Edit size={16} />}
-            aria-label="Edit your profile"
+            aria-label={t("userDetails.actions.editAria")}
           >
-            <span className="hidden sm:inline">Edit</span>
+            <span className="hidden sm:inline">{t("userDetails.actions.edit")}</span>
           </Button>
         </Tooltip>
       )}
       {showChatInvite && (
         <>
-          <Tooltip content="Start a private chat with this person." position="bottom">
+          <Tooltip content={t("userDetails.actions.chatTooltip")} position="bottom">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleStartChat}
               className="flex items-center gap-1"
-              aria-label="Start chat"
+              aria-label={t("userDetails.actions.chatAria")}
             >
               <MessageCircle size={16} />
-              <span className="hidden sm:inline">Chat</span>
+              <span className="hidden sm:inline">{t("userDetails.actions.chat")}</span>
             </Button>
           </Tooltip>
-          <Tooltip content="Invite this person to one of your teams." position="bottom">
+          <Tooltip content={t("userDetails.actions.inviteTooltip")} position="bottom">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleInviteToTeam}
               className="flex items-center gap-1"
-              aria-label="Invite to team"
+              aria-label={t("userDetails.actions.inviteAria")}
             >
               <UserPlus size={16} />
-              <span className="hidden sm:inline">Invite</span>
+              <span className="hidden sm:inline">{t("userDetails.actions.invite")}</span>
             </Button>
           </Tooltip>
           <Tooltip
-            content="Award this person a badge for their skills or contributions."
+            content={t("userDetails.actions.awardTooltip")}
             position="bottom"
           >
             <Button
@@ -921,14 +921,14 @@ const UserDetailsModal = ({
               size="sm"
               onClick={() => setIsBadgeAwardModalOpen(true)}
               className="flex items-center gap-1"
-              aria-label="Award badge"
+              aria-label={t("userDetails.actions.awardAria")}
             >
               <Award size={16} />
-              <span className="hidden sm:inline">Award</span>
+              <span className="hidden sm:inline">{t("userDetails.actions.award")}</span>
             </Button>
           </Tooltip>
           <Tooltip
-            content="Block this person. They won't be able to message you or see your profile."
+            content={t("userDetails.actions.blockTooltip")}
             position="bottom"
           >
             <Button
@@ -939,10 +939,10 @@ const UserDetailsModal = ({
                 setIsBlockModalOpen(true);
               }}
               className="flex items-center gap-1 hover:bg-red-100 hover:text-red-700"
-              aria-label="Block user"
+              aria-label={t("userDetails.actions.blockAria")}
             >
               <Ban size={16} />
-              <span className="hidden sm:inline">Block</span>
+              <span className="hidden sm:inline">{t("userDetails.actions.block")}</span>
             </Button>
           </Tooltip>
         </>
@@ -964,7 +964,7 @@ const UserDetailsModal = ({
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
-        closeButtonTooltip="Close user details and return to the previous view."
+        closeButtonTooltip={t("userDetails.closeTooltip")}
         zIndexClass={zIndexClass}
         boxZIndexClass={boxZIndexClass}
         zIndexStyle={zIndexStyle}
@@ -989,7 +989,7 @@ const UserDetailsModal = ({
           // PRIVATE PROFILE - non-owner, non-teammate viewing a private account
           <div className="text-center text-base-content/60 py-8">
             <p className="text-lg font-medium">{user.username}</p>
-            <p className="text-sm mt-2">This profile is private.</p>
+            <p className="text-sm mt-2">{t("userDetails.privateProfile")}</p>
           </div>
         ) : (
           // VIEW MODE - User profile information
@@ -1158,7 +1158,7 @@ const UserDetailsModal = ({
                   className="w-full flex items-center justify-center gap-2"
                 >
                   <MessageCircle size={18} />
-                  Send Chat Message
+                  {t("userDetails.sendChatMessage")}
                 </Button>
               </div>
             )}
@@ -1266,18 +1266,16 @@ const UserDetailsModal = ({
         isOpen={isBlockModalOpen}
         onClose={() => !blocking && setIsBlockModalOpen(false)}
         onConfirm={handleConfirmBlock}
-        title="Block this user?"
-        confirmLabel="Block"
-        loadingLabel="Blocking…"
+        title={t("userDetails.blockDialog.title")}
+        confirmLabel={t("userDetails.blockDialog.confirmLabel")}
+        loadingLabel={t("userDetails.blockDialog.loadingLabel")}
         confirmVariant="error"
         confirmIcon={<Ban size={16} />}
         loading={blocking}
       >
         <div className="space-y-2">
           <p className="text-base-content/80">
-            {getUserDisplayName()} won’t be able to message you or see your
-            profile anywhere on Lomir, and you won’t see theirs. You can undo this
-            from Settings → Privacy.
+            {t("userDetails.blockDialog.body", { name: getUserDisplayName() })}
           </p>
           {blockError && <Alert type="error" message={blockError} />}
         </div>
