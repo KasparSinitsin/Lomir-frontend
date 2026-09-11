@@ -569,6 +569,7 @@
   },
   "user": {
     "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
+    "fallbackName": "Person",
     "privateProfile": "Privates Profil",
     "profileImageAlt": "Profilbild von {name}",
     "profileImageAltGeneric": "Profilbild",

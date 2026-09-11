@@ -569,6 +569,7 @@
   },
   "user": {
     "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
+    "fallbackName": "User",
     "privateProfile": "Private Profile",
     "profileImageAlt": "Profile picture of {name}",
     "profileImageAltGeneric": "Profile picture",

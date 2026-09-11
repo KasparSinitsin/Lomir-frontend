@@ -1,7 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Card from "../common/Card";
-import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
@@ -26,7 +25,7 @@ import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
-import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
 import { getBadgeName } from "../../utils/badgeLabels";
@@ -77,7 +76,7 @@ const UserCard = ({
     } else if (user.username) {
       return user.username;
     } else {
-      return "User";
+      return t("common:user.fallbackName");
     }
   };
 
@@ -164,12 +163,19 @@ const UserCard = ({
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
-    const matchType = user.matchType ?? user.match_type;
     const matchDetails = user.matchDetails ?? user.match_details;
 
-    matchTooltipText = getMatchTooltipText(matchTier, matchDetails, {
-      breakdownLabel: matchType === "role_match" ? "role match" : "match",
-    });
+    const matchTooltipParts = getMatchTooltipParts(matchTier, matchDetails);
+    matchTooltipText =
+      matchTooltipParts.variant === "breakdown"
+        ? t("common:matchScore.breakdown", matchTooltipParts.values)
+        : matchTooltipParts.variant === "shared"
+          ? t("common:matchScore.shared", matchTooltipParts.values)
+          : matchTooltipParts.variant === "sharedFocus"
+            ? t("common:matchScore.sharedFocus", matchTooltipParts.values)
+            : matchTooltipParts.variant === "plain"
+              ? t("common:matchScore.plain", matchTooltipParts.values)
+              : "";
 
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
@@ -211,7 +217,7 @@ const UserCard = ({
   const userLocation = normalizeLocationData(user);
   const locationText =
     user.is_remote || user.isRemote
-      ? "Remote"
+      ? t("common:location.section.remote")
       : formatLocation(userLocation, {
           displayType: "short",
           showState: true,
@@ -298,7 +304,7 @@ const UserCard = ({
         onClick={openUserDetails}
         viewMode="list"
         className=""
-        clickTooltip="Click to view User details"
+        clickTooltip={t("common:mapPopup.clickUserDetails")}
         imageOverlay={avatarOverlay}
         imageInnerOverlay={demoAvatarOverlay}
       >
@@ -386,7 +392,7 @@ const UserCard = ({
       imageShape="circle"
       onClick={openUserDetails}
       truncateContent={true}
-      clickTooltip="Click to view User details"
+      clickTooltip={t("common:mapPopup.clickUserDetails")}
       contentClassName={
         viewMode === "mini"
           ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`
@@ -423,17 +429,6 @@ const UserCard = ({
         compact={viewMode === "mini"}
         showCountryCode={viewMode !== "card" && viewMode !== "mini"}
       />
-
-      {/* <div className="mt-auto">
-        <Button
-          variant="primary"
-          size={viewMode === "mini" ? "xs" : "sm"}
-          onClick={openUserDetails}
-          className="w-full"
-        >
-          View Details
-        </Button>
-      </div> */}
     </Card>
   );
 };
