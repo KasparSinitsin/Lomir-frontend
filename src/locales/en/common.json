@@ -421,6 +421,26 @@
     "noneWithName": "None matching with {name}",
     "noneWithYou": "None matching with you"
   },
+  "messageBubble": {
+    "attachmentFile": "File",
+    "cancel": "Cancel",
+    "dataExpired": "This data has expired.",
+    "deleteMessage": "Delete message",
+    "edit": "Edit message",
+    "edited": "Message edited",
+    "formerUser": "Former Lomir User",
+    "mediaExpired": "Image or file no longer available",
+    "messageDeleted": "This message was deleted.",
+    "messageUnavailable": "Message unavailable",
+    "openImage": "Click to open and download image in new tab",
+    "originalDeleted": "Original message was deleted",
+    "renderError": "Could not render this message.",
+    "repliedImageAlt": "Replied image",
+    "respond": "Respond",
+    "respondAria": "Respond to message",
+    "save": "Save",
+    "sharedImageAlt": "Shared image"
+  },
   "messageInput": {
     "attachmentImage": "Image",
     "attachmentImageOrFile": "Image / File",
