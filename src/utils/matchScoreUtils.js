@@ -7,8 +7,12 @@ export const MATCH_TIER_GOOD = 50; // percentage threshold for "Good match" (gre
  * Returns tier metadata for a match score (0–1 float).
  * Shared between VacantRoleCard, TeamCard, and UserCard.
  *
+ * `tier` is the stable, language-independent code ("great" | "good" | "low").
+ * Branch on it. `label` is display text and will be translated - comparing
+ * against it silently changes behaviour in another language.
+ *
  * @param {number} score - Match score between 0 and 1
- * @returns {{ pct: number, Icon: Component, bg: string, text: string, label: string }}
+ * @returns {{ pct: number, tier: string, Icon: Component, bg: string, text: string, label: string }}
  */
 export function getMatchTier(score) {
   const pct = Math.round((score || 0) * 100);
@@ -21,6 +25,7 @@ export function getMatchTier(score) {
       bgTint: "bg-orange-50",
       borderTint: "border-orange-500",
       text: "text-orange-500",
+      tier: "great",
       label: "Great match",
     };
   if (pct >= MATCH_TIER_GOOD)
@@ -32,6 +37,7 @@ export function getMatchTier(score) {
       bgTint: "bg-green-50",
       borderTint: "border-success",
       text: "text-success",
+      tier: "good",
       label: "Good match",
     };
   return {
@@ -42,6 +48,7 @@ export function getMatchTier(score) {
     bgTint: "bg-slate-50",
     borderTint: "border-slate-400",
     text: "text-slate-400",
+    tier: "low",
     label: "Low match",
   };
 }

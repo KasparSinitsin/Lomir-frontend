@@ -343,6 +343,36 @@
     "unknownDate": "Unknown date",
     "switching": "Switching...",
     "accepting": "Accepting...",
-    "joining": "Joining..."
+    "joining": "Joining...",
+    "decline": "Decline",
+    "declining": "Declining..."
+  },
+  "vacantRoleForm": {
+    "validation": {
+      "nameRequired": "Role name is required"
+    },
+    "saveFailed": "Failed to save vacant role",
+    "editTitleFilled": "Edit Filled Role",
+    "editTitleClosed": "Edit Closed Role",
+    "editTitleVacant": "Edit Vacant Role",
+    "createTitle": "Add Vacant Role",
+    "deleteTooltip": "Permanently delete this role. You will be asked to confirm.",
+    "saveTooltip": "Save Role Changes",
+    "updated": "Vacant role updated successfully!",
+    "created": "Vacant role created. Start building your team by looking for a good match now.",
+    "sectionDetails": "Role Details",
+    "nameLabel": "Role Name",
+    "namePlaceholder": "e.g. Drummer, Frontend Dev, Designer",
+    "descriptionLabel": "Description (Optional)",
+    "descriptionPlaceholder": "Describe what you're looking for in this role...",
+    "sectionLocation": "Location Preference",
+    "locationHasLabel": "Has Location Preference",
+    "locationRemoteLabel": "Open to Remote / Anywhere",
+    "locationHelper": "Specify a preferred location and search radius.",
+    "remoteHelper": "No geographic preference for this role.",
+    "sectionFocusAreas": "Desired Focus Areas",
+    "focusAreasPrompt": "What skills or focus areas should this person have? (Optional)",
+    "sectionBadges": "Desired Badges",
+    "badgesPrompt": "What qualities or badges should this person have? (Optional)"
   }
 }

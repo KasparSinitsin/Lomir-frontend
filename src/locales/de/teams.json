@@ -63,7 +63,7 @@
       "viewDetails": "Details ansehen",
       "openInviteToRespond": "Einladung ansehen",
       "viewApplicationDetails": "Bewerbungsdetails ansehen",
-      "viewRoleApplicationDetails": "Details der Rollenbewerbung ansehen"
+      "viewRoleApplicationDetails": "Bewerbungsdetails ansehen"
     },
     "tooltips": {
       "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
@@ -343,6 +343,36 @@
     "unknownDate": "Unbekanntes Datum",
     "switching": "Wird gewechselt...",
     "accepting": "Wird angenommen...",
-    "joining": "Tritt bei..."
+    "joining": "Tritt bei...",
+    "decline": "Ablehnen",
+    "declining": "Wird abgelehnt..."
+  },
+  "vacantRoleForm": {
+    "validation": {
+      "nameRequired": "Rollenname ist erforderlich"
+    },
+    "saveFailed": "Vakante Rolle konnte nicht gespeichert werden",
+    "editTitleFilled": "Besetzte Rolle bearbeiten",
+    "editTitleClosed": "Geschlossene Rolle bearbeiten",
+    "editTitleVacant": "Vakante Rolle bearbeiten",
+    "createTitle": "Vakante Rolle hinzufügen",
+    "deleteTooltip": "Diese Rolle endgültig löschen. Du wirst um Bestätigung gebeten.",
+    "saveTooltip": "Änderungen an der Rolle speichern",
+    "updated": "Vakante Rolle wurde aktualisiert!",
+    "created": "Vakante Rolle erstellt. Bau dein Team weiter auf und suche jetzt nach einem passenden Match.",
+    "sectionDetails": "Rollendetails",
+    "nameLabel": "Rollenname",
+    "namePlaceholder": "z. B. Drummer, Frontend-Dev, Designer",
+    "descriptionLabel": "Beschreibung (Optional)",
+    "descriptionPlaceholder": "Beschreibe, wen du für diese Rolle suchst …",
+    "sectionLocation": "Standort-Präferenz",
+    "locationHasLabel": "Hat Standort-Präferenz",
+    "locationRemoteLabel": "Offen für Remote / überall",
+    "locationHelper": "Gib einen bevorzugten Standort und Suchradius an.",
+    "remoteHelper": "Keine geografische Präferenz für diese Rolle.",
+    "sectionFocusAreas": "Gewünschte Fokusbereiche",
+    "focusAreasPrompt": "Welche Fähigkeiten oder Fokusbereiche sollte diese Person mitbringen? (Optional)",
+    "sectionBadges": "Gewünschte Badges",
+    "badgesPrompt": "Welche Eigenschaften oder Badges sollte diese Person mitbringen? (Optional)"
   }
 }

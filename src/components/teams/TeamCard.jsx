@@ -396,7 +396,10 @@ const TeamCard = ({
       const appTeam = application.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Vacant Role",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("common:roleStatus.vacantRoleFallback"),
           description: role.bio ?? role.roleBio ?? appTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? appTeam.is_remote ?? appTeam.isRemote,
           city: role.city ?? appTeam.city,
@@ -422,7 +425,10 @@ const TeamCard = ({
       const invTeam = invitation.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Role Invitation",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("invitationDetails.titleRolePart"),
           description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? invTeam.is_remote ?? invTeam.isRemote,
           city: role.city ?? invTeam.city,
@@ -464,7 +470,7 @@ const TeamCard = ({
 
   const normalizedData = useMemo(
     () => getNormalizedData(),
-    [team, application, invitation, effectiveVariant],
+    [team, application, invitation, effectiveVariant, t],
   );
   const roleSource = isRoleApplicationVariant
     ? application ?? null
@@ -1399,7 +1405,7 @@ const TeamCard = ({
 
     return Number.isFinite(numeric) ? numeric : null;
   })();
-  const roleTitle = teamData.name || "Unknown Team";
+  const roleTitle = teamData.name || t("common:team.unknownName");
   const cardTitle = isRoleInvitationVariant ? (
     <button
       type="button"
@@ -1540,7 +1546,9 @@ const TeamCard = ({
       item?.role_id
     );
 
-    return hasRoleReference ? "Vacant Role" : null;
+    return hasRoleReference
+      ? t("common:roleStatus.vacantRoleFallback")
+      : null;
   };
 
   const teamInvitationRoleName =

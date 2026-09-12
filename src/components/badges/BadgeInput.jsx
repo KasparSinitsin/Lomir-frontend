@@ -7,6 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { X, Award, Check } from "lucide-react";
 import { useBadges } from "../../hooks/useBadgeQueries";
 import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
@@ -31,9 +32,13 @@ const hexToRgba = (hex, alpha) => {
 const BadgeInput = ({
   selectedBadgeIds = [],
   onBadgeIdsChange,
-  placeholder = "Search for badges...",
+  // Declared without a value: a user-facing default in a parameter list
+  // cannot be translated. Resolved in the body instead, so a caller-supplied
+  // label still wins.
+  placeholder,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const { data: allBadges = [], isLoading } = useBadges();
 
   const [inputValue, setInputValue] = useState("");
@@ -222,7 +227,11 @@ const BadgeInput = ({
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onFocus={() => !disabled && !isLoading && setShowDropdown(true)}
-        placeholder={isLoading ? "Loading badges…" : placeholder}
+        placeholder={
+          isLoading
+            ? t("badges.input.loading")
+            : (placeholder ?? t("badges.input.searchPlaceholder"))
+        }
         disabled={disabled || isLoading}
         className="input input-bordered w-full pr-10 focus:input-primary"
       />
@@ -252,7 +261,7 @@ const BadgeInput = ({
                     type="button"
                     onClick={() => handleToggle(badgeId)}
                     className="hover:text-error transition-colors"
-                    aria-label={`Remove ${badge.name}`}
+                    aria-label={t("focusAreas.remove", { name: badge.name })}
                     disabled={disabled}
                   >
                     <X size={14} />
@@ -307,10 +316,14 @@ const BadgeInput = ({
                     <span className="flex items-center justify-start gap-1.5">
                       <Award size={16} strokeWidth={2.5} className="text-primary" />
                       <span className="font-semibold text-primary-focus">
-                        {inputValue.trim() ? "Search Results" : "All Badges"}
+                        {inputValue.trim()
+                          ? t("focusAreas.searchResultsTitle")
+                          : t("badges.input.allBadges")}
                       </span>
                       {filteredBadges.length === 0 && (
-                        <span className="text-xs opacity-70">No results</span>
+                        <span className="text-xs opacity-70">
+                          {t("pagination.noResults")}
+                        </span>
                       )}
                     </span>
                   </li>

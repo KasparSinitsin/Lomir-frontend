@@ -126,6 +126,11 @@
     "tooltip": {
       "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
       "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
+    },
+    "input": {
+      "searchPlaceholder": "Search for badges...",
+      "loading": "Loading badges…",
+      "allBadges": "All Badges"
     }
   },
   "communication": {

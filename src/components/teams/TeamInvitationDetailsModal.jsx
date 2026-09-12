@@ -662,7 +662,9 @@ const TeamInvitationDetailsModal = ({
               disabled={isControlsDisabled}
               icon={<X size={16} />}
             >
-              {isDeclineLoading ? "Declining..." : "Decline"}
+              {isDeclineLoading
+                ? t("teams:invitationDetails.declining")
+                : t("teams:invitationDetails.decline")}
             </Button>
           </Tooltip>
         </div>
