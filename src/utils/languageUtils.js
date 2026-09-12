@@ -6,15 +6,61 @@ import {
 } from "../constants/languages";
 
 /**
- * The language the app is rendered in right now, for Intl.
+ * The *formatting locale*, for Intl - not the translation language.
+ *
+ * Two different things, and conflating them was a real bug. Translation keys
+ * hang off the language ("en", "de"); how a date, a time or a number is
+ * *shaped* is a regional convention, which needs a full BCP-47 locale. A bare
+ * "en" is not neutral: CLDR resolves it to US conventions.
  *
  * Distinct from resolveLanguage(): that one *decides*, from the account, the
  * browser and the country. This one only reports what was decided, and it is
  * what every Intl formatter in the app has to be built with - dates, numbers
  * and distances must not answer this question for themselves. dateHelpers.js
  * used to, from its own country sets, and disagreed with the picker.
+ *
+ * ⚠️ English maps to en-GB, decided by Julia 2026-09-12, and it is a FIXED
+ * mapping rather than one derived from the user's country. An American reading
+ * the English UI therefore gets British formats; that is accepted, not an
+ * oversight. The deciding argument was consistency between the two languages,
+ * and it pointed away from the bare "en" - for 6 April 2026:
+ *
+ *   en      04/06/26   MDY   02:30 PM     <- what this used to return
+ *   en-GB   06/04/26   DMY   14:30
+ *   de      06.04.26   DMY   14:30
+ *
+ * All three are 8 characters wide, so layout never distinguished them. Field
+ * order did: "en" is MDY against German's DMY, so the two looked alike and
+ * meant different things - the same day with the digits transposed, which is
+ * the least visible kind of inconsistency. en-GB matches German's order and
+ * differs only in the separator.
+ *
+ * ⚠️ Always state the reference date when comparing these. An older note in
+ * dateHelpers.js worked from 4 June and a table in STATUS.md from 6 April,
+ * which made two correct statements look contradictory.
+ *
+ * ⚠️ This also moved English to a 24-hour clock, on every chat timestamp
+ * (34 call sites through formatLocalTime). Deliberate, and confirmed by Julia:
+ * German already read "14:05 Uhr", so English "14:05" is the parallel form.
+ * Nothing forces hour12 in code - Intl derives it from the locale, which is
+ * how it is meant to work.
  */
-export const getActiveLocale = () => i18n.language || DEFAULT_LANGUAGE_CODE;
+const FORMATTING_LOCALES = {
+  en: "en-GB",
+  de: "de-DE",
+};
+
+export const getActiveLocale = () => {
+  // i18next runs with load: "languageOnly" and supportedLngs ["en","de"], so
+  // this is "en" or "de" in practice. The subtag is still stripped rather than
+  // trusted: a regional value reaching Intl unmapped would silently restore
+  // the very US default this function exists to avoid.
+  const language = String(i18n.language || DEFAULT_LANGUAGE_CODE)
+    .split(/[-_]/)[0]
+    .toLowerCase();
+
+  return FORMATTING_LOCALES[language] || FORMATTING_LOCALES[DEFAULT_LANGUAGE_CODE];
+};
 
 /**
  * Where a logged-out visitor's choice lives. Logged-in users have

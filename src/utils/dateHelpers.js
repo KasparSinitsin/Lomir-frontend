@@ -201,11 +201,16 @@ const dateFormatter = (options) => (value) => {
  * Intl already produces the right thing for both languages; the only thing
  * needed was to stop taking it apart.
  *
- * ⚠️ English is unaffected by this change and still reads 06/04/26, because
- * `getActiveLocale()` returns the bare code "en", which CLDR resolves to US
- * conventions - MONTH FIRST. Slashes are right for English; the order is a
- * separate open question. "en-GB" would give 04/06/26. Not changed here
- * because it is a product decision, not a formatting bug.
+ * ⚠️ This note used to say English still read month-first, because
+ * `getActiveLocale()` returned the bare code "en" and CLDR resolves that to US
+ * conventions. **Settled 2026-09-12: English formats as en-GB**, so English is
+ * now day-first like German and differs only in the separator. The mapping
+ * lives in `getActiveLocale()` and nothing here decides it.
+ *
+ * ⚠️ State the reference date when comparing formats. Written from **6 April
+ * 2026**: "en" gave 04/06/26, en-GB gives 06/04/26, German 06.04.26. The
+ * earlier version of this note worked from 4 June without saying so, which
+ * made it look like it contradicted the table in STATUS.md.
  */
 const numericFormatter = (options) => (value) => {
   const date = normalizeTimestampToDate(value);
@@ -344,11 +349,14 @@ export const formatShortRelativeChatTimestamp = (value) => {
 export const formatLocalTime = (value) => {
   const date = normalizeTimestampToDate(value);
   if (!date) return "";
-  // hour12 is no longer decided here: Intl derives it from the locale
-  // (en -> 2:05 PM, de -> 14:05), which is the same answer the old country
-  // sets tried to give. "Uhr" is a German convention Intl does not add, so it
-  // lives in the translation as a whole message with a named placeholder -
-  // never as a suffix concatenated in code.
+  // hour12 is not decided here: Intl derives it from the locale, which is the
+  // same answer the old country sets tried to give. ⚠️ Since English maps to
+  // en-GB (2026-09-12) that means **both languages read 14:05** - English left
+  // the 12-hour clock, deliberately, and this is the most visible consequence
+  // of that decision because it lands on every chat timestamp. Do not add
+  // hour12 back here to "fix" it. "Uhr" is a German convention Intl does not
+  // add, so it lives in the translation as a whole message with a named
+  // placeholder - never as a suffix concatenated in code.
   const time = getDateFormatter({
     hour: "numeric",
     minute: "2-digit",
