@@ -14,6 +14,7 @@ import Card from "../components/common/Card";
 import FormGroup from "../components/common/FormGroup";
 import TurnstileWidget from "../components/common/TurnstileWidget";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import api from "../services/api";
 
 const LOMIR_CONTACT_USER_ID = (
@@ -172,6 +173,17 @@ const formatAttachmentErrors = (messages) => {
 const Contact = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  // The receipt email for an abuse report is chosen from this, because there
+  // is no account to resolve it from — a DSA report may be filed by anyone.
+  // `language` is what the app is actually rendered in, not what the
+  // precedence chain resolved to, so the mail matches the page the reporter
+  // read. While LANGUAGE_FEATURE_VISIBLE is false that is "en" for everyone,
+  // which is correct: the form they just filled in was English too.
+  //
+  // ⚠️ Not gated on the flag, unlike RegisterForm. That gate exists because
+  // registration *stores* a value and a stored guess would outrank the country
+  // rule forever. This value is thrown away after one email.
+  const { language } = useLanguage();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
   const [formValues, setFormValues] = useState(initialFormValues);
@@ -362,6 +374,7 @@ const Contact = () => {
         body.append("topic", formValues.topic);
         body.append("message", formValues.message.trim());
         if (hasTurnstile) body.append("turnstile_token", turnstileToken);
+        body.append("language", language);
         attachments.forEach((file) => body.append("attachments", file));
       } else {
         body = {
@@ -369,6 +382,7 @@ const Contact = () => {
           email: formValues.email.trim(),
           topic: formValues.topic,
           message: formValues.message.trim(),
+          language,
           ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
         };
       }
