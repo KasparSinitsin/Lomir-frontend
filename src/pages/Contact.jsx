@@ -21,22 +21,38 @@ const LOMIR_CONTACT_USER_ID = (
   import.meta.env.VITE_LOMIR_CONTACT_USER_ID || ""
 ).trim();
 
+const REPORT_TOPIC_CODE = "report";
+
+/**
+ * The topic dropdown: a stable code as the value, a label as what is read.
+ *
+ * ⚠️ These were one and the same English string until 2026-09-12, and the
+ * backend decides whether a submission becomes a DSA report by comparing it
+ * (`topic.trim() === "Report content or abuse"`). Translating the label would
+ * therefore have meant no report row, no reference code and no receipt email —
+ * the legally required channel failing silently, with no test to catch it
+ * because both repos read the same constant.
+ *
+ * So: the value never changes and never gets translated; only `label` does,
+ * and it becomes a `t()` key when this page is translated. The backend keeps
+ * its own copy in `src/config/contactTopics.js` and maps the code back to the
+ * English label it stores — the two repos deploy separately, so a new topic
+ * changes both.
+ */
+const topicOptions = [
+  { code: "general", label: "General question" },
+  { code: "account", label: "Account support" },
+  { code: "privacy", label: "Privacy request" },
+  { code: REPORT_TOPIC_CODE, label: "Report content or abuse" },
+  { code: "feedback", label: "Feedback" },
+];
+
 const initialFormValues = {
   name: "",
   email: "",
-  topic: "General question",
+  topic: topicOptions[0].code,
   message: "",
 };
-
-const REPORT_TOPIC = "Report content or abuse";
-
-const topicOptions = [
-  "General question",
-  "Account support",
-  "Privacy request",
-  REPORT_TOPIC,
-  "Feedback",
-];
 
 const ATTACHMENT_MAX_FILES = 3;
 const ATTACHMENT_MAX_MB = 5;
@@ -428,7 +444,7 @@ const Contact = () => {
   const renderContactForm = () => {
     const isSubmitting = status === "submitting";
     const hasSuccessMessage = status === "success" && Boolean(statusMessage);
-    const isReportTopic = formValues.topic === REPORT_TOPIC;
+    const isReportTopic = formValues.topic === REPORT_TOPIC_CODE;
     const emailSubtitle = isAuthenticated
       ? "We will reply by email."
       : "We will reply by email. Create an account for direct in-app messaging with the Lomir team.";
@@ -576,8 +592,8 @@ const Contact = () => {
                   disabled={isSubmitting}
                 >
                   {topicOptions.map((topic) => (
-                    <option key={topic} value={topic}>
-                      {topic}
+                    <option key={topic.code} value={topic.code}>
+                      {topic.label}
                     </option>
                   ))}
                 </select>
