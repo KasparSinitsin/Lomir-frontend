@@ -91,13 +91,27 @@ export const getBrowserLanguage = () => {
  *
  *   1. an explicit choice - the account's `preferredLanguage`, or the
  *      localStorage value while logged out
- *   2. the country in the profile
- *   3. the browser language
+ *   2. the browser language
+ *   3. the country in the profile
  *   4. English
  *
  * Step 1 has to win permanently. If the country rule re-applied on every
  * login it would silently undo what the user picked, which is the classic
  * bug in this corner of an app.
+ *
+ * ⚠️ Steps 2 and 3 were the other way round until 2026-09-12. A postal address
+ * is a weaker signal of what someone wants to *read* than their browser
+ * setting: an English speaker living in Berlin has `country: DE` and
+ * `navigator.language: en-US`, and used to be served German. Explicit choice ->
+ * browser -> geography is the usual order elsewhere, and this now matches it.
+ *
+ * The country rule still earns its place, because `getBrowserLanguage()`
+ * returns null unless the browser actually offers a language we support. A
+ * visitor whose browser asks for French reaches step 3 exactly as before.
+ *
+ * ⚠️ The backend's `resolveUserLanguage()` deliberately does NOT match this
+ * order: it has no browser to consult, so choice -> country -> default is
+ * correct there. The two are meant to differ.
  *
  * @param {Object} options
  * @param {string|null} options.preferredLanguage - the account's stored choice
@@ -117,9 +131,12 @@ export const resolveLanguage = ({
     if (stored) return stored;
   }
 
+  const browserLanguage = getBrowserLanguage();
+  if (browserLanguage) return browserLanguage;
+
   if (country) return getLanguageForCountry(country);
 
-  return getBrowserLanguage() || DEFAULT_LANGUAGE_CODE;
+  return DEFAULT_LANGUAGE_CODE;
 };
 
 /**
