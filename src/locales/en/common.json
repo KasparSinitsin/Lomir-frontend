@@ -177,6 +177,7 @@
       "title": "Leave Team Chat"
     },
     "loadConversationsFailed": "Failed to load conversations. Please try again.",
+    "loadEarlier": "Load earlier messages",
     "searchAria": "Search chats",
     "searchClearAria": "Clear chat search",
     "searchCountMatches": "{filtered} of {total} chats · {matches, plural, one {# match} other {# matches}}",
@@ -322,6 +323,16 @@
     "awayBeyondLimit": "{km} km away (> {limit} km)",
     "awayFromYou": "{km} km away from you",
     "awayWithinLimit": "{km} km away (< {limit} km)"
+  },
+  "fileAttachment": {
+    "openTooltip": "Click to open and download file",
+    "downloadFile": "Download file",
+    "clickToDownload": "Click to download"
+  },
+  "fileExpiry": {
+    "expired": "This data has expired and is no longer available.",
+    "expiringSoon": "{type, select, image {Image} other {File}} expires in {days, plural, one {# day} other {# days}}. Download to keep a copy.",
+    "active": "{type, select, image {Image} other {File}} expires in {days, plural, one {# day} other {# days}}."
   },
   "focusAreas": {
     "alreadyAdded": "Focus area already added",
@@ -641,6 +652,11 @@
     "location": "Location is optional. We use saved location information to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir does not ask for a street address. Depending on visibility settings, approximate location details may be visible to other users.",
     "profileVisibilitySettings": "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.",
     "userLocation": "Location is optional. You can leave postal code, city, and country empty or remove them later. If you add location information, Lomir uses it to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir never asks for your street address. Depending on your profile visibility, approximate location details such as postal code, city, district, region, or country may be visible to other users."
+  },
+  "readReceipt": {
+    "read": "Read",
+    "readByAll": "Read by all",
+    "readBySomeone": "Read by someone"
   },
   "resultView": {
     "card": {

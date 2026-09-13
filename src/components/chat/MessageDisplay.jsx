@@ -1432,7 +1432,7 @@ const MessageDisplay = ({
               {loadingMore ? (
                 <span className="loading loading-spinner loading-xs"></span>
               ) : (
-                "Load earlier messages"
+                t("chatPage.loadEarlier")
               )}
             </button>
           </div>

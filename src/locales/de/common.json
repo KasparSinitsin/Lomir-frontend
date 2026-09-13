@@ -177,6 +177,7 @@
       "title": "Team-Chat verlassen"
     },
     "loadConversationsFailed": "Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
+    "loadEarlier": "Ältere Nachrichten laden",
     "searchAria": "Chats durchsuchen",
     "searchClearAria": "Chat-Suche löschen",
     "searchCountMatches": "{filtered} von {total} Chats · {matches, plural, one {# Treffer} other {# Treffer}}",
@@ -322,6 +323,16 @@
     "awayBeyondLimit": "{km} km entfernt (> {limit} km)",
     "awayFromYou": "{km} km von dir entfernt",
     "awayWithinLimit": "{km} km entfernt (< {limit} km)"
+  },
+  "fileAttachment": {
+    "openTooltip": "Zum Öffnen und Herunterladen klicken",
+    "downloadFile": "Datei herunterladen",
+    "clickToDownload": "Zum Herunterladen klicken"
+  },
+  "fileExpiry": {
+    "expired": "Diese Daten sind abgelaufen und nicht mehr verfügbar.",
+    "expiringSoon": "{type, select, image {Das Bild läuft} other {Die Datei läuft}} in {days, plural, one {# Tag} other {# Tagen}} ab. Jetzt herunterladen, um eine Kopie zu behalten.",
+    "active": "{type, select, image {Das Bild läuft} other {Die Datei läuft}} in {days, plural, one {# Tag} other {# Tagen}} ab."
   },
   "focusAreas": {
     "alreadyAdded": "Fokusbereich bereits hinzugefügt",
@@ -641,6 +652,11 @@
     "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
     "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
     "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein."
+  },
+  "readReceipt": {
+    "read": "Gelesen",
+    "readByAll": "Von allen gelesen",
+    "readBySomeone": "Von jemandem gelesen"
   },
   "resultView": {
     "card": {

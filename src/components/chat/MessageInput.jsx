@@ -21,6 +21,7 @@ import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import MentionDropdown from "./MentionDropdown";
 import { getEventPreview } from "../../utils/eventPreview";
 import { getFileExpirationStatus } from "../../utils/fileExpiration";
+import { useFileExpirationText } from "../../hooks/useFileExpirationText";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -78,6 +79,7 @@ const MessageInput = ({
   onClearReply,
 }) => {
   const { t } = useTranslation();
+  const expirationText = useFileExpirationText();
 
   /**
    * The sender of a replied-to message may have neither a first name nor a
@@ -280,7 +282,7 @@ const MessageInput = ({
                           : "text-base-content/60"
                       }`}
                     >
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   ) : (
                     !replyingTo.content && (
