@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { formatLocalTime } from "../../utils/dateHelpers";
 import { getFileExpirationStatus } from "../../utils/fileExpiration";
+import { useFileExpirationText } from "../../hooks/useFileExpirationText";
 import {
   formatReplyTooltipText,
   getEventReactionPreview,
@@ -206,6 +207,7 @@ const MessageActions = ({
 
 const ReplyPreview = ({ replyPreview }) => {
   const { t } = useTranslation();
+  const expirationText = useFileExpirationText();
   const replyImageUrl = replyPreview?.imageUrl || replyPreview?.image_url;
   const replyFileUrl = replyPreview?.fileUrl || replyPreview?.file_url;
   const replyFileName = replyPreview?.fileName || replyPreview?.file_name;
@@ -240,7 +242,7 @@ const ReplyPreview = ({ replyPreview }) => {
             ? replyMediaExpired
               ? t("messageBubble.mediaExpired")
               : replyExpirationStatus.status !== "none"
-                ? replyExpirationStatus.message
+                ? expirationText(replyExpirationStatus)
                 : replyImageUrl
                   ? t("messageInput.attachmentImage")
                   : replyFileName || t("messageBubble.attachmentFile")
@@ -281,7 +283,7 @@ const ReplyPreview = ({ replyPreview }) => {
                   >
                     <Clock size={11} className="shrink-0" />
                     <p className="text-[11px] truncate">
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   </div>
                 )}
@@ -311,7 +313,7 @@ const ReplyPreview = ({ replyPreview }) => {
                   >
                     <Clock size={11} className="shrink-0" />
                     <p className="text-[11px] truncate">
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   </div>
                 )}
@@ -348,6 +350,7 @@ const ReplyPreview = ({ replyPreview }) => {
 
 const MessageImage = ({ message }) => {
   const { t } = useTranslation();
+  const expirationText = useFileExpirationText();
   const imageUrl = message.imageUrl || message.image_url;
   const imageDeletedAt = message.fileDeletedAt || message.file_deleted_at;
   const imageExpirationStatus = getFileExpirationStatus(message);
@@ -381,7 +384,7 @@ const MessageImage = ({ message }) => {
       {imageExpirationStatus.status === "expiring-soon" && (
         <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
           <Clock size={16} className="text-warning flex-shrink-0" />
-          <p className="text-xs text-warning">{imageExpirationStatus.message}</p>
+          <p className="text-xs text-warning">{expirationText(imageExpirationStatus)}</p>
         </div>
       )}
       <Tooltip
@@ -414,7 +417,7 @@ const MessageImage = ({ message }) => {
           <div className="flex items-center gap-2 mt-1 ml-1">
             <Clock size={12} className="text-base-content/40 flex-shrink-0" />
             <p className="text-xs text-base-content/40">
-              {imageExpirationStatus.message}
+              {expirationText(imageExpirationStatus)}
             </p>
           </div>
         )}

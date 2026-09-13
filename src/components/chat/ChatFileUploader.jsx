@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Upload, X, FileText, File, FileSpreadsheet } from "lucide-react";
+import { formatFileSize } from "../../utils/fileExpiration";
 
 const MAX_SIZE_MB = 25;
 
@@ -137,12 +138,6 @@ const ChatFileUploader = ({ onFileSelect, onClose }) => {
       return <IconComponent size={32} className="text-primary" />;
     }
     return <File size={32} className="text-primary" />;
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   return (
