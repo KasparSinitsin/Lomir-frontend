@@ -49,6 +49,25 @@ const topicCodes = [
   "feedback",
 ];
 
+/**
+ * The backend's attachment failure codes, mapped onto the ones this page
+ * already resolves. `/api/contact` names what went wrong and the frontend says
+ * it — decision 7, and the reason these sentences are not sent as prose.
+ *
+ * ⚠️ The wire codes are SCREAMING_SNAKE and deliberately not spellable as
+ * translation keys. A code like `contact.attachment.tooLarge` would invite
+ * `t(code)`, which `npm run i18n:check` cannot verify and would report as
+ * unused. See `src/config/contactErrors.js` in the backend.
+ */
+const SERVER_ATTACHMENT_CODES = {
+  ATTACHMENT_NAME_UNSUPPORTED: "unsafeName",
+  ATTACHMENT_TYPE_UNSUPPORTED: "wrongType",
+  ATTACHMENT_EMPTY: "empty",
+  ATTACHMENT_TOO_LARGE: "tooLarge",
+  ATTACHMENT_TOO_MANY: "tooMany",
+  ATTACHMENT_TOTAL_TOO_LARGE: "totalTooLarge",
+};
+
 const initialFormValues = {
   name: "",
   email: "",
@@ -411,6 +430,52 @@ const Contact = () => {
   const attachmentDisplayName = (fileName) =>
     getAttachmentDisplayName(fileName) || t("contact.attachment.selectedFile");
 
+  /**
+   * A failure from `/api/contact`, said in the reader's language.
+   *
+   * Returns "" for a code this build does not know, so the caller can fall
+   * back to the backend's own prose. ⚠️ That fallback is the point: it makes
+   * the change additive in both directions and free of any deploy order — a
+   * new frontend against an old backend finds no code and reads `message`, an
+   * old frontend against a new backend ignores the code it never looks for.
+   * The topic codes could not be built that way and cost the release an
+   * ordering constraint; this one need not.
+   */
+  const serverErrorText = (code, values) => {
+    const attachmentCode = SERVER_ATTACHMENT_CODES[code];
+    if (attachmentCode) {
+      const sentence = attachmentErrorText(attachmentCode);
+      // The file name is the one thing only the backend knew.
+      return values?.fileName
+        ? t("contact.attachment.fileError", {
+            name: attachmentDisplayName(values.fileName),
+            message: sentence,
+          })
+        : sentence;
+    }
+
+    switch (code) {
+      case "INVALID_INPUT":
+        return t("contact.errors.invalidInput");
+      // The same refusal the client-side check already words; no reason to
+      // say it differently just because it arrived over the wire.
+      case "CAPTCHA_REQUIRED":
+        return t("contact.validation.captcha");
+      case "CAPTCHA_FAILED":
+        return t("contact.errors.captchaFailed");
+      case "ATTACHMENT_UPLOAD_FAILED":
+        return t("contact.errors.uploadFailed");
+      case "REPORT_PERSIST_FAILED":
+        return t("contact.errors.reportFailed");
+      case "CONTACT_FAILED":
+        return t("contact.errors.contactFailed");
+      case "RATE_LIMITED":
+        return t("contact.errors.rateLimited");
+      default:
+        return "";
+    }
+  };
+
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files || []);
     event.target.value = "";
@@ -531,8 +596,9 @@ const Contact = () => {
     } catch (error) {
       console.error("Contact form submission error:", error);
       setStatus("error");
+      const { code, values, message } = error.response?.data ?? {};
       setStatusMessage(
-        error.response?.data?.message || t("contact.status.error"),
+        serverErrorText(code, values) || message || t("contact.status.error"),
       );
       resetTurnstile();
     }

@@ -216,53 +216,6 @@
     "confirm": "Bestätigen"
   },
   "contact": {
-    "title": "Lomir kontaktieren",
-    "intro": "Fragen, Rückmeldungen, Hilfe zum Konto, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
-    "introSecondLine": "Wir leiten deine Nachricht an die richtige Stelle weiter.",
-    "loginHint": "Schon bei Lomir dabei? <0>Melde dich an</0>, um uns über den App-Chat zu erreichen.",
-    "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir deinen Namen und deine E-Mail-Adresse, um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
-    "inApp": {
-      "title": "Schreib dem Lomir-Team",
-      "subtitle": "Erreiche uns mit deinem Lomir-Konto direkt in der App.",
-      "body": "Das Konto des Lomir-Teams ist da für Fragen zum Konto, Datenschutzanliegen, Rückmeldungen und alles, was ein bisschen menschlichen Kontext braucht.",
-      "button": "Chat-Nachricht senden"
-    },
-    "email": {
-      "title": "Schreib uns eine Nachricht",
-      "titleAgain": "Noch eine E-Mail schreiben?",
-      "subtitle": "Wir antworten dir per E-Mail.",
-      "subtitleGuest": "Wir antworten dir per E-Mail. Mit einem Konto schreibst du dem Lomir-Team direkt in der App.",
-      "compose": "E-Mail verfassen"
-    },
-    "form": {
-      "name": "Name",
-      "namePlaceholder": "Dein Name",
-      "email": "E-Mail",
-      "emailPlaceholder": "du@beispiel.de",
-      "topic": "Thema",
-      "message": "Nachricht",
-      "messagePlaceholder": "Erzähl uns, was dich beschäftigt",
-      "submit": "Nachricht senden",
-      "submitting": "Wird gesendet …"
-    },
-    "topics": {
-      "general": "Allgemeine Frage",
-      "account": "Hilfe zum Konto",
-      "privacy": "Datenschutzanliegen",
-      "report": "Inhalte oder Missbrauch melden",
-      "feedback": "Rückmeldung"
-    },
-    "report": {
-      "topicHelp": "Nutze dieses Thema, um illegale Inhalte, Missbrauch, Belästigung, Spam, Datenschutzprobleme oder Sicherheitsbedenken zu melden.",
-      "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder das Konto finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
-    },
-    "validation": {
-      "name": "Bitte gib deinen Namen an",
-      "email": "Bitte gib deine E-Mail-Adresse an",
-      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse an",
-      "message": "Bitte schreib uns eine Nachricht",
-      "captcha": "Bitte schließe die CAPTCHA-Prüfung ab"
-    },
     "attachment": {
       "attach": "Dateien anhängen",
       "remove": "Anhang entfernen",
@@ -278,10 +231,65 @@
       "totalTooLarge": "Die Anhänge dürfen zusammen höchstens {totalMb} MB groß sein.",
       "tooMany": "Du kannst bis zu {maxFiles} Dateien anhängen."
     },
+    "email": {
+      "title": "Schreib uns eine Nachricht",
+      "titleAgain": "Noch eine E-Mail schreiben?",
+      "subtitle": "Wir antworten dir per E-Mail.",
+      "subtitleGuest": "Wir antworten dir per E-Mail. Mit einem Konto schreibst du dem Lomir-Team direkt in der App.",
+      "compose": "E-Mail verfassen"
+    },
+    "errors": {
+      "invalidInput": "Bitte prüf deine Eingaben und versuch es noch einmal.",
+      "captchaFailed": "Die CAPTCHA-Prüfung ist fehlgeschlagen. Bitte versuche es erneut.",
+      "uploadFailed": "Der Anhang konnte nicht hochgeladen werden.",
+      "reportFailed": "Deine Meldung konnte nicht entgegengenommen werden. Bitte versuche es in ein paar Minuten erneut.",
+      "contactFailed": "Deine Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
+      "rateLimited": "Zu viele Nachrichten. Bitte versuche es später noch einmal."
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Dein Name",
+      "email": "E-Mail",
+      "emailPlaceholder": "du@beispiel.de",
+      "topic": "Thema",
+      "message": "Nachricht",
+      "messagePlaceholder": "Erzähl uns, was dich beschäftigt",
+      "submit": "Nachricht senden",
+      "submitting": "Wird gesendet …"
+    },
+    "inApp": {
+      "title": "Schreib dem Lomir-Team",
+      "subtitle": "Erreiche uns mit deinem Lomir-Konto direkt in der App.",
+      "body": "Das Konto des Lomir-Teams ist da für Fragen zum Konto, Datenschutzanliegen, Rückmeldungen und alles, was ein bisschen menschlichen Kontext braucht.",
+      "button": "Chat-Nachricht senden"
+    },
+    "intro": "Fragen, Rückmeldungen, Hilfe zum Konto, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
+    "introSecondLine": "Wir leiten deine Nachricht an die richtige Stelle weiter.",
+    "loginHint": "Schon bei Lomir dabei? <0>Melde dich an</0>, um uns über den App-Chat zu erreichen.",
+    "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir deinen Namen und deine E-Mail-Adresse, um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
+    "report": {
+      "topicHelp": "Nutze dieses Thema, um illegale Inhalte, Missbrauch, Belästigung, Spam, Datenschutzprobleme oder Sicherheitsbedenken zu melden.",
+      "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder das Konto finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
+    },
     "status": {
       "reportReceived": "Deine Meldung ist bei uns eingegangen. Vorgangsnummer: {reference}.",
       "sent": "Danke, deine Nachricht ist beim Lomir-Team eingegangen.",
       "error": "Beim Senden deiner Nachricht ist etwas schiefgegangen. Bitte versuche es erneut."
+    },
+    "title": "Lomir kontaktieren",
+    "topics": {
+      "general": "Allgemeine Frage",
+      "account": "Hilfe zum Konto",
+      "privacy": "Datenschutzanliegen",
+      "report": "Inhalte oder Missbrauch melden",
+      "feedback": "Rückmeldung"
+    },
+    "validation": {
+      "name": "Bitte gib deinen Namen an",
+      "email": "Bitte gib deine E-Mail-Adresse an",
+      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse an",
+      "message": "Bitte schreib uns eine Nachricht",
+      "captcha": "Bitte schließe die CAPTCHA-Prüfung ab"
     }
   },
   "countrySelect": {
