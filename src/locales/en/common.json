@@ -216,53 +216,6 @@
     "confirm": "Confirm"
   },
   "contact": {
-    "title": "Contact Lomir",
-    "intro": "Questions, feedback, account help, privacy requests, or content reports can all start here.",
-    "introSecondLine": "We will get your message to the right place.",
-    "loginHint": "Already part of Lomir? <0>Log in</0> to contact us through the app chat.",
-    "privacyNote": "By submitting this form, your name and email address will be processed to respond to your inquiry. See our <0>Privacy Policy</0> for details on how we handle your data.",
-    "inApp": {
-      "title": "Talk to the Lomir Team",
-      "subtitle": "Use your Lomir account to reach us directly in the app.",
-      "body": "The Lomir Team account is available for account questions, privacy requests, feedback, and anything that needs a little human context.",
-      "button": "Send Chat Message"
-    },
-    "email": {
-      "title": "Send us a message",
-      "titleAgain": "Write another email?",
-      "subtitle": "We will reply by email.",
-      "subtitleGuest": "We will reply by email. Create an account for direct in-app messaging with the Lomir team.",
-      "compose": "Compose Email"
-    },
-    "form": {
-      "name": "Name",
-      "namePlaceholder": "Your name",
-      "email": "Email",
-      "emailPlaceholder": "you@example.com",
-      "topic": "Topic",
-      "message": "Message",
-      "messagePlaceholder": "Tell us what is on your mind",
-      "submit": "Send Message",
-      "submitting": "Sending..."
-    },
-    "topics": {
-      "general": "General question",
-      "account": "Account support",
-      "privacy": "Privacy request",
-      "report": "Report content or abuse",
-      "feedback": "Feedback"
-    },
-    "report": {
-      "topicHelp": "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns.",
-      "messageHelp": "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
-    },
-    "validation": {
-      "name": "Name is required",
-      "email": "Email is required",
-      "emailInvalid": "Please enter a valid email address",
-      "message": "Message is required",
-      "captcha": "Please complete the CAPTCHA verification"
-    },
     "attachment": {
       "attach": "Attach files",
       "remove": "Remove attachment",
@@ -278,10 +231,65 @@
       "totalTooLarge": "Attachments must be {totalMb} MB total or smaller.",
       "tooMany": "You can attach up to {maxFiles} files."
     },
+    "email": {
+      "title": "Send us a message",
+      "titleAgain": "Write another email?",
+      "subtitle": "We will reply by email.",
+      "subtitleGuest": "We will reply by email. Create an account for direct in-app messaging with the Lomir team.",
+      "compose": "Compose Email"
+    },
+    "errors": {
+      "invalidInput": "Please check your entries and try again.",
+      "captchaFailed": "The CAPTCHA check failed. Please try again.",
+      "uploadFailed": "The attachment could not be uploaded.",
+      "reportFailed": "Your report could not be received. Please try again in a few minutes.",
+      "contactFailed": "Your message could not be sent. Please try again.",
+      "rateLimited": "Too many messages. Please try again later."
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "topic": "Topic",
+      "message": "Message",
+      "messagePlaceholder": "Tell us what is on your mind",
+      "submit": "Send Message",
+      "submitting": "Sending..."
+    },
+    "inApp": {
+      "title": "Talk to the Lomir Team",
+      "subtitle": "Use your Lomir account to reach us directly in the app.",
+      "body": "The Lomir Team account is available for account questions, privacy requests, feedback, and anything that needs a little human context.",
+      "button": "Send Chat Message"
+    },
+    "intro": "Questions, feedback, account help, privacy requests, or content reports can all start here.",
+    "introSecondLine": "We will get your message to the right place.",
+    "loginHint": "Already part of Lomir? <0>Log in</0> to contact us through the app chat.",
+    "privacyNote": "By submitting this form, your name and email address will be processed to respond to your inquiry. See our <0>Privacy Policy</0> for details on how we handle your data.",
+    "report": {
+      "topicHelp": "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns.",
+      "messageHelp": "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
+    },
     "status": {
       "reportReceived": "Your report has been received. Reference ID: {reference}.",
       "sent": "Thanks, your message has been sent to the Lomir team.",
       "error": "Something went wrong while sending your message. Please try again."
+    },
+    "title": "Contact Lomir",
+    "topics": {
+      "general": "General question",
+      "account": "Account support",
+      "privacy": "Privacy request",
+      "report": "Report content or abuse",
+      "feedback": "Feedback"
+    },
+    "validation": {
+      "name": "Name is required",
+      "email": "Email is required",
+      "emailInvalid": "Please enter a valid email address",
+      "message": "Message is required",
+      "captcha": "Please complete the CAPTCHA verification"
     }
   },
   "countrySelect": {
