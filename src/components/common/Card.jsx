@@ -23,6 +23,7 @@ const Card = ({
   headerClassName = "",
   imageWrapperClassName = "",
   titleClassName = "",
+  clampSubtitle = true,
   marginClassName = "",
   viewMode = "card",
   clickTooltip = null,
@@ -347,9 +348,13 @@ const Card = ({
                 </h3>
                 {subtitle && (
                   <p
-                    className={`max-h-[2.75em] overflow-hidden ${
-                      titleClassName ? "text-xs" : ""
-                    }`}
+                    className={`${
+                      // Two lines, to keep cards in a grid the same height.
+                      // ⚠️ Opt-out, because the clamp cuts mid-word and says
+                      // nothing about it — no ellipsis, no title attribute. On
+                      // a card that stands alone it can only ever lose text.
+                      clampSubtitle ? "max-h-[2.75em] overflow-hidden " : ""
+                    }${titleClassName ? "text-xs" : ""}`}
                   >
                     {subtitle}
                   </p>
