@@ -236,7 +236,7 @@ const ReplyPreview = ({ replyPreview }) => {
       <p className="text-xs font-semibold text-primary truncate">
         {replyPreview.senderFirstName ||
           replyPreview.senderUsername ||
-          t("messageBubble.formerUser")}
+          t("user.formerUser")}
       </p>
       <Tooltip
         content={

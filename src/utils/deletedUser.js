@@ -1,3 +1,5 @@
+// ⚠️ A wire value, not a label: both repos write it into stored messages and
+// compare against it. Display it as t("user.formerUser"), never translate it.
 export const DELETED_USER_DISPLAY_NAME = "Former Lomir User";
 
 export const isDeletedUser = (user) => {
@@ -7,6 +9,7 @@ export const isDeletedUser = (user) => {
   );
 };
 
+/** ⚠️ The default fallback is the English wire value — pass t("user.formerUser") for display. */
 export const getDisplayName = (
   user,
   fallback = DELETED_USER_DISPLAY_NAME,

@@ -285,6 +285,7 @@
       "uploadImageRejected": "Failed to upload image"
     },
     "formerTeamMember": "{name} (former team member)",
+    "formerTeamMemberTooltip": "Former team member",
     "leaveTeam": {
       "confirmLabel": "Leave",
       "fallbackTeamName": "this team",
@@ -294,6 +295,8 @@
     },
     "loadConversationsFailed": "Failed to load conversations. Please try again.",
     "loadEarlier": "Load earlier messages",
+    "mentionLookupFailed": "Could not look up \"{name}\".",
+    "mentionNotFound": "Could not open \"{name}\" (user not found).",
     "searchAria": "Search chats",
     "searchClearAria": "Clear chat search",
     "searchCountMatches": "{filtered} of {total} chats · {matches, plural, one {# match} other {# matches}}",
@@ -673,7 +676,6 @@
     "deleteMessage": "Delete message",
     "edit": "Edit message",
     "edited": "Message edited",
-    "formerUser": "Former Lomir User",
     "mediaExpired": "Image or file no longer available",
     "messageDeleted": "This message was deleted.",
     "messageUnavailable": "Message unavailable",
@@ -820,6 +822,7 @@
   "user": {
     "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
     "fallbackName": "User",
+    "formerUser": "Former Lomir User",
     "joinedOn": "Joined Lomir on {date}",
     "privateProfile": "Private Profile",
     "profileImageAlt": "Profile picture of {name}",

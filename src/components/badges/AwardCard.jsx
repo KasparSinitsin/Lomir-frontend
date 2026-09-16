@@ -511,7 +511,7 @@ const AwardCard = ({
     ? t("badges.card.privateProfile")
     : awardedByFirstName
       ? `${awardedByFirstName}${awardedByLastName ? ` ${awardedByLastName}` : ""}`
-      : awardedByUsername || getDeletedUserDisplayName(awardedByUser);
+      : awardedByUsername || getDeletedUserDisplayName(awardedByUser, t("user.formerUser"));
   const isDeletedAwarder = !awardedByUserId || isDeletedUser(awardedByUser);
 
   // --- Team modal integration (global fallback) ---

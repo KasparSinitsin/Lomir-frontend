@@ -30,10 +30,7 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
 import TeamAvatar from "../teams/TeamAvatar";
-import {
-  DELETED_USER_DISPLAY_NAME,
-  getDisplayName as getDeletedUserDisplayName,
-} from "../../utils/deletedUser";
+import { getDisplayName as getDeletedUserDisplayName } from "../../utils/deletedUser";
 import {
   getCachedChatTeamProfile,
   getCachedChatUserProfile,
@@ -627,7 +624,7 @@ const ConversationList = ({
           // Get display name
           const displayName = isTeam
             ? conversationData?.name
-            : directDisplayName || DELETED_USER_DISPLAY_NAME;
+            : directDisplayName || t("user.formerUser");
           const isSearchActive = Boolean(searchQuery.trim());
           const lastMessageText = getConversationLastMessageText(conversation);
           const attachmentPreview =
@@ -805,7 +802,7 @@ const ConversationList = ({
                               : undefined
                         }
                       >
-                        {renderHighlightedText(displayName || "Unknown", searchQuery)}
+                        {renderHighlightedText(displayName || t("user.unknown"), searchQuery)}
                       </h3>
                     </Tooltip>
                   </div>
