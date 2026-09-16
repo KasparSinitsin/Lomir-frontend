@@ -882,6 +882,66 @@
     "owner": "Owner",
     "unknown": "Unknown"
   },
+  "searchCriteria": {
+    "sort": {
+      "match": "Best Match",
+      "nameDesc": "Name Z-A",
+      "recentDesc": "Active",
+      "recentAsc": "Inactive",
+      "newestDesc": "Newest",
+      "newestAsc": "Oldest",
+      "spotsDesc": "Most Spots",
+      "spotsAsc": "Almost Full",
+      "openRolesDesc": "Most Open Roles",
+      "openRolesAsc": "Least Open Roles",
+      "remoteFirst": "Remote First",
+      "remoteFirstShort": "Remote",
+      "nearestFirst": "Nearest First",
+      "nearestFirstShort": "Near"
+    },
+    "maxDistance": "< {km} km",
+    "maxDistanceRemove": "Within {km} km",
+    "openRolesOnly": "Open Roles Only",
+    "myTeams": "My Teams",
+    "myTeamsRemove": "Exclude My Teams",
+    "demo": "Demo",
+    "demoRemove": "Exclude Demo Data",
+    "teamMembers": "{team} members",
+    "teamMembersRemove": "Exclude {team} members",
+    "teamMembersUnnamed": "team members",
+    "teamMembersUnnamedRemove": "Exclude team members"
+  },
+  "searchHelp": {
+    "title": "Advanced Search",
+    "intro": "Use operators to refine your search:",
+    "closeTips": "Close search tips",
+    "caseInsensitive": "Operators are case-insensitive",
+    "caseInsensitiveExample": "(AND, and, And all work)",
+    "examples": {
+      "and": "Must contain both \"react\" AND \"node\"",
+      "or": "Must contain either \"react\" OR \"vue\"",
+      "not": "Must contain \"javascript\" but NOT \"jquery\"",
+      "minus": "Same as NOT: contains \"python\" but not \"django\"",
+      "phrase": "Exact phrase match",
+      "combine": "Combine phrases with operators"
+    }
+  },
+  "searchInput": {
+    "placeholder": "Search teams and users...",
+    "submit": "Search",
+    "minQueryHint": "Enter at least two characters",
+    "tips": "Search tips",
+    "tipsAdvancedActive": "Search tips (Advanced Search active)",
+    "advanced": "Advanced",
+    "advancedShort": "A",
+    "remove": {
+      "badge": "Remove <icon/> Badge: <name/>",
+      "focusArea": "Remove <icon/> Focus Area: <name/>",
+      "roleName": "Remove <icon/> Role Name: <name/>",
+      "sorting": "Remove <icon/> Sorting: <name/>",
+      "filter": "Remove <icon/> Filter: <name/>"
+    }
+  },
   "team": {
     "unknownName": "Unknown Team"
   },

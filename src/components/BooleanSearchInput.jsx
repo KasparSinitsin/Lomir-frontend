@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   Tag,
   Award,
@@ -40,6 +41,8 @@ import {
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
 } from "../constants/badgeConstants";
+import { getBadgeName, getCategoryLabel } from "../utils/badgeLabels";
+import { splitEventSentence } from "../utils/eventSentences";
 
 const hexToRgba = (hex, alpha) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -48,7 +51,6 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MIN_QUERY_HINT = "Enter at least two characters";
 const ADVANCED_SEARCH_SHADOW =
   "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
 const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
@@ -145,16 +147,6 @@ const getTextareaCaretClientX = (textarea) => {
   return clamp(caretX, textareaRect.left, textareaRect.right);
 };
 
-const splitLeadingSign = (value) => {
-  const match = String(value ?? "").match(/^([+-])\s+(.+)$/);
-  return match
-    ? { sign: match[1], label: match[2] }
-    : { sign: null, label: value };
-};
-
-const getFilterPillAriaLabel = (removeAction, filterName) =>
-  `${removeAction}: ${filterName}`;
-
 const getCriteriaPillIcon = (pill) => {
   if (pill.key === "maxDistance") return Radius;
   if (pill.key === "openRolesOnly") return UserSearch;
@@ -163,29 +155,30 @@ const getCriteriaPillIcon = (pill) => {
 
   if (pill.key !== "sort") return null;
 
-  switch (pill.label) {
-    case "Best Match":
+  // By id, never by label: the label is translated (see getActiveCriteriaPills).
+  switch (pill.sortId) {
+    case "match":
       return Target;
-    case "Name Z-A":
+    case "nameDesc":
       return ArrowUpZA;
-    case "Name A-Z":
+    case "nameAsc":
       return ArrowDownAZ;
-    case "Active":
-    case "Inactive":
+    case "recentDesc":
+    case "recentAsc":
       return Clock;
-    case "Newest":
-    case "Oldest":
+    case "newestDesc":
+    case "newestAsc":
       return Sparkles;
-    case "Most Spots":
+    case "spotsDesc":
       return UserPlus;
-    case "Almost Full":
+    case "spotsAsc":
       return UserMinus;
-    case "Most Open Roles":
-    case "Least Open Roles":
+    case "openRolesDesc":
+    case "openRolesAsc":
       return UserSearch;
-    case "Remote First":
+    case "remoteFirst":
       return Globe;
-    case "Nearest First":
+    case "nearestFirst":
       return MapPin;
     default:
       return null;
@@ -203,14 +196,6 @@ const getCriteriaFilterType = (pill) => {
   return "filter";
 };
 
-const getRemoveActionParts = (removeAction) => {
-  const [firstWord, ...restWords] = removeAction.split(" ");
-  return {
-    firstWord,
-    restText: restWords.join(" "),
-  };
-};
-
 /**
  * Enhanced Search Input with Boolean Search Support
  *
@@ -224,7 +209,7 @@ const getRemoveActionParts = (removeAction) => {
 const BooleanSearchInput = ({
   onSearch,
   initialQuery = "",
-  placeholder = "Search teams and users...",
+  placeholder,
   compactPlaceholder = null,
   className = "",
   activePills = [],
@@ -243,6 +228,9 @@ const BooleanSearchInput = ({
   wrappedMiddleControl = null,
   wrappedControlsExpanded = false,
 }) => {
+  const { t } = useTranslation();
+  const minQueryHint = t("searchInput.minQueryHint");
+  const resolvedPlaceholder = placeholder ?? t("searchInput.placeholder");
   const [query, setQuery] = useState(initialQuery);
   const [hasBooleanOperators, setHasBooleanOperators] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
@@ -583,7 +571,7 @@ const BooleanSearchInput = ({
         hintMeasureRef.current?.getBoundingClientRect().width || 0,
       ),
     });
-  }, [query, placeholder, showMinQueryHint]);
+  }, [query, resolvedPlaceholder, minQueryHint, showMinQueryHint]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -861,38 +849,74 @@ const BooleanSearchInput = ({
     "mt-[0.0625rem] flex h-2.5 w-2.5 items-center justify-center overflow-hidden [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:shrink-0";
   const pillTooltipClassName =
     "inline-flex max-w-full min-w-0 z-10 hover:z-[500] focus-within:z-[500]";
-  const renderPillTooltipContent = (Icon, filterName, removeAction) => (
+  // "Remove <icon/> Sorting: <name/>" — one message per kind, with the icon and
+  // the filter name as slots, so German can put the verb last
+  // („<icon/> Sortierung entfernen: <name/>"). Replaces a split of the English
+  // at its first space, which put the icon after the verb in every language.
+  const getRemoveMessage = (removeKind) => {
+    switch (removeKind) {
+      case "badge": return t("searchInput.remove.badge");
+      case "focusArea": return t("searchInput.remove.focusArea");
+      case "roleName": return t("searchInput.remove.roleName");
+      case "sorting": return t("searchInput.remove.sorting");
+      default: return t("searchInput.remove.filter");
+    }
+  };
+  const getRemoveMessageParts = (removeKind) =>
+    splitEventSentence({
+      text: getRemoveMessage(removeKind),
+      slots: { icon: true, name: true },
+    });
+  const getFilterPillAriaLabel = (removeKind, filterName) =>
+    getRemoveMessageParts(removeKind)
+      .map((part) =>
+        "text" in part ? part.text : part.slot === "name" ? filterName : " ",
+      )
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+  const renderPillTooltipContent = (Icon, filterName, removeKind) => (
     <span className="inline-flex flex-wrap items-center gap-y-0.5">
-      <span>{getRemoveActionParts(removeAction).firstWord}</span>
-      <span className="inline-flex items-center whitespace-nowrap">
-        {Icon ? (
-          <Icon
-            size={13}
-            strokeWidth={2.5}
-            className="mx-1"
-            aria-hidden="true"
-          />
-        ) : null}
-        <span>{getRemoveActionParts(removeAction).restText}:&nbsp;</span>
-      </span>
-      <span>{filterName}</span>
+      {getRemoveMessageParts(removeKind).map((part, index) => {
+        if ("text" in part) {
+          const text = part.text.trim();
+          return text ? <span key={index}>{text}</span> : null;
+        }
+        if (part.slot === "icon") {
+          return Icon ? (
+            <Icon
+              key={index}
+              size={13}
+              strokeWidth={2.5}
+              className="mx-1"
+              aria-hidden="true"
+            />
+          ) : null;
+        }
+        return (
+          <span key={index} className="ml-1">
+            {filterName}
+          </span>
+        );
+      })}
     </span>
   );
 
   const renderColoredFilterPill = ({
     pill,
+    displayLabel = pill.label,
     color,
     icon,
     onRemove,
     TooltipIcon,
-    removeAction,
+    removeKind,
   }) => {
     const tooltipContent = renderPillTooltipContent(
       TooltipIcon,
-      pill.label,
-      removeAction,
+      displayLabel,
+      removeKind,
     );
-    const ariaLabel = getFilterPillAriaLabel(removeAction, pill.label);
+    const ariaLabel = getFilterPillAriaLabel(removeKind, displayLabel);
     return (
       <Tooltip
         key={pill.key}
@@ -908,7 +932,7 @@ const BooleanSearchInput = ({
           aria-label={ariaLabel}
         >
           <span className={pillIconClassName}>{icon}</span>
-          <span className={pillLabelClassName}>{pill.label}</span>
+          <span className={pillLabelClassName}>{displayLabel}</span>
           <span className={pillCloseClassName}>
             <X size={10} strokeWidth={3} className={pillSvgClassName} />
           </span>
@@ -917,14 +941,17 @@ const BooleanSearchInput = ({
     );
   };
 
+  // pill.label is the stored English badge name: the icon is keyed by it, the
+  // display goes through badgeLabels.js.
   const renderBadgePill = (pill) =>
     renderColoredFilterPill({
       pill,
+      displayLabel: getBadgeName(pill.label, t),
       color: CATEGORY_COLORS[pill.category] || DEFAULT_COLOR,
       icon: getBadgeIcon(pill.label, "white", 10, 3),
       onRemove: onRemoveBadgePill,
       TooltipIcon: Award,
-      removeAction: "Remove Badge",
+      removeKind: "badge",
     });
 
   const renderFocusAreaPill = (pill) => {
@@ -943,16 +970,12 @@ const BooleanSearchInput = ({
       ),
       onRemove: onRemoveFocusAreaPill,
       TooltipIcon: Tag,
-      removeAction: "Remove Focus Area",
+      removeKind: "focusArea",
     });
   };
 
   const renderCriteriaPill = (pill) => {
-    const labelParts = splitLeadingSign(pill.label);
-    const shortLabelParts = pill.shortLabel
-      ? splitLeadingSign(pill.shortLabel)
-      : null;
-    const pillSign = labelParts.sign || shortLabelParts?.sign;
+    const pillSign = pill.sign ?? null;
     const criteriaPillClassName = `${pillBaseClassName}${
       pillSign ? " grid-cols-[auto_minmax(0,1fr)_0.625rem]" : ""
     }`;
@@ -967,11 +990,11 @@ const BooleanSearchInput = ({
     );
     const pillLabelNode = pill.shortLabel ? (
       <>
-        <span className={`hidden sm:inline ${pillLabelClassName}`}>{labelParts.label}</span>
-        <span className={`sm:hidden ${pillLabelClassName}`}>{shortLabelParts.label}</span>
+        <span className={`hidden sm:inline ${pillLabelClassName}`}>{pill.label}</span>
+        <span className={`sm:hidden ${pillLabelClassName}`}>{pill.shortLabel}</span>
       </>
     ) : (
-      <span className={pillLabelClassName}>{labelParts.label}</span>
+      <span className={pillLabelClassName}>{pill.label}</span>
     );
     const criteriaType = getCriteriaFilterType(pill);
     const criteriaTooltipIcon =
@@ -980,20 +1003,20 @@ const BooleanSearchInput = ({
         : criteriaType === "sort"
           ? SlidersHorizontal
           : Filter;
-    const criteriaRemoveAction =
+    const criteriaRemoveKind =
       criteriaType === "searchTerm"
-        ? "Remove Role Name"
+        ? "roleName"
         : criteriaType === "sort"
-          ? "Remove Sorting"
-          : "Remove Filter";
+          ? "sorting"
+          : "filter";
     const criteriaFilterName = pill.removeLabel ?? pill.label;
     const tooltipContent = renderPillTooltipContent(
       criteriaTooltipIcon,
       criteriaFilterName,
-      criteriaRemoveAction,
+      criteriaRemoveKind,
     );
     const ariaLabel = getFilterPillAriaLabel(
-      criteriaRemoveAction,
+      criteriaRemoveKind,
       criteriaFilterName,
     );
 
@@ -1092,7 +1115,7 @@ const BooleanSearchInput = ({
       type="submit"
       className="btn btn-primary h-[32px] sm:h-[38px] min-h-0 px-2 sm:px-4 shrink-0"
       disabled={query.trim().length < 2}
-      aria-label="Search"
+      aria-label={t("searchInput.submit")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -1109,7 +1132,7 @@ const BooleanSearchInput = ({
           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
         />
       </svg>
-      <span className="sr-only sm:not-sr-only">Search</span>
+      <span className="sr-only sm:not-sr-only">{t("searchInput.submit")}</span>
     </button>
   );
 
@@ -1150,7 +1173,7 @@ const BooleanSearchInput = ({
                   onFocus={handleSuggestionRefresh}
                   onClick={handleSuggestionRefresh}
                   onKeyDown={handleKeyDown}
-                  placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : placeholder}
+                  placeholder={isCompactLayout && compactPlaceholder ? compactPlaceholder : resolvedPlaceholder}
                   className="min-w-0 flex-1 bg-transparent text-sm leading-[1.25] focus:outline-none px-0 py-0"
                   style={{
                     overflow: "hidden",
@@ -1174,7 +1197,7 @@ const BooleanSearchInput = ({
                     }}
                     role="tooltip"
                   >
-                    {MIN_QUERY_HINT}
+                    {minQueryHint}
                   </div>
                   <div
                     className="pointer-events-none absolute top-full z-[10001] bg-white"
@@ -1200,15 +1223,15 @@ const BooleanSearchInput = ({
               >
                 {showResetInTrailingControls && leftAdornment}
                 {hasBooleanOperators && (
-                  <Tooltip content="Search tips" position="top">
+                  <Tooltip content={t("searchInput.tips")} position="top">
                     <button
                       type="button"
                       onClick={(e) => searchHelpRef.current?.open(e.currentTarget)}
                       className={advancedIndicatorClassName}
                       style={{ backgroundColor: FOCUS_GREEN_DARK }}
-                      aria-label="Search tips (Advanced Search active)"
+                      aria-label={t("searchInput.tipsAdvancedActive")}
                     >
-                      <span className={isCompactLayout ? "leading-none" : pillLabelClassName}>{isCompactLayout ? "A" : "Advanced"}</span>
+                      <span className={isCompactLayout ? "leading-none" : pillLabelClassName}>{isCompactLayout ? t("searchInput.advancedShort") : t("searchInput.advanced")}</span>
                     </button>
                   </Tooltip>
                 )}
@@ -1282,7 +1305,7 @@ const BooleanSearchInput = ({
                       <li className="menu-title px-3 pt-1 pb-3">
                         <span className="flex items-center justify-start gap-1.5">
                           <Tag size={16} strokeWidth={2.5} className="text-primary" />
-                          <span className="font-semibold text-primary-focus">Focus Areas</span>
+                          <span className="font-semibold text-primary-focus">{t("focusAreas.title")}</span>
                         </span>
                       </li>
                       {(() => {
@@ -1340,7 +1363,7 @@ const BooleanSearchInput = ({
                       <li className="menu-title px-3 pt-3 pb-3">
                         <span className="flex items-center justify-start gap-1.5">
                           <Award size={16} strokeWidth={2.5} className="text-primary" />
-                          <span className="font-semibold text-primary-focus">Badges</span>
+                          <span className="font-semibold text-primary-focus">{t("badges.section.title")}</span>
                         </span>
                       </li>
                       {(() => {
@@ -1375,13 +1398,13 @@ const BooleanSearchInput = ({
                                       {isFirst && (
                                         <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal [overflow-wrap:anywhere]" style={{ color }}>
                                           {getCategoryIcon(category, color, 10)}
-                                          <span>{category}</span>
+                                          <span>{getCategoryLabel(category, t)}</span>
                                         </span>
                                       )}
                                     </div>
                                     <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
                                       <span className="shrink-0">{getBadgeIcon(badge.name, color, 14)}</span>
-                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{badge.name}</span>
+                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{getBadgeName(badge.name, t)}</span>
                                     </div>
                                   </button>
                                 </li>
@@ -1420,10 +1443,10 @@ const BooleanSearchInput = ({
           <span ref={queryMeasureRef}>{query || " "}</span>
         </div>
         <div className="pointer-events-none absolute left-0 top-0 -z-10 invisible whitespace-pre text-sm">
-          <span ref={placeholderMeasureRef}>{placeholder || " "}</span>
+          <span ref={placeholderMeasureRef}>{resolvedPlaceholder || " "}</span>
         </div>
         <div className="pointer-events-none absolute left-0 top-0 -z-10 invisible whitespace-pre text-xs">
-          <span ref={hintMeasureRef}>{MIN_QUERY_HINT}</span>
+          <span ref={hintMeasureRef}>{minQueryHint}</span>
         </div>
       </form>
     </div>

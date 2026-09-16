@@ -27,6 +27,7 @@ import {
   UserX,
 } from 'lucide-react';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
+import { getBadgeName } from '../../utils/badgeLabels';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -764,8 +765,9 @@ const MessageNotifications = () => {
         getHeaderLabel: (t) => t("messageNotifications.header.newBadge"),
         eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
         eventColor: categoryColor,
-        // badgeName is database content (Phase 4) — shown as it comes.
-        getText: (t) => t("messageNotifications.text.badgeAwarded", { badge: badgeName }),
+        // badgeName is the stored English name: the highlight URL below needs it
+        // as is; only the sentence shows the translated one.
+        getText: (t) => t("messageNotifications.text.badgeAwarded", { badge: getBadgeName(badgeName, t) }),
         senderName: awarderName || null,
         navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
         time: new Date(),
