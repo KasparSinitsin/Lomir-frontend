@@ -122,35 +122,46 @@ export const buildMessageSearchText = (message) => {
   return normalizeChatSearchText(parts.join(" "));
 };
 
-const buildSystemMessageSearchSnippet = (parsedMessage) => {
+/**
+ * ⚠️ A name can be null — `parseSystemMessage` nulls the "Someone"/"Unknown"
+ * placeholders — and an unguarded `${name}` put the literal string "null" into
+ * the search index. The index drops the name instead; `buildSystemMessageSearchSnippet`
+ * collapses the gap it leaves.
+ */
+const searchName = (name) => name || "";
+
+const buildSystemMessageSearchSnippet = (parsedMessage) =>
+  buildSystemMessageSearchSnippetText(parsedMessage).replace(/\s+/g, " ").trim();
+
+const buildSystemMessageSearchSnippetText = (parsedMessage) => {
   if (!parsedMessage) return "";
 
   switch (parsedMessage.type) {
     case "application_approved_dm":
       return [
-        `You approved ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was approved by ${parsedMessage.approverName}`,
+        `You approved ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}`,
+        `Your application to ${parsedMessage.teamName} was approved by ${searchName(parsedMessage.approverName)}`,
         parsedMessage.hasPersonalMessage ? "who added this message" : "Welcome to the team",
       ].join(". ");
     case "application_approved":
       return [
-        `Your application was approved by ${parsedMessage.approverName}. Welcome to the team`,
-        `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them`,
+        `Your application was approved by ${searchName(parsedMessage.approverName)}. Welcome to the team`,
+        `${searchName(parsedMessage.applicantName)} has applied successfully and was added by ${searchName(parsedMessage.approverName)}. Say hello to them`,
       ].join(". ");
     case "application_declined":
       return [
-        `You declined ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was declined by ${parsedMessage.approverName}`,
+        `You declined ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}`,
+        `Your application to ${parsedMessage.teamName} was declined by ${searchName(parsedMessage.approverName)}`,
         parsedMessage.hasPersonalMessage
           ? "who added this message"
           : "Want to reach out to them in this chat",
       ].join(". ");
     case "application_response":
-      return `Response to your application for ${parsedMessage.teamName}. Your decline response to ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
+      return `Response to your application for ${parsedMessage.teamName}. Your decline response to ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
     case "invitation_declined":
       return [
-        `You declined ${parsedMessage.inviterName}'s invitation for ${parsedMessage.teamName}`,
-        `Your invitation for ${parsedMessage.teamName} was declined by ${parsedMessage.inviteeName}`,
+        `You declined ${searchName(parsedMessage.inviterName)}'s invitation for ${parsedMessage.teamName}`,
+        `Your invitation for ${parsedMessage.teamName} was declined by ${searchName(parsedMessage.inviteeName)}`,
         parsedMessage.hasPersonalMessage
           ? "who added this message"
           : "Want to reach out to them in this chat",
@@ -158,33 +169,40 @@ const buildSystemMessageSearchSnippet = (parsedMessage) => {
     case "invitation_response":
       return `Response to your invitation for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
     case "team_join":
-      return `${parsedMessage.userName} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
+      return `${searchName(parsedMessage.userName)} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
     case "team_leave":
-      return `${parsedMessage.userName} has left the team. You have left the team.`;
+      return `${searchName(parsedMessage.userName)} has left the team. You have left the team.`;
     case "role_application_approved":
-      return `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`;
+      return `${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.roleName} was approved.`;
     case "role_reopened":
-      return `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
+      return `${searchName(parsedMessage.userName)} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
     case "role_filled":
-      return parsedMessage.userName && parsedMessage.userName !== "Someone"
-        ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
+      // ⚠️ The "Someone" comparison is gone: parseSystemMessage nulls the
+      // placeholder, so an unknown filler is simply a missing name.
+      return parsedMessage.userName
+        ? `${searchName(parsedMessage.userName)} is now filling the role ${parsedMessage.roleName}.`
         : `The role ${parsedMessage.roleName} was marked as filled.`;
     case "member_removed_public":
-      return `${parsedMessage.userName} has been removed from the team. You removed ${parsedMessage.userName} from the team.`;
+      return `${searchName(parsedMessage.userName)} has been removed from the team. You removed ${searchName(parsedMessage.userName)} from the team.`;
     case "invitation_cancelled":
-      return `${parsedMessage.cancellerName} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName}.`;
+      return `${searchName(parsedMessage.cancellerName)} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${searchName(parsedMessage.inviteeName)} to join ${parsedMessage.teamName}.`;
     case "application_cancelled":
-      return `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
+      return `${searchName(parsedMessage.applicantName)} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
     case "member_removed":
-      return `You were removed from ${parsedMessage.teamName} by ${parsedMessage.removerName}. You removed ${parsedMessage.memberName} from ${parsedMessage.teamName}.`;
-    case "role_changed":
-      return `Your role in ${parsedMessage.teamName} was changed to ${parsedMessage.newRole} by ${parsedMessage.changerName}. You changed ${parsedMessage.memberName}'s role to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`;
+      return `You were removed from ${parsedMessage.teamName} by ${searchName(parsedMessage.removerName)}. You removed ${searchName(parsedMessage.memberName)} from ${parsedMessage.teamName}.`;
+    case "role_changed": {
+      // ⚠️ Used to index the raw enum ("changed to admin"), so searching for
+      // the word the UI shows — "Admin" — matched the transcript but not the
+      // conversation counter.
+      const newRoleLabel = parsedMessage.newRole === "admin" ? "Admin" : "Member";
+      return `Your role in ${parsedMessage.teamName} was changed to ${newRoleLabel} by ${searchName(parsedMessage.changerName)}. You changed ${searchName(parsedMessage.memberName)}'s role to ${newRoleLabel} in ${parsedMessage.teamName}.`;
+    }
     case "ownership_team":
-      return `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}`;
+      return `${searchName(parsedMessage.prevOwnerName)} transferred ownership to ${searchName(parsedMessage.newOwnerName)}`;
     case "ownership_transferred":
-      return `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}. Congratulations`;
+      return `${searchName(parsedMessage.prevOwnerName)} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${searchName(parsedMessage.newOwnerName)}. Congratulations`;
     case "team_deleted":
-      return `${parsedMessage.ownerName} deleted the team ${parsedMessage.teamName}. You deleted the team ${parsedMessage.teamName}.`;
+      return `${searchName(parsedMessage.ownerName)} deleted the team ${parsedMessage.teamName}. You deleted the team ${parsedMessage.teamName}.`;
     default:
       return "";
   }

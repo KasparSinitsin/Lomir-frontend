@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
+import { matchesViewer } from "../../utils/describeEvent";
 import {
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
@@ -57,6 +59,7 @@ const MessageDisplay = ({
   searchQuery = "",
 }) => {
   const { t } = useTranslation();
+  const { user: currentUser } = useAuth();
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -881,13 +884,14 @@ const MessageDisplay = ({
     });
   };
 
-  const isCurrentViewer = (userId) =>
-    userId != null &&
-    currentUserId != null &&
-    String(userId) === String(currentUserId);
+  // ⚠️ `name` is not decoration: the id-less wire formats (see matchesViewer)
+  // can only recognise the reader by name, and without it the transcript told
+  // you that *you* had added a member — under your own name.
+  const isCurrentViewer = (userId, name = null) =>
+    matchesViewer(userId, name, currentUser ?? (currentUserId != null ? { id: currentUserId } : null));
 
   const userMentionOrYou = (userId, name, { capitalized = false } = {}) => {
-    if (isCurrentViewer(userId)) return capitalized ? "You" : "you";
+    if (isCurrentViewer(userId, name)) return capitalized ? "You" : "you";
 
     return userId ? (
       <MentionById userId={userId} name={name} />
@@ -897,7 +901,7 @@ const MessageDisplay = ({
   };
 
   const possessiveUserMentionOrYour = (userId, name) => {
-    if (isCurrentViewer(userId)) return "Your";
+    if (isCurrentViewer(userId, name)) return "Your";
 
     return (
       <>
@@ -1244,6 +1248,9 @@ const MessageDisplay = ({
     highlightEventContent,
     getReadByTooltip,
     currentUserId,
+    // The id alone cannot decide "is this me?" for the wire formats that carry
+    // names only — OWNERSHIP_TEAM has no ids at all.
+    currentUser,
     conversationType,
     teamMembers,
     searchQuery,
