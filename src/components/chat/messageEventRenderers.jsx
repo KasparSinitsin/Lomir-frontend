@@ -30,7 +30,6 @@ export const createEventRenderers = (ctx) => {
     MentionById,
     TeamMentionById,
     RoleMentionById,
-    userMentionOrYou,
     isCurrentViewer,
     renderAvatar,
     renderSenderName,
@@ -54,73 +53,14 @@ export const createEventRenderers = (ctx) => {
       currentUser ?? (currentUserId != null ? { id: currentUserId } : null),
     );
 
-  /**
-   * Render an application approved DM message with special formatting (green theme)
-   * Shows different text based on whether viewer is the approver or the applicant
-   */
-  const renderApplicationApprovedDmMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      parsedMessage.hasPersonalMessage ? (
-        <>
-          You approved{" "}
-          <MentionById
-            userId={parsedMessage.applicantId}
-            name={parsedMessage.applicantName}
-          />
-          {"'s"} application for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />{" "}
-          and added this message:
-        </>
-      ) : (
-        <>
-          You approved{" "}
-          <MentionById
-            userId={parsedMessage.applicantId}
-            name={parsedMessage.applicantName}
-          />
-          {"'s"} application for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />
-        </>
-      )
-    ) : parsedMessage.hasPersonalMessage ? (
-      <>
-        Your application to{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was approved by{" "}
-        <MentionById
-          userId={parsedMessage.approverId}
-          name={parsedMessage.approverName}
-        />
-        , who added this message:
-      </>
-    ) : (
-      <>
-        Your application to{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was approved by{" "}
-        <MentionById
-          userId={parsedMessage.approverId}
-          name={parsedMessage.approverName}
-        />
-        . Welcome to the team!
-      </>
-    );
+  // =============================================================================
+  // The applications + invitations family — sentences from eventSentences.js.
+  // ⚠️ Perspective comes from the people in the payload, not from the sender:
+  // an uninvolved reader used to be told "Your application to … was approved".
+  // =============================================================================
+
+  const renderApplicationApprovedDmMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -142,44 +82,11 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderApplicationApprovedMessage - Green success theme
   // =============================================================================
-  const renderApplicationApprovedMessage = (
-    message,
-    parsedMessage,
-  ) => {
-    // ⚠️ This is the prose format — names only, no ids — so both checks were
-    // permanently false and the approver read about herself in the third
-    // person ("… was added by Anna Madlen Albers", to Anna Madlen Albers).
-    const isApplicantCurrentUser = isCurrentViewer(
-      parsedMessage.applicantId,
-      parsedMessage.applicantName,
-    );
-    const isApproverCurrentUser = isCurrentViewer(
-      parsedMessage.approverId,
-      parsedMessage.approverName,
-    );
-
-    const welcomeText = isApplicantCurrentUser ? (
-      <>
-        Your application was approved by{" "}
-        {userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)}
-        . Welcome to the team!
-      </>
-    ) : isApproverCurrentUser ? (
-      <>
-        You approved{" "}
-        {userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName)}
-        {"'s"} application. Say hello to them!
-      </>
-    ) : (
-      <>
-        {userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName, {
-          capitalized: true,
-        })}{" "}
-        has applied successfully and was added by{" "}
-        {userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)}
-        . Say hello to them!
-      </>
-    );
+  const renderApplicationApprovedMessage = (message, parsedMessage) => {
+    // ⚠️ This is the prose format — names only, no ids — so describeEvent
+    // matches the reader by name. Id-only checks let the approver read about
+    // herself in the third person ("… was added by Anna Madlen Albers").
+    const welcomeText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -244,13 +151,12 @@ export const createEventRenderers = (ctx) => {
    * ⚠️ Names reach the sentence only as components, never as text inside it —
    * see the header of eventSentences.js for why.
    */
-  // ⚠️ Team names: the quotation marks are in the message (D6), so the
-  // mention must not add its own.
+  // Team names: the quotation marks are in the message (D6).
   const defaultSlotElement = (value) => {
     if (value.kind === "person") return personMention(value.person);
     if (value.kind === "team") {
       return (
-        <TeamMentionById teamId={value.entity?.id} name={value.entity?.name} quoted={false} />
+        <TeamMentionById teamId={value.entity?.id} name={value.entity?.name} />
       );
     }
     return null;
@@ -665,47 +571,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderInvitationCancelledMessage - Neutral grey theme
   // =============================================================================
-  const renderInvitationCancelledMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      <>
-        You cancelled your invitation for{" "}
-        {parsedMessage.inviteeId ? (
-          <MentionById
-            userId={parsedMessage.inviteeId}
-            name={parsedMessage.inviteeName}
-          />
-        ) : (
-          <Mention name={parsedMessage.inviteeName} />
-        )}{" "}
-        to join{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Want to tell them why in this chat?
-      </>
-    ) : (
-      <>
-        {parsedMessage.cancellerId ? (
-          <MentionById
-            userId={parsedMessage.cancellerId}
-            name={parsedMessage.cancellerName}
-          />
-        ) : (
-          <Mention name={parsedMessage.cancellerName} />
-        )}{" "}
-        cancelled your invitation to join{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        {". "}Want to reach out to them in this chat?
-      </>
-    );
+  const renderInvitationCancelledMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -726,70 +593,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderInvitationDeclinedMessage - Neutral grey theme
   // =============================================================================
-  const renderInvitationDeclinedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      parsedMessage.hasPersonalMessage ? (
-        <>
-          You declined{" "}
-          <MentionById
-            userId={parsedMessage.inviterId}
-            name={parsedMessage.inviterName}
-          />
-          {"'s"} invitation for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />{" "}
-          and added this message:
-        </>
-      ) : (
-        <>
-          You declined{" "}
-          <MentionById
-            userId={parsedMessage.inviterId}
-            name={parsedMessage.inviterName}
-          />
-          {"'s"} invitation for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />
-          . Consider adding a personal message to explain your decision.
-        </>
-      )
-    ) : parsedMessage.hasPersonalMessage ? (
-      <>
-        Your invitation for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was declined by{" "}
-        <MentionById
-          userId={parsedMessage.inviteeId}
-          name={parsedMessage.inviteeName}
-        />
-        , who added this message:
-      </>
-    ) : (
-      <>
-        Your invitation for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was declined by{" "}
-        <MentionById
-          userId={parsedMessage.inviteeId}
-          name={parsedMessage.inviteeName}
-        />
-        . Want to reach out to them in this chat?
-      </>
-    );
+  const renderInvitationDeclinedMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -817,17 +622,10 @@ export const createEventRenderers = (ctx) => {
     isCurrentUser,
     senderId,
   ) => {
-    const bannerContent = isCurrentUser ? (
-      <>
-        Your decline response to <Mention name={parsedMessage.applicantName} />
-        {"'s"} application for{" "}
-        <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
-      </>
-    ) : (
-      <>
-        Response to your application for{" "}
-        <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
-      </>
+    // The payload names only the applicant; the sender wrote the response.
+    const responder = isCurrentUser ? { isViewer: true, isKnown: true } : undefined;
+    const bannerContent = renderSentence(
+      getEventSentence(t, eventOf(parsedMessage), "full", responder ? { responder } : {}),
     );
 
     return (
@@ -892,70 +690,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderApplicationDeclinedMessage - Neutral grey theme
   // =============================================================================
-  const renderApplicationDeclinedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      parsedMessage.hasPersonalMessage ? (
-        <>
-          You declined{" "}
-          <MentionById
-            userId={parsedMessage.applicantId}
-            name={parsedMessage.applicantName}
-          />
-          {"'s"} application for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />{" "}
-          and added this message:
-        </>
-      ) : (
-        <>
-          You declined{" "}
-          <MentionById
-            userId={parsedMessage.applicantId}
-            name={parsedMessage.applicantName}
-          />
-          {"'s"} application for{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />
-          . Consider adding a personal message to explain your decision.
-        </>
-      )
-    ) : parsedMessage.hasPersonalMessage ? (
-      <>
-        Your application to{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was declined by{" "}
-        <MentionById
-          userId={parsedMessage.approverId}
-          name={parsedMessage.approverName}
-        />
-        {", "}who added this message:
-      </>
-    ) : (
-      <>
-        Your application to{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was declined by{" "}
-        <MentionById
-          userId={parsedMessage.approverId}
-          name={parsedMessage.approverName}
-        />
-        {". "}Want to reach out to them in this chat?
-      </>
-    );
+  const renderApplicationDeclinedMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -983,13 +719,14 @@ export const createEventRenderers = (ctx) => {
     isCurrentUser,
     senderId,
   ) => {
+    const bannerContent = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
+
     return (
       <div className="flex flex-col items-center w-full my-4">
         <div className="event-banner event-banner--neutral mb-3">
           <span className="text-sm font-medium event-message-text">
             <FileText size={16} className="event-inline-icon mr-1" />
-            Response to invitation for{" "}
-            <span className="font-medium">{renderHighlightedSearchText(parsedMessage.teamName, searchQuery)}</span>
+            {highlightEventContent(bannerContent)}
           </span>
         </div>
 
@@ -1048,34 +785,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderApplicationCancelledMessage - Neutral grey theme
   // =============================================================================
-  const renderApplicationCancelledMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      <>
-        You cancelled your application for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Want to tell them why in this chat?
-      </>
-    ) : (
-      <>
-        <MentionById
-          userId={parsedMessage.applicantId}
-          name={parsedMessage.applicantName}
-        />{" "}
-        cancelled their application for{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        . Want to reach out to them in this chat?
-      </>
-    );
+  const renderApplicationCancelledMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">

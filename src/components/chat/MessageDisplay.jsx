@@ -650,17 +650,16 @@ const MessageDisplay = ({
     setIsTeamModalOpen(true);
   };
 
-  // `quoted={false}` for the translated event sentences, which carry their
-  // own quotation marks („…“ in German, D6).
-  const TeamMentionById = ({ teamId, name, quoted = true }) => {
+  // No quotation marks here: the event sentences carry their own („…“ in
+  // German, D6).
+  const TeamMentionById = ({ teamId, name }) => {
     const safeName = (name || "").trim() || "Team";
-    const mark = quoted ? '"' : "";
 
     // legacy / missing id => non-clickable fallback
     if (!teamId) {
       return (
         <span className="font-medium">
-          {mark}{renderHighlightedSearchText(safeName, searchQuery)}{mark}
+          {renderHighlightedSearchText(safeName, searchQuery)}
         </span>
       );
     }
@@ -672,7 +671,7 @@ const MessageDisplay = ({
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
           onClick={() => openTeamModal(teamId)}
         >
-          {mark}{renderHighlightedSearchText(safeName, searchQuery)}{mark}
+          {renderHighlightedSearchText(safeName, searchQuery)}
         </button>
       </Tooltip>
     );
@@ -892,27 +891,6 @@ const MessageDisplay = ({
   // you that *you* had added a member — under your own name.
   const isCurrentViewer = (userId, name = null) =>
     matchesViewer(userId, name, currentUser ?? (currentUserId != null ? { id: currentUserId } : null));
-
-  const userMentionOrYou = (userId, name, { capitalized = false } = {}) => {
-    if (isCurrentViewer(userId, name)) return capitalized ? "You" : "you";
-
-    return userId ? (
-      <MentionById userId={userId} name={name} />
-    ) : (
-      <Mention name={name} />
-    );
-  };
-
-  const possessiveUserMentionOrYour = (userId, name) => {
-    if (isCurrentViewer(userId, name)) return "Your";
-
-    return (
-      <>
-        {userMentionOrYou(userId, name)}
-        {"'s"}
-      </>
-    );
-  };
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
@@ -1243,8 +1221,6 @@ const MessageDisplay = ({
     MentionById,
     TeamMentionById,
     RoleMentionById,
-    userMentionOrYou,
-    possessiveUserMentionOrYour,
     isCurrentViewer,
     renderAvatar,
     renderSenderName,

@@ -28,8 +28,8 @@
 //            (Julia, 2026-09-16; replaces the deleted-user half of D4)
 //   other    nobody known — the clause is dropped, never replaced by a name
 
-/** The event types whose sentences come from here. The other families still
- * render their English inline until their own PRs. */
+/** The event types whose sentences come from here — since PR 3, every type
+ * `parseSystemMessage` returns. */
 export const TRANSLATED_EVENT_TYPES = new Set([
   "role_created",
   "role_updated",
@@ -53,6 +53,14 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "ownership_transferred",
   "ownership_team",
   "team_deleted",
+  "application_approved",
+  "application_approved_dm",
+  "application_declined",
+  "application_cancelled",
+  "application_response",
+  "invitation_declined",
+  "invitation_cancelled",
+  "invitation_response",
 ]);
 
 // "Vacant Role" is a real, saved role name that stays English by decision
@@ -68,6 +76,9 @@ export const perspectiveOf = (person) => {
 
 /** For the optional parts of a sentence: a team or role name that may be missing. */
 const presenceOf = (entity) => (entity?.name ? "named" : "other");
+
+/** Whether a decision DM carries a personal message beside the banner. */
+const personalOf = (event) => (event.hasPersonalMessage ? "yes" : "other");
 
 const personSlot = (person) => ({ kind: "person", person });
 const roleSlot = (entity) => ({ kind: "role", entity });
@@ -358,6 +369,122 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
         slots: { owner: personSlot(owner), team },
       };
     }
+
+    // ── applications + invitations ─────────────────────────────────────────
+    // application_approved is the 🎉 team-chat prose: names only, no team, so
+    // the reader is matched by name. Its short form is shared with the DM.
+    case "application_approved":
+    case "application_approved_dm": {
+      const applicant = person("applicant");
+      const approver = person("approver");
+      const slots = { applicant: personSlot(applicant), approver: personSlot(approver), team };
+
+      if (short) {
+        return {
+          text: t("chatEvents.applicationApproved.short", {
+            applicant: perspectiveOf(applicant),
+            team: presenceOf(event.team),
+          }),
+          slots,
+        };
+      }
+      const values = {
+        applicant: perspectiveOf(applicant),
+        approver: perspectiveOf(approver),
+      };
+      return {
+        text:
+          event.type === "application_approved_dm"
+            ? t("chatEvents.applicationApprovedDm.full", {
+                ...values,
+                personal: personalOf(event),
+              })
+            : t("chatEvents.applicationApproved.full", values),
+        slots,
+      };
+    }
+
+    case "application_declined": {
+      const applicant = person("applicant");
+      const approver = person("approver");
+      return {
+        text: short
+          ? t("chatEvents.applicationDeclined.short", {
+              applicant: perspectiveOf(applicant),
+            })
+          : t("chatEvents.applicationDeclined.full", {
+              applicant: perspectiveOf(applicant),
+              approver: perspectiveOf(approver),
+              personal: personalOf(event),
+            }),
+        slots: { applicant: personSlot(applicant), approver: personSlot(approver), team },
+      };
+    }
+
+    case "application_cancelled": {
+      const applicant = person("applicant");
+      const values = { applicant: perspectiveOf(applicant) };
+      return {
+        text: short
+          ? t("chatEvents.applicationCancelled.short", values)
+          : t("chatEvents.applicationCancelled.full", values),
+        slots: { applicant: personSlot(applicant), team },
+      };
+    }
+
+    // The response names only the applicant; who wrote it (the message's
+    // sender) is known to the transcript alone, via `people`.
+    case "application_response": {
+      const applicant = person("applicant");
+      return {
+        text: short
+          ? t("chatEvents.applicationResponse.short", {
+              applicant: perspectiveOf(applicant),
+            })
+          : t("chatEvents.applicationResponse.full", {
+              applicant: perspectiveOf(applicant),
+              responder: person("responder").isViewer ? "you" : "other",
+            }),
+        slots: { applicant: personSlot(applicant), team },
+      };
+    }
+
+    case "invitation_declined": {
+      const invitee = person("invitee");
+      const inviter = person("inviter");
+      return {
+        text: short
+          ? t("chatEvents.invitationDeclined.short", {
+              invitee: perspectiveOf(invitee),
+            })
+          : t("chatEvents.invitationDeclined.full", {
+              invitee: perspectiveOf(invitee),
+              inviter: perspectiveOf(inviter),
+              personal: personalOf(event),
+            }),
+        slots: { invitee: personSlot(invitee), inviter: personSlot(inviter), team },
+      };
+    }
+
+    case "invitation_cancelled": {
+      const invitee = person("invitee");
+      const canceller = person("canceller");
+      return {
+        text: short
+          ? t("chatEvents.invitationCancelled.short", {
+              invitee: perspectiveOf(invitee),
+            })
+          : t("chatEvents.invitationCancelled.full", {
+              invitee: perspectiveOf(invitee),
+              canceller: perspectiveOf(canceller),
+            }),
+        slots: { invitee: personSlot(invitee), canceller: personSlot(canceller), team },
+      };
+    }
+
+    // No people in the payload — one sentence for both forms.
+    case "invitation_response":
+      return { text: t("chatEvents.invitationResponse.full"), slots: { team } };
 
     default:
       return null;

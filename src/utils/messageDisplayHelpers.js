@@ -27,8 +27,7 @@ import {
   UserPlus,
   UserSearch,
 } from "lucide-react";
-import { describeEvent, personOf } from "./describeEvent";
-import { objectLabel } from "./eventPreview";
+import { describeEvent } from "./describeEvent";
 import { getEventSentenceText } from "./eventSentences";
 
 // Maps a file name to its lucide icon component reference (not JSX). Shared by
@@ -52,25 +51,15 @@ const EVENT_REACTION_PREVIEW_COLORS = {
   error: "#dc2626",
 };
 
-/** Subject position: "You" / "Anna" / a fallback noun. */
-const subject = (person, fallback) =>
-  person.isViewer ? "You" : person.name || fallback;
-
-/** Possessive: "Your" / "Anna's" / "Applicant's". */
-const possessive = (person, fallback) =>
-  person.isViewer ? "Your" : `${person.name || fallback}'s`;
-
 /**
  * @param {string} content        the stored message
  * @param {object|null} viewer    the reader — the whole user, not only `{ id }`:
  *                                the id-less formats match the reader by name
- * @param {Function|null} t       i18next `t` — required for the translated families
+ * @param {Function|null} t       i18next `t` — required: every event sentence is translated
  */
 export const getEventReactionPreview = (content, viewer = null, t = null) => {
   const event = describeEvent(content, viewer);
   if (!event) return null;
-
-  const { team } = event;
 
   switch (event.type) {
     case "team_join": {
@@ -81,29 +70,14 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
     }
-    case "application_approved": {
-      const applicant = personOf(event, "applicant");
-      const approver = personOf(event, "approver");
+    case "application_approved":
+    case "application_approved_dm":
       return {
-        text: applicant.isViewer
-          ? `Your application was approved by ${objectLabel(approver, "an admin")}. Welcome to the team!`
-          : approver.isViewer
-            ? `You approved ${applicant.name ? `${applicant.name}'s ` : "the "}application. Say hello to them!`
-            : `${applicant.name || "Someone"} has applied successfully and was added by ${objectLabel(approver, "an admin")}. Say hello to them!`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
-    }
-    case "application_approved_dm": {
-      const applicant = personOf(event, "applicant");
-      return {
-        text: `${possessive(applicant, "Applicant")} application for ${team.name || "the team"} was approved.`,
-        Icon: UserPlus,
-        trailingIcon: PartyPopper,
-        color: EVENT_REACTION_PREVIEW_COLORS.success,
-      };
-    }
     // The roles family — the same sentence as the transcript above it (D1),
     // with the reader's perspective (D2), from eventSentences.js.
     case "role_application_approved":
@@ -147,7 +121,7 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
     case "application_response":
     case "invitation_response":
       return {
-        text: `Response for ${team.name || "the team"}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: FileText,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
@@ -171,40 +145,15 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
     }
-    case "application_declined": {
-      const applicant = personOf(event, "applicant");
+    case "application_declined":
+    case "invitation_declined":
+    case "invitation_cancelled":
+    case "application_cancelled":
       return {
-        text: `${possessive(applicant, "Applicant")} application for ${team.name || "the team"} was declined.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    }
-    case "invitation_declined": {
-      const invitee = personOf(event, "invitee");
-      return {
-        text: `${subject(invitee, "Invitee")} declined the invitation for ${team.name || "the team"}.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
-    }
-    case "invitation_cancelled": {
-      const invitee = personOf(event, "invitee");
-      return {
-        text: `Invitation for ${objectLabel(invitee, "an invitee")} to join ${team.name || "the team"} was cancelled.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
-    }
-    case "application_cancelled": {
-      const applicant = personOf(event, "applicant");
-      return {
-        text: applicant.isViewer
-          ? `You cancelled your application for ${team.name || "the team"}.`
-          : `${applicant.name || "Applicant"} cancelled their application for ${team.name || "the team"}.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
-    }
     case "member_removed": {
       return {
         text: getEventSentenceText(t, event, "full"),

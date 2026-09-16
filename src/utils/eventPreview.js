@@ -23,20 +23,6 @@ export const EVENT_PREVIEW_TEXT_COLORS = {
   role: "#f59e0b",
 };
 
-const teamText = (team) => (team?.name ? ` for "${team.name}"` : "");
-
-/** Subject position: "You" / "Anna" / the caller's fallback noun. */
-const subject = (person, fallback) =>
-  person.isViewer ? "You" : person.name || fallback;
-
-/** Object position: "you" / "Anna" / the caller's fallback noun. */
-export const objectLabel = (person, fallback) =>
-  person.isViewer ? "you" : person.name || fallback;
-
-/** Possessive: "Your" / "Anna's" / "Applicant's". */
-const possessive = (person, fallback) =>
-  person.isViewer ? "Your" : `${person.name || fallback}'s`;
-
 /**
  * The byline the conversation list and the toast print as "by …".
  * ⚠️ Capitalised on purpose — it is rendered as its own fragment after the
@@ -48,8 +34,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
   const event = describeEvent(lastMessage, currentUser);
 
   if (!event) return null;
-
-  const { team } = event;
 
   switch (event.type) {
     case "role_changed": {
@@ -120,63 +104,38 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
 
-    case "invitation_declined": {
-      const invitee = personOf(event, "invitee");
-
+    // The applications + invitations family — sentences from
+    // eventSentences.js, like every other family now.
+    case "invitation_declined":
+    case "application_declined":
+    case "invitation_cancelled":
+    case "application_cancelled":
       return {
-        text: `${subject(invitee, "Invitee")} declined invitation${teamText(team)}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
-    }
-
-    case "application_declined": {
-      const applicant = personOf(event, "applicant");
-
-      return {
-        text: `${possessive(applicant, "Applicant")} application was declined${teamText(team)}`,
-        icon: "CircleX",
-        bannerClass: "event-banner--neutral",
-        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-      };
-    }
 
     case "application_response":
+    case "invitation_response":
       return {
-        text: `Response to application${teamText(team)}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "FileText",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
 
-    case "invitation_cancelled": {
-      const invitee = personOf(event, "invitee");
-
-      return {
-        text: invitee.isViewer
-          ? `Your invitation was cancelled${teamText(team)}`
-          : `Invitation cancelled for ${invitee.name || "invitee"}${teamText(team)}`,
-        icon: "CircleX",
-        bannerClass: "event-banner--neutral",
-        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-      };
-    }
-
     case "application_approved":
-    case "application_approved_dm": {
-      const applicant = personOf(event, "applicant");
-      const approver = personOf(event, "approver");
-
+    case "application_approved_dm":
       return {
-        text: `${possessive(applicant, "Applicant")} application was approved${teamText(team)}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
-        senderName: byline(approver),
+        senderName: byline(personOf(event, "approver")),
         senderPrefix: "by ",
       };
-    }
 
     // The roles family — sentences from eventSentences.js, in the active
     // language. Only the styling stays here.
@@ -262,19 +221,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         senderPrefix: "by ",
       };
 
-    case "application_cancelled": {
-      const applicant = personOf(event, "applicant");
-
-      return {
-        text: applicant.isViewer
-          ? `You cancelled your application${teamText(team)}`
-          : `${applicant.name || "Applicant"} cancelled application${teamText(team)}`,
-        icon: "CircleX",
-        bannerClass: "event-banner--neutral",
-        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-      };
-    }
-
     case "member_removed":
     case "member_removed_public": {
       return {
@@ -294,14 +240,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         backgroundColor: "rgba(239, 68, 68, 0.1)",
       };
     }
-
-    case "invitation_response":
-      return {
-        text: `Response to invitation${teamText(team)}`,
-        icon: "FileText",
-        bannerClass: "event-banner--neutral",
-        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-      };
 
     default:
       return null;

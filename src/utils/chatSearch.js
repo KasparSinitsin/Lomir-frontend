@@ -1,4 +1,3 @@
-import { parseSystemMessage } from "../utils/messageSystemParser";
 import { describeEvent } from "../utils/describeEvent";
 import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
@@ -101,8 +100,8 @@ const addUserSearchParts = (parts, user) => {
 
 /**
  * The sentence a translated event shows THIS reader, in the active language —
- * the transcript/quote form (D3). `null` for everything that is not a
- * translated event, which keeps its old index.
+ * the transcript/quote form (D3). `null` for everything that is not an event,
+ * which is indexed by its content.
  *
  * ⚠️ The stored content is deliberately NOT indexed for these: it is English
  * or a wire format ("ROLE_CLOSED: 12:Chor | …"), so a German reader searching
@@ -124,16 +123,14 @@ const getTranslatedEventSearchParts = (message, { viewer = null, t = null } = {}
 /**
  * @param {object} message
  * @param {{ viewer?: object|null, t?: Function|null }} [options]
- *   the reader and the active `t` — required for the translated event families
+ *   the reader and the active `t` — required for event messages
  */
 export const buildMessageSearchText = (message, options = {}) => {
   const parts = [];
   const eventParts = getTranslatedEventSearchParts(message, options);
-  const parsedSystemMessage = eventParts ? null : parseSystemMessage(message?.content);
-  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
 
   addSearchPart(parts, [
-    ...(eventParts ?? [message?.content, systemMessageText]),
+    ...(eventParts ?? [message?.content]),
     message?.fileName,
     message?.file_name,
     message?.senderUsername,
@@ -151,66 +148,8 @@ export const buildMessageSearchText = (message, options = {}) => {
   return normalizeChatSearchText(parts.join(" "));
 };
 
-/**
- * ⚠️ A name can be null — `parseSystemMessage` nulls the "Someone"/"Unknown"
- * placeholders — and an unguarded `${name}` put the literal string "null" into
- * the search index. The index drops the name instead; `buildSystemMessageSearchSnippet`
- * collapses the gap it leaves.
- */
-const searchName = (name) => name || "";
-
-const buildSystemMessageSearchSnippet = (parsedMessage) =>
-  buildSystemMessageSearchSnippetText(parsedMessage).replace(/\s+/g, " ").trim();
-
-const buildSystemMessageSearchSnippetText = (parsedMessage) => {
-  if (!parsedMessage) return "";
-
-  switch (parsedMessage.type) {
-    case "application_approved_dm":
-      return [
-        `You approved ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was approved by ${searchName(parsedMessage.approverName)}`,
-        parsedMessage.hasPersonalMessage ? "who added this message" : "Welcome to the team",
-      ].join(". ");
-    case "application_approved":
-      return [
-        `Your application was approved by ${searchName(parsedMessage.approverName)}. Welcome to the team`,
-        `${searchName(parsedMessage.applicantName)} has applied successfully and was added by ${searchName(parsedMessage.approverName)}. Say hello to them`,
-      ].join(". ");
-    case "application_declined":
-      return [
-        `You declined ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was declined by ${searchName(parsedMessage.approverName)}`,
-        parsedMessage.hasPersonalMessage
-          ? "who added this message"
-          : "Want to reach out to them in this chat",
-      ].join(". ");
-    case "application_response":
-      return `Response to your application for ${parsedMessage.teamName}. Your decline response to ${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
-    case "invitation_declined":
-      return [
-        `You declined ${searchName(parsedMessage.inviterName)}'s invitation for ${parsedMessage.teamName}`,
-        `Your invitation for ${parsedMessage.teamName} was declined by ${searchName(parsedMessage.inviteeName)}`,
-        parsedMessage.hasPersonalMessage
-          ? "who added this message"
-          : "Want to reach out to them in this chat",
-      ].join(". ");
-    case "invitation_response":
-      return `Response to your invitation for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
-    case "invitation_cancelled":
-      return `${searchName(parsedMessage.cancellerName)} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${searchName(parsedMessage.inviteeName)} to join ${parsedMessage.teamName}.`;
-    case "application_cancelled":
-      return `${searchName(parsedMessage.applicantName)} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
-    default:
-      return "";
-  }
-};
-
 const buildMessageSearchSnippet = (message, options = {}) => {
-  const eventParts = getTranslatedEventSearchParts(message, options);
-  const systemMessageText =
-    eventParts?.[0] ??
-    buildSystemMessageSearchSnippet(parseSystemMessage(message?.content));
+  const systemMessageText = getTranslatedEventSearchParts(message, options)?.[0];
   const senderName = [
     message?.senderFirstName || message?.sender_first_name,
     message?.senderLastName || message?.sender_last_name,
