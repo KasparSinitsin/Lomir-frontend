@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
@@ -277,6 +278,7 @@ const stripUrlParam = (param) => {
 const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
   const queryClient = useQueryClient();
 
@@ -1220,6 +1222,7 @@ const SearchPage = () => {
       return a.label.localeCompare(b.label);
     });
   const activeCriteriaPills = getActiveCriteriaPills({
+    t,
     sortBy,
     sortDir,
     capacityMode,

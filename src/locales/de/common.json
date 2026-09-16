@@ -882,6 +882,66 @@
     "owner": "Eigentümer",
     "unknown": "Unbekannt"
   },
+  "searchCriteria": {
+    "sort": {
+      "match": "Bester Match",
+      "nameDesc": "Name Z–A",
+      "recentDesc": "Aktiv",
+      "recentAsc": "Inaktiv",
+      "newestDesc": "Neueste",
+      "newestAsc": "Älteste",
+      "spotsDesc": "Meiste Plätze",
+      "spotsAsc": "Fast voll",
+      "openRolesDesc": "Meiste offene Rollen",
+      "openRolesAsc": "Wenigste offene Rollen",
+      "remoteFirst": "Remote zuerst",
+      "remoteFirstShort": "Remote",
+      "nearestFirst": "Nächste zuerst",
+      "nearestFirstShort": "Nah"
+    },
+    "maxDistance": "< {km} km",
+    "maxDistanceRemove": "Im Umkreis von {km} km",
+    "openRolesOnly": "Nur offene Rollen",
+    "myTeams": "Meine Teams",
+    "myTeamsRemove": "Meine Teams ausschließen",
+    "demo": "Demo",
+    "demoRemove": "Demo-Daten ausschließen",
+    "teamMembers": "Mitglieder von „{team}“",
+    "teamMembersRemove": "Mitglieder von „{team}“ ausschließen",
+    "teamMembersUnnamed": "Teammitglieder",
+    "teamMembersUnnamedRemove": "Teammitglieder ausschließen"
+  },
+  "searchHelp": {
+    "title": "Erweiterte Suche",
+    "intro": "Mit Operatoren kannst du deine Suche verfeinern:",
+    "closeTips": "Suchtipps schließen",
+    "caseInsensitive": "Groß- und Kleinschreibung spielt bei Operatoren keine Rolle",
+    "caseInsensitiveExample": "(AND, and und And funktionieren gleich)",
+    "examples": {
+      "and": "Muss sowohl „react“ als auch „node“ enthalten",
+      "or": "Muss „react“ oder „vue“ enthalten",
+      "not": "Muss „javascript“ enthalten, aber nicht „jquery“",
+      "minus": "Wie NOT: enthält „python“, aber nicht „django“",
+      "phrase": "Genau diese Wortfolge",
+      "combine": "Wortfolgen mit Operatoren kombinieren"
+    }
+  },
+  "searchInput": {
+    "placeholder": "Teams und Personen suchen …",
+    "submit": "Suchen",
+    "minQueryHint": "Gib mindestens zwei Zeichen ein",
+    "tips": "Suchtipps",
+    "tipsAdvancedActive": "Suchtipps (erweiterte Suche aktiv)",
+    "advanced": "Erweitert",
+    "advancedShort": "E",
+    "remove": {
+      "badge": "<icon/> Badge entfernen: <name/>",
+      "focusArea": "<icon/> Fokusbereich entfernen: <name/>",
+      "roleName": "<icon/> Rollenname entfernen: <name/>",
+      "sorting": "<icon/> Sortierung entfernen: <name/>",
+      "filter": "<icon/> Filter entfernen: <name/>"
+    }
+  },
   "team": {
     "unknownName": "Unbekanntes Team"
   },

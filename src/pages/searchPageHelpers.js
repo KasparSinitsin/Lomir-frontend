@@ -91,7 +91,20 @@ export const getSortOptionDisplay = ({
   };
 };
 
+/**
+ * The active sort and filter criteria as removable pills.
+ *
+ * Every pill carries what the input needs to decide, separately from what it
+ * shows: `key` says which criterion a click removes, `sortId` picks a sort
+ * pill's icon, `sign` marks an exclusion. None of them is ever read out of a
+ * label — the labels are translated, and `switch (pill.label)` over English
+ * text lost every icon the moment a label changed language (found 2026-09-16).
+ *
+ * `t` is passed in, like the helpers in `utils/badgeLabels.js`: this module
+ * has no hook, and the caller re-renders on a language change.
+ */
 export const getActiveCriteriaPills = ({
+  t,
   sortBy,
   sortDir,
   capacityMode,
@@ -107,68 +120,96 @@ export const getActiveCriteriaPills = ({
   const pills = [];
 
   if (sortBy === "match") {
-    pills.push({ key: "sort", label: "Best Match" });
+    pills.push({
+      key: "sort",
+      sortId: "match",
+      label: t("searchCriteria.sort.match"),
+    });
   } else if (sortBy === "name" && sortDir === "desc") {
-    pills.push({ key: "sort", label: "Name Z-A" });
+    pills.push({
+      key: "sort",
+      sortId: "nameDesc",
+      label: t("searchCriteria.sort.nameDesc"),
+    });
   } else if (sortBy === "recent") {
-    pills.push({
-      key: "sort",
-      label: sortDir === "desc" ? "Active" : "Inactive",
-    });
+    pills.push(
+      sortDir === "desc"
+        ? { key: "sort", sortId: "recentDesc", label: t("searchCriteria.sort.recentDesc") }
+        : { key: "sort", sortId: "recentAsc", label: t("searchCriteria.sort.recentAsc") },
+    );
   } else if (sortBy === "newest") {
-    pills.push({
-      key: "sort",
-      label: sortDir === "desc" ? "Newest" : "Oldest",
-    });
+    pills.push(
+      sortDir === "desc"
+        ? { key: "sort", sortId: "newestDesc", label: t("searchCriteria.sort.newestDesc") }
+        : { key: "sort", sortId: "newestAsc", label: t("searchCriteria.sort.newestAsc") },
+    );
   } else if (sortBy === "capacity") {
-    pills.push({
-      key: "sort",
-      label:
-        capacityMode === "spots"
-          ? sortDir === "desc"
-            ? "Most Spots"
-            : "Almost Full"
-          : sortDir === "desc"
-            ? "Most Open Roles"
-            : "Least Open Roles",
-    });
+    if (capacityMode === "spots") {
+      pills.push(
+        sortDir === "desc"
+          ? { key: "sort", sortId: "spotsDesc", label: t("searchCriteria.sort.spotsDesc") }
+          : { key: "sort", sortId: "spotsAsc", label: t("searchCriteria.sort.spotsAsc") },
+      );
+    } else {
+      pills.push(
+        sortDir === "desc"
+          ? { key: "sort", sortId: "openRolesDesc", label: t("searchCriteria.sort.openRolesDesc") }
+          : { key: "sort", sortId: "openRolesAsc", label: t("searchCriteria.sort.openRolesAsc") },
+      );
+    }
   } else if (sortBy === "proximity") {
-    pills.push({
-      key: "sort",
-      label: sortDir === "remote" ? "Remote First" : "Nearest First",
-      shortLabel: sortDir === "remote" ? "Remote" : "Near",
-    });
+    pills.push(
+      sortDir === "remote"
+        ? {
+            key: "sort",
+            sortId: "remoteFirst",
+            label: t("searchCriteria.sort.remoteFirst"),
+            shortLabel: t("searchCriteria.sort.remoteFirstShort"),
+          }
+        : {
+            key: "sort",
+            sortId: "nearestFirst",
+            label: t("searchCriteria.sort.nearestFirst"),
+            shortLabel: t("searchCriteria.sort.nearestFirstShort"),
+          },
+    );
   }
 
   if (maxDistance !== null) {
     pills.push({
       key: "maxDistance",
-      label: `< ${maxDistance} km`,
-      removeLabel: `Within ${maxDistance} km`,
+      label: t("searchCriteria.maxDistance", { km: maxDistance }),
+      removeLabel: t("searchCriteria.maxDistanceRemove", { km: maxDistance }),
     });
   }
 
   if (effectiveOpenRolesOnly) {
-    pills.push({ key: "openRolesOnly", label: "Open Roles Only" });
+    pills.push({
+      key: "openRolesOnly",
+      label: t("searchCriteria.openRolesOnly"),
+    });
   }
 
   if (!effectiveIncludeOwnTeams) {
     pills.push({
       key: "includeOwnTeams",
-      label: "- My Teams",
-      removeLabel: "Exclude My Teams",
+      sign: "-",
+      label: t("searchCriteria.myTeams"),
+      removeLabel: t("searchCriteria.myTeamsRemove"),
     });
   }
 
   if (!includeDemoData) {
     pills.push({
       key: "includeDemoData",
-      label: "- Demo",
-      removeLabel: "Exclude Demo Data",
+      sign: "-",
+      label: t("searchCriteria.demo"),
+      removeLabel: t("searchCriteria.demoRemove"),
     });
   }
 
   if (matchRoleId && matchRoleName) {
+    // A role name is data, shown as saved.
     pills.unshift({
       key: "matchRole",
       label: matchRoleName,
@@ -177,11 +218,15 @@ export const getActiveCriteriaPills = ({
   }
 
   if (excludeTeamId) {
-    const excludedTeamName = excludeTeamName || "team";
     pills.push({
       key: "excludeTeam",
-      label: `- ${excludedTeamName} members`,
-      removeLabel: `Exclude ${excludedTeamName} members`,
+      sign: "-",
+      label: excludeTeamName
+        ? t("searchCriteria.teamMembers", { team: excludeTeamName })
+        : t("searchCriteria.teamMembersUnnamed"),
+      removeLabel: excludeTeamName
+        ? t("searchCriteria.teamMembersRemove", { team: excludeTeamName })
+        : t("searchCriteria.teamMembersUnnamedRemove"),
       type: "excludeTeam",
     });
   }
