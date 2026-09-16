@@ -62,10 +62,19 @@ const normalizeNameForMatch = (value) =>
 export const matchesViewer = (id, name, viewer) =>
   isViewerPerson(id, name, viewer, viewer ? getDisplayName(viewer) : null);
 
+/**
+ * ⚠️ `getDisplayName` returns the literal "Unknown" for a user with no name
+ * and no username, and first/last name are not validated at registration, so
+ * that reader really exists. It must not be treated as a name to match on —
+ * two nameless people would otherwise recognise each other as "you".
+ */
+const hasRealName = (value) =>
+  Boolean(value) && normalizeNameForMatch(value) !== "unknown";
+
 const isViewerPerson = (id, name, viewer, viewerName) => {
   if (viewer?.id != null && id != null) return sameId(id, viewer.id);
   if (id != null) return false;
-  if (!name || !viewerName) return false;
+  if (!hasRealName(name) || !hasRealName(viewerName)) return false;
   return normalizeNameForMatch(name) === normalizeNameForMatch(viewerName);
 };
 

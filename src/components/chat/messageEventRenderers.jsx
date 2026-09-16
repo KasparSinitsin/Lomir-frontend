@@ -703,9 +703,14 @@ export const createEventRenderers = (ctx) => {
       />
     );
 
-    const creatorId = parsedMessage.creatorId ?? senderId ?? null;
-    const creatorName =
-      parsedMessage.creatorName ||
+    const creator = personOf(eventOf(parsedMessage), "creator");
+    const creatorId = creator.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const creatorName = creator.isDeleted
+      ? null
+      : creator.name ||
       (senderInfo
         ? [
             senderInfo.firstName || senderInfo.first_name,
@@ -754,9 +759,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleClosedMessage - Neutral grey theme
   // =============================================================================
   const renderRoleClosedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const closedById = parsedMessage.closedById ?? senderId ?? null;
-    const closedByName =
-      parsedMessage.closedByName ||
+    const closedBy = personOf(eventOf(parsedMessage), "closedBy");
+    const closedById = closedBy.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const closedByName = closedBy.isDeleted
+      ? null
+      : closedBy.name ||
       (senderInfo
         ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
             .filter(Boolean)
@@ -795,9 +805,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleUpdatedMessage - Orange role theme
   // =============================================================================
   const renderRoleUpdatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const updatedById = parsedMessage.updatedById ?? senderId ?? null;
-    const updatedByName =
-      parsedMessage.updatedByName ||
+    const updatedBy = personOf(eventOf(parsedMessage), "updatedBy");
+    const updatedById = updatedBy.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const updatedByName = updatedBy.isDeleted
+      ? null
+      : updatedBy.name ||
       (senderInfo
         ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
             .filter(Boolean)
@@ -842,9 +857,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleDeletedMessage - Neutral grey theme
   // =============================================================================
   const renderRoleDeletedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const deletorId = parsedMessage.deletorId ?? senderId ?? null;
-    const deletorName =
-      parsedMessage.deletorName ||
+    const deletor = personOf(eventOf(parsedMessage), "deletor");
+    const deletorId = deletor.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const deletorName = deletor.isDeleted
+      ? null
+      : deletor.name ||
       (senderInfo
         ? [
             senderInfo.firstName || senderInfo.first_name,
