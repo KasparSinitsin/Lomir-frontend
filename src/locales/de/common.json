@@ -697,6 +697,67 @@
     "replyingTo": "Antwort an {name}",
     "replyingToMessage": "Antwort auf eine Nachricht"
   },
+  "messageNotifications": {
+    "byline": {
+      "acceptedBy": "Angenommen von {name}",
+      "appliedBy": "Bewerbung von {name}",
+      "approvedBy": "Angenommen von {name}",
+      "by": "von {name}",
+      "byYou": "von dir",
+      "cancelledBy": "Zurückgezogen von {name}",
+      "declinedBy": "Abgelehnt von {name}",
+      "from": "von {name}",
+      "invitedBy": "Eingeladen von {name}"
+    },
+    "header": {
+      "applicationApproved": "Bewerbung angenommen",
+      "applicationDeclined": "Bewerbung abgelehnt",
+      "invitationAccepted": "Einladung angenommen",
+      "invitationCancelled": "Einladung zurückgezogen",
+      "invitationDeclined": "Einladung abgelehnt",
+      "newApplication": "Neue Bewerbung",
+      "newBadge": "Neues Badge für dich!",
+      "newEvent": "Neues Ereignis",
+      "newMessage": "Neue Nachricht",
+      "removedFromTeam": "Aus dem Team entfernt",
+      "roleInvitation": "Rolleneinladung",
+      "roleOfferCreated": "Rollenangebot erstellt",
+      "teamInvitation": "Team-Einladung",
+      "teamRoleApplicationApproved": "Team- & Rollenbewerbung angenommen",
+      "teamRoleInvitation": "Team- & Rolleneinladung",
+      "teamRoleInviteAccepted": "Team- & Rolleneinladung angenommen",
+      "teamRoleInviteCancelled": "Team- & Rolleneinladung zurückgezogen",
+      "teamRoleInviteDeclined": "Team- & Rolleneinladung abgelehnt"
+    },
+    "roleStatus": {
+      "closed": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde geschlossen} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde geschlossen}}",
+      "deleted": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde gelöscht} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde gelöscht}}",
+      "filled": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde besetzt} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde besetzt}}",
+      "reopened": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, ist wieder offen} other {Die Rolle „{role}“, zu der du eingeladen wurdest, ist wieder offen}}",
+      "updated": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde bearbeitet} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde bearbeitet}}"
+    },
+    "text": {
+      "applicationApproved": "Deine Bewerbung bei „{team}“ wurde angenommen!",
+      "applicationApprovedRole": "Deine Bewerbung bei „{team}“ für {role} wurde angenommen!",
+      "applicationReceived": "Neue Bewerbung bei „{team}“",
+      "applicationReceivedRole": "Neue Rollenbewerbung bei „{team}“",
+      "applicationRejected": "Deine Bewerbung bei „{team}“ wurde abgelehnt",
+      "badgeAwarded": "Du hast das Badge „{badge}“ erhalten!",
+      "invitationAccepted": "Deine Einladung zu „{team}“ wurde angenommen!",
+      "invitationAcceptedRole": "Deine Einladung zu „{team}“ als {role} wurde angenommen!",
+      "invitationCancelled": "Deine Einladung zu „{team}“ wurde zurückgezogen",
+      "invitationCancelledRole": "Deine Einladung zu „{team}“ als {role} wurde zurückgezogen",
+      "invitationDeclined": "Deine Einladung zu „{team}“ wurde abgelehnt",
+      "invitationDeclinedRole": "Deine Einladung zu „{team}“ als {role} wurde abgelehnt",
+      "invitationReceived": "Du wurdest zu „{team}“ eingeladen!",
+      "invitationReceivedRole": "Du wurdest zu „{team}“ als {role} eingeladen!",
+      "removed": "Du wurdest aus „{team}“ entfernt",
+      "removedNoTeam": "Du wurdest aus dem Team entfernt",
+      "roleApplicationDeferredInvite": "Deine Bewerbung für {role} in „{team}“ ist jetzt ein Rollenangebot",
+      "roleInvitation": "Du wurdest eingeladen, die Rolle „{role}“ in „{team}“ zu übernehmen"
+    },
+    "unreadOnLogin": "{count, plural, one {Du hast # ungelesene Nachricht} other {Du hast # ungelesene Nachrichten}}"
+  },
   "modal": {
     "close": "Dialog schließen"
   },
