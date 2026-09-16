@@ -650,14 +650,17 @@ const MessageDisplay = ({
     setIsTeamModalOpen(true);
   };
 
-  const TeamMentionById = ({ teamId, name }) => {
+  // `quoted={false}` for the translated event sentences, which carry their
+  // own quotation marks („…“ in German, D6).
+  const TeamMentionById = ({ teamId, name, quoted = true }) => {
     const safeName = (name || "").trim() || "Team";
+    const mark = quoted ? '"' : "";
 
     // legacy / missing id => non-clickable fallback
     if (!teamId) {
       return (
         <span className="font-medium">
-          "{renderHighlightedSearchText(safeName, searchQuery)}"
+          {mark}{renderHighlightedSearchText(safeName, searchQuery)}{mark}
         </span>
       );
     }
@@ -669,7 +672,7 @@ const MessageDisplay = ({
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
           onClick={() => openTeamModal(teamId)}
         >
-          "{renderHighlightedSearchText(safeName, searchQuery)}"
+          {mark}{renderHighlightedSearchText(safeName, searchQuery)}{mark}
         </button>
       </Tooltip>
     );
@@ -1024,9 +1027,9 @@ const MessageDisplay = ({
 
     let name = getDeletedUserDisplayName(senderInfo, "Unknown");
 
-    // Add "(former team member)" suffix if they're no longer a member
+    // Add the "(former team member)" suffix if they're no longer a member
     if (includeFormerLabel && senderInfo.isCurrentMember === false) {
-      name += " (former team member)";
+      name = t("chatPage.formerTeamMember", { name });
     }
     return name;
   };

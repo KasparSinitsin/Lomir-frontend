@@ -70,21 +70,12 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
   const event = describeEvent(content, viewer);
   if (!event) return null;
 
-  const { team, role } = event;
+  const { team } = event;
 
   switch (event.type) {
     case "team_join": {
-      const user = personOf(event, "user");
-      // ⚠️ Every viewer branch below exists for verb agreement, not politeness:
-      // "You has applied" is what a bare name substitution produces.
       return {
-        text: user.isViewer
-          ? role.name
-            ? `You joined the team as ${role.name}. Welcome aboard!`
-            : "You joined the team. Welcome aboard!"
-          : role.name
-            ? `${user.name} joined the team as ${role.name}. Say hello to them!`
-            : `${user.name} joined the team. Say hello to them!`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
@@ -161,25 +152,21 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
     case "team_leave": {
-      const user = personOf(event, "user");
       return {
-        text: `${subject(user, "Member")} ${user.isViewer ? "have" : "has"} left the team.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
     }
     case "user_left_lomir":
       return {
-        text: "Former Lomir User has left Lomir.",
+        text: getEventSentenceText(t, event, "full"),
         Icon: LogOut,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
     case "member_removed_public": {
-      const user = personOf(event, "user");
       return {
-        text: user.isViewer
-          ? "You were removed from the team."
-          : `${user.name || "Member"} has been removed from the team.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
@@ -219,22 +206,16 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
       };
     }
     case "member_removed": {
-      const member = personOf(event, "member");
       return {
-        text: member.isViewer
-          ? `You were removed from ${team.name || "the team"}.`
-          : `${member.name || "Member"} was removed from ${team.name || "the team"}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
     }
     case "role_changed": {
-      const member = personOf(event, "member");
       const isAdmin = event.newRole === "admin";
-      // ⚠️ Used to interpolate the raw enum: "role was changed to admin".
-      const newRoleLabel = isAdmin ? "Admin" : "Member";
       return {
-        text: `${possessive(member, "Member")} role was changed to ${newRoleLabel} in ${team.name || "the team"}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: isAdmin ? Shield : User,
         trailingIcon: isAdmin ? PartyPopper : null,
         color: isAdmin
@@ -243,32 +224,23 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
       };
     }
     case "ownership_transferred": {
-      const prevOwner = personOf(event, "prevOwner");
-      const newOwner = personOf(event, "newOwner");
       return {
-        text: `${subject(prevOwner, "The previous owner")} transferred ownership of ${team.name || "the team"} to ${objectLabel(newOwner, "a new owner")}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: Crown,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
     }
     case "ownership_team": {
-      const prevOwner = personOf(event, "prevOwner");
-      const newOwner = personOf(event, "newOwner");
       return {
-        text: prevOwner.isKnown
-          ? `${subject(prevOwner, "The previous owner")} transferred ownership to ${objectLabel(newOwner, "a new owner")}.`
-          : `Ownership was transferred to ${objectLabel(newOwner, "a new owner")}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: Crown,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
     }
     case "team_deleted": {
-      const owner = personOf(event, "owner");
       return {
-        text: owner.isKnown
-          ? `${subject(owner, "The owner")} archived ${team.name || "this team"}.`
-          : `${team.name || "This team"} was archived.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: AlertTriangle,
         color: EVENT_REACTION_PREVIEW_COLORS.error,
       };

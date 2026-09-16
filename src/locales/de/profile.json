@@ -149,7 +149,7 @@
       "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
       "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",
       "transferHeading": "Teams, die übergeben werden",
-      "transferTo": "Eigentum übertragen an",
+      "transferTo": "Team-Eigentum übertragen an",
       "unknownMember": "Unbekanntes Mitglied",
       "unknownTeam": "Unbekanntes Team",
       "untitledRole": "Rolle ohne Namen",

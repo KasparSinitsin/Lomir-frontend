@@ -20,10 +20,13 @@
 // ⚠️ Keys are literal `t("…")` calls in a switch, never built from the event
 // type: `npm run i18n:check` only sees literals.
 //
-// Every perspective select takes the same three values:
-//   you    the reader is this person
-//   named  someone else, with a name to show
-//   other  nobody known — the clause is dropped, never replaced by a noun (D4)
+// Every perspective select takes the same four values:
+//   you      the reader is this person
+//   named    someone else, with a name to show
+//   deleted  a deleted account — always „ehemaliger Lomir-Nutzer" / "Former
+//            Lomir User", written out per sentence because German declines it
+//            (Julia, 2026-09-16; replaces the deleted-user half of D4)
+//   other    nobody known — the clause is dropped, never replaced by a name
 
 /** The event types whose sentences come from here. The other families still
  * render their English inline until their own PRs. */
@@ -41,20 +44,34 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "role_invitation_filled",
   "role_invitation_accepted",
   "role_invitation_assigned_legacy",
+  "team_join",
+  "team_leave",
+  "user_left_lomir",
+  "member_removed",
+  "member_removed_public",
+  "role_changed",
+  "ownership_transferred",
+  "ownership_team",
+  "team_deleted",
 ]);
 
 // "Vacant Role" is a real, saved role name that stays English by decision
 // (CreateVacantRoleModal) — the same default the renderers used before.
 const DEFAULT_ROLE_NAME = "Vacant Role";
 
-/** @returns {"you"|"named"|"other"} */
+/** @returns {"you"|"named"|"deleted"|"other"} */
 export const perspectiveOf = (person) => {
   if (person?.isViewer) return "you";
+  if (person?.isDeleted) return "deleted";
   return person?.isKnown && person.name ? "named" : "other";
 };
 
+/** For the optional parts of a sentence: a team or role name that may be missing. */
+const presenceOf = (entity) => (entity?.name ? "named" : "other");
+
 const personSlot = (person) => ({ kind: "person", person });
 const roleSlot = (entity) => ({ kind: "role", entity });
+const teamSlot = (entity) => ({ kind: "team", entity });
 
 /**
  * @param {Function} t          i18next `t`
@@ -71,6 +88,7 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
   const person = (slot) =>
     people[slot] ?? event.people?.[slot] ?? { isKnown: false, isViewer: false };
   const role = roleSlot(event.role);
+  const team = teamSlot(event.team);
 
   switch (event.type) {
     case "role_created": {
@@ -226,6 +244,121 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
       };
     }
 
+    // ── membership + admin ─────────────────────────────────────────────────
+    case "team_join": {
+      const user = person("user");
+      const values = { user: perspectiveOf(user), role: presenceOf(event.role) };
+      return {
+        text: short
+          ? t("chatEvents.teamJoin.short", values)
+          : t("chatEvents.teamJoin.full", values),
+        slots: { user: personSlot(user), role },
+      };
+    }
+
+    case "team_leave": {
+      const user = person("user");
+      const values = { user: perspectiveOf(user) };
+      return {
+        text: short
+          ? t("chatEvents.teamLeave.short", values)
+          : t("chatEvents.teamLeave.full", values),
+        slots: { user: personSlot(user) },
+      };
+    }
+
+    case "user_left_lomir":
+      return {
+        text: short
+          ? t("chatEvents.userLeftLomir.short")
+          : t("chatEvents.userLeftLomir.full"),
+        slots: {},
+      };
+
+    // The public variant names only the removed member; who removed them is
+    // known to the transcript alone (the message's sender), via `people`.
+    case "member_removed_public":
+    case "member_removed": {
+      const isPublic = event.type === "member_removed_public";
+      const member = person(isPublic ? "user" : "member");
+      const remover = person("remover");
+      const slots = { member: personSlot(member), remover: personSlot(remover), team };
+
+      if (short) {
+        return {
+          text: t("chatEvents.memberRemoved.short", {
+            member: perspectiveOf(member),
+            team: presenceOf(event.team),
+          }),
+          slots,
+        };
+      }
+      return {
+        text: isPublic
+          ? t("chatEvents.memberRemovedPublic.full", {
+              member: perspectiveOf(member),
+              remover: remover.isViewer ? "you" : "other",
+            })
+          : t("chatEvents.memberRemoved.full", {
+              member: perspectiveOf(member),
+              remover: perspectiveOf(remover),
+            }),
+        slots,
+      };
+    }
+
+    case "role_changed": {
+      const member = person("member");
+      const changer = person("changer");
+      const values = {
+        change: event.newRole === "admin" ? "promote" : "other",
+        member: perspectiveOf(member),
+        changer: perspectiveOf(changer),
+      };
+      return {
+        text: short
+          ? t("chatEvents.roleChanged.short", values)
+          : t("chatEvents.roleChanged.full", values),
+        slots: { member: personSlot(member), changer: personSlot(changer), team },
+      };
+    }
+
+    case "ownership_transferred":
+    case "ownership_team": {
+      const prevOwner = person("prevOwner");
+      const newOwner = person("newOwner");
+      const values = {
+        prevOwner: perspectiveOf(prevOwner),
+        newOwner: perspectiveOf(newOwner),
+      };
+      const slots = { prevOwner: personSlot(prevOwner), newOwner: personSlot(newOwner), team };
+      if (event.type === "ownership_team") {
+        return {
+          text: short
+            ? t("chatEvents.ownershipTeam.short", values)
+            : t("chatEvents.ownershipTeam.full", values),
+          slots,
+        };
+      }
+      return {
+        text: short
+          ? t("chatEvents.ownershipTransferred.short", values)
+          : t("chatEvents.ownershipTransferred.full", values),
+        slots,
+      };
+    }
+
+    case "team_deleted": {
+      const owner = person("owner");
+      const values = { owner: perspectiveOf(owner) };
+      return {
+        text: short
+          ? t("chatEvents.teamDeleted.short", values)
+          : t("chatEvents.teamDeleted.full", values),
+        slots: { owner: personSlot(owner), team },
+      };
+    }
+
     default:
       return null;
   }
@@ -258,6 +391,7 @@ export const splitEventSentence = (sentence) => {
 /** The plain-text name a slot stands for. */
 export const slotText = (value) => {
   if (value.kind === "role") return value.entity?.name || DEFAULT_ROLE_NAME;
+  if (value.kind === "team") return value.entity?.name || "";
   return value.person?.name || "";
 };
 

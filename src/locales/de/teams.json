@@ -105,12 +105,12 @@
   "roleManagement": {
     "promoteToAdmin": "Zum Admin ernennen",
     "demoteToMember": "Zum Mitglied zurückstufen",
-    "transferOwnership": "Eigentum übertragen",
+    "transferOwnership": "Team-Eigentum übertragen",
     "removeFromTeam": "Aus dem Team entfernen",
     "thisMember": "dieses Mitglied",
-    "transferTitle": "Eigentum übertragen",
+    "transferTitle": "Team-Eigentum übertragen",
     "transferConfirm": "Übertragen",
-    "transferBody": "Eigentum an {name} übertragen? Du wirst danach Admin.",
+    "transferBody": "Team-Eigentum an {name} übertragen? Du wirst danach Admin.",
     "promoteTitle": "Mitglied befördern",
     "promoteConfirm": "Befördern",
     "promoteBody": "{name} zum Admin ernennen?",
@@ -207,7 +207,7 @@
     "appliedToTeamOn": "Du hast dich für dieses Team beworben\nam {date}",
     "createdOn": "Gegründet am {date}",
     "deleteBody": "Dieses Team löschen? Wenn du das einzige Mitglied bist, werden Team und Chat sofort gelöscht. Wenn weitere Mitglieder bleiben, wird das Team zuerst archiviert und endgültig gelöscht, sobald sie es verlassen haben oder die Archivfrist abgelaufen ist - derzeit standardmäßig 14 Tage.",
-    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Eigentum, bevor du gehst.",
+    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Team-Eigentum, bevor du gehst.",
     "serverError": "Serverfehler: {detail}"
   },
   "vacantRoleCard": {

@@ -31,7 +31,6 @@ export const createEventRenderers = (ctx) => {
     TeamMentionById,
     RoleMentionById,
     userMentionOrYou,
-    possessiveUserMentionOrYour,
     isCurrentViewer,
     renderAvatar,
     renderSenderName,
@@ -245,16 +244,32 @@ export const createEventRenderers = (ctx) => {
    * ⚠️ Names reach the sentence only as components, never as text inside it —
    * see the header of eventSentences.js for why.
    */
-  const renderSentence = (sentence, roleElements) =>
+  // ⚠️ Team names: the quotation marks are in the message (D6), so the
+  // mention must not add its own.
+  const defaultSlotElement = (value) => {
+    if (value.kind === "person") return personMention(value.person);
+    if (value.kind === "team") {
+      return (
+        <TeamMentionById teamId={value.entity?.id} name={value.entity?.name} quoted={false} />
+      );
+    }
+    return null;
+  };
+
+  const renderSentence = (sentence, elements = {}) =>
     splitEventSentence(sentence).map((part, index) => (
       <React.Fragment key={index}>
         {"text" in part
           ? part.text
-          : part.value.kind === "role"
-            ? roleElements[part.slot]
-            : personMention(part.value.person)}
+          : elements[part.slot] ?? defaultSlotElement(part.value)}
       </React.Fragment>
     ));
+
+  /** The message's sender as the reader, for payloads that do not name them. */
+  const senderAsViewer = (person, isCurrentUser) =>
+    isCurrentUser && !person.isViewer
+      ? { ...person, isViewer: true, isKnown: true }
+      : person;
 
   const ROLE_BANNER_STYLE = {
     backgroundColor: "rgba(245, 158, 11, 0.1)",
@@ -476,17 +491,10 @@ export const createEventRenderers = (ctx) => {
   // renderLeaveMessage - Neutral grey theme (pill shape)
   // =============================================================================
   const renderLeaveMessage = (message, parsedMessage, isCurrentUser) => {
-    const leaveText = isCurrentUser ? (
-      "You have left the team."
-    ) : (
-      <>
-        <MentionById
-          userId={parsedMessage.userId}
-          name={parsedMessage.userName}
-        />{" "}
-        has left the team.
-      </>
-    );
+    // The sender of a leave message is the member who left.
+    const event = eventOf(parsedMessage);
+    const user = senderAsViewer(personOf(event, "user"), isCurrentUser);
+    const leaveText = renderSentence(getEventSentence(t, event, "full", { user }));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -507,10 +515,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderUserLeftLomirMessage - Neutral grey theme
   // =============================================================================
-  const renderUserLeftLomirMessage = (message) => {
-    // ⚠️ Said "Former Lomir Member" while DELETED_USER_DISPLAY_NAME, which both
-    // repos write into the message, is "Former Lomir User". One name now.
-    const leaveText = <>Former Lomir User has left Lomir.</>;
+  const renderUserLeftLomirMessage = (message, parsedMessage) => {
+    const leaveText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -533,26 +539,11 @@ export const createEventRenderers = (ctx) => {
     parsedMessage,
     isCurrentUser,
   ) => {
-    const isRemovedMemberCurrentUser = isCurrentViewer(parsedMessage.userId);
-    const text = isRemovedMemberCurrentUser ? (
-      "You were removed from the team."
-    ) : isCurrentUser ? (
-      <>
-        You removed{" "}
-        <MentionById
-          userId={parsedMessage.userId}
-          name={parsedMessage.userName}
-        />{" "}
-        from the team.
-      </>
-    ) : (
-      <>
-        <MentionById
-          userId={parsedMessage.userId}
-          name={parsedMessage.userName}
-        />{" "}
-        has been removed from the team.
-      </>
+    // The payload does not name the remover; the sender is the remover.
+    const event = eventOf(parsedMessage);
+    const remover = isCurrentUser ? { isViewer: true, isKnown: true } : undefined;
+    const text = renderSentence(
+      getEventSentence(t, event, "full", remover ? { remover } : {}),
     );
 
     return (
@@ -582,33 +573,19 @@ export const createEventRenderers = (ctx) => {
     isCurrentUser,
     senderId,
   ) => {
-    const pronoun = isCurrentUser ? "you" : "them";
-    const roleMention = parsedMessage.roleName ? (
-      <>
-        <UserCheck size={16} className="event-inline-icon mx-1" />
-        <Mention name={parsedMessage.roleName} />
-      </>
-    ) : null;
-    const welcomeText = isCurrentUser ? (
-      roleMention ? (
-        <>You joined the team as{" "}{roleMention}. Welcome aboard!</>
-      ) : (
-        <>You joined the team. Welcome aboard!</>
-      )
-    ) : roleMention ? (
-      <>
-        <Mention name={parsedMessage.userName} /> joined the team as{" "}
-        {roleMention}. Say hello to {pronoun}!
-      </>
-    ) : (
-      // ⚠️ This used to read "has followed your invite and joined your team",
-      // which every member of the team chat saw — including the ones who sent
-      // no invite and do not own the team. The role branch above was already
-      // neutral; both say the same thing now.
-      <>
-        <Mention name={parsedMessage.userName} /> joined the team. Say hello to{" "}
-        {pronoun}!
-      </>
+    // The sender of a join message is the member who joined.
+    const event = eventOf(parsedMessage);
+    const user = senderAsViewer(personOf(event, "user"), isCurrentUser);
+    const welcomeText = renderSentence(
+      getEventSentence(t, event, "full", { user }),
+      {
+        role: (
+          <>
+            <UserCheck size={16} className="event-inline-icon mx-1" />
+            <Mention name={parsedMessage.roleName} />
+          </>
+        ),
+      },
     );
 
     return (
@@ -1149,82 +1126,9 @@ export const createEventRenderers = (ctx) => {
 
     const bannerClass = getRoleBannerClass(newRole);
     const RoleIcon = getRoleIcon(newRole);
-    const isChangerCurrentUser = isCurrentViewer(parsedMessage.changerId);
-    const isMemberCurrentUser = isCurrentViewer(parsedMessage.memberId);
-
-    const messageText = isChangerCurrentUser ? (
-      isPromotion ? (
-        <>
-          You promoted{" "}
-          <MentionById
-            userId={parsedMessage.memberId}
-            name={parsedMessage.memberName}
-          />{" "}
-          to Admin in{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />
-          .
-        </>
-      ) : (
-        <>
-          You changed{" "}
-          <MentionById
-            userId={parsedMessage.memberId}
-            name={parsedMessage.memberName}
-          />
-          {"'s"} role to Member in{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />
-          .
-        </>
-      )
-    ) : isMemberCurrentUser ? (
-      isPromotion ? (
-      <>
-        You were promoted to Admin in{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        by{" "}
-        <MentionById
-          userId={parsedMessage.changerId}
-          name={parsedMessage.changerName}
-        />
-        .
-      </>
-      ) : (
-        <>
-          Your role in{" "}
-          <TeamMentionById
-            teamId={parsedMessage.teamId}
-            name={parsedMessage.teamName}
-          />{" "}
-          was changed to Member by{" "}
-          {userMentionOrYou(parsedMessage.changerId, parsedMessage.changerName)}
-          .
-        </>
-      )
-    ) : (
-      <>
-        {possessiveUserMentionOrYour(
-          parsedMessage.memberId,
-          parsedMessage.memberName,
-        )}{" "}
-        role in{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        was {isPromotion ? "changed to Admin" : "changed to Member"} by{" "}
-        {userMentionOrYou(parsedMessage.changerId, parsedMessage.changerName)}
-        .
-      </>
-    );
+    const event = eventOf(parsedMessage);
+    const isMemberCurrentUser = personOf(event, "member").isViewer;
+    const messageText = renderSentence(getEventSentence(t, event));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -1250,37 +1154,8 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
     // ⚠️ OWNERSHIP_TEAM carries names only — no ids (messageSystemParser
-    // "Pattern 14"). So the id-based check could never be true here, and the
-    // transcript said "Anna transferred ownership to Anna Madlen Albers" to
-    // Anna Madlen Albers herself while the conversation list said "You
-    // received ownership". The descriptor falls back to the name, as the
-    // preview always did.
-    const ownershipEvent = eventOf(parsedMessage);
-    const isPreviousOwnerCurrentUser = personOf(ownershipEvent, "prevOwner").isViewer;
-    const isNewOwnerCurrentUser = personOf(ownershipEvent, "newOwner").isViewer;
-    // ⚠️ These three ended without a full stop while the quoted reply of the
-    // same event ended with one.
-    const messageText = isPreviousOwnerCurrentUser ? (
-      <>
-        You transferred ownership to{" "}
-        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}.
-      </>
-    ) : isNewOwnerCurrentUser ? (
-      <>
-        {userMentionOrYou(parsedMessage.prevOwnerId, parsedMessage.prevOwnerName, {
-          capitalized: true,
-        })}{" "}
-        transferred ownership to you.
-      </>
-    ) : (
-      <>
-        {userMentionOrYou(parsedMessage.prevOwnerId, parsedMessage.prevOwnerName, {
-          capitalized: true,
-        })}{" "}
-        transferred ownership to{" "}
-        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}.
-      </>
-    );
+    // "Pattern 14"), so the reader is recognised by name in describeEvent.
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -1301,34 +1176,10 @@ export const createEventRenderers = (ctx) => {
   // =============================================================================
   // renderOwnershipTransferredMessage - Pink owner theme (DM)
   // =============================================================================
-  const renderOwnershipTransferredMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      <>
-        You transferred team ownership of{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        to <Mention name={parsedMessage.newOwnerName} />.
-      </>
-    ) : (
-      <>
-        <MentionById
-          userId={parsedMessage.prevOwnerId}
-          name={parsedMessage.prevOwnerName}
-        />{" "}
-        transferred ownership of{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        to you. Congratulations!
-      </>
-    );
+  const renderOwnershipTransferredMessage = (message, parsedMessage) => {
+    // ⚠️ Decided from the ids, not from the sender: a third reader used to be
+    // told the ownership had been transferred "to you".
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -1350,40 +1201,10 @@ export const createEventRenderers = (ctx) => {
   /**
    * Render a member removed message with special formatting
    */
-  const renderMemberRemovedMessage = (
-    message,
-    parsedMessage,
-    isCurrentUser,
-  ) => {
-    const messageText = isCurrentUser ? (
-      <>
-        You removed{" "}
-        <MentionById
-          userId={parsedMessage.memberId}
-          name={parsedMessage.memberName}
-        />{" "}
-        from{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />
-        .
-      </>
-    ) : (
-      <>
-        You were removed from{" "}
-        <TeamMentionById
-          teamId={parsedMessage.teamId}
-          name={parsedMessage.teamName}
-        />{" "}
-        by{" "}
-        <MentionById
-          userId={parsedMessage.removerId}
-          name={parsedMessage.removerName}
-        />
-        . Want to reach out to them in this chat?
-      </>
-    );
+  const renderMemberRemovedMessage = (message, parsedMessage) => {
+    // ⚠️ Decided from the ids, not from the sender: a third reader used to be
+    // told "You were removed".
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -1406,14 +1227,7 @@ export const createEventRenderers = (ctx) => {
   // Posted at deletion time so the moment + who deleted stay visible in history.
   // =============================================================================
   const renderTeamDeletedMessage = (message, parsedMessage) => {
-    const messageText = parsedMessage.ownerName ? (
-      <>
-        This team has just been archived (scheduled for deletion) by{" "}
-        {userMentionOrYou(parsedMessage.ownerId, parsedMessage.ownerName)}.
-      </>
-    ) : (
-      <>This team has just been archived (scheduled for deletion).</>
-    );
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
       <div className="flex flex-col items-center w-full my-4">
