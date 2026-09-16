@@ -24,11 +24,14 @@ export const EVENT_PREVIEW_TEXT_COLORS = {
 };
 
 /**
- * The byline the conversation list and the toast print as "by …".
- * ⚠️ Capitalised on purpose — it is rendered as its own fragment after the
- * sentence, not inside one.
+ * The toast's "by …" line — read only by MessageNotifications, which words it.
+ * The viewer travels as a flag, not as the string "You": German needs
+ * „von dir", not a pronoun dropped into a name slot.
  */
-const byline = (person) => (person.isViewer ? "You" : person.name || null);
+const byline = (person) => ({
+  senderName: person.isViewer ? null : person.name || null,
+  senderIsViewer: Boolean(person.isViewer),
+});
 
 export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
   const event = describeEvent(lastMessage, currentUser);
@@ -133,8 +136,7 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
-        senderName: byline(personOf(event, "approver")),
-        senderPrefix: "by ",
+        ...byline(personOf(event, "approver")),
       };
 
     // The roles family — sentences from eventSentences.js, in the active
@@ -149,10 +151,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        ...(event.type === "role_application_filled" && {
-          senderName: byline(personOf(event, "approver")),
-          senderPrefix: "by ",
-        }),
+        ...(event.type === "role_application_filled" &&
+          byline(personOf(event, "approver"))),
       };
 
     case "role_application_deferred_invite":
@@ -161,8 +161,7 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: byline(personOf(event, "approver")),
-        senderPrefix: "by ",
+        ...byline(personOf(event, "approver")),
       };
 
     case "role_closed":
@@ -171,7 +170,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-        senderPrefix: "by ",
       };
 
     case "role_updated":
@@ -180,7 +178,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "Pencil",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: "by ",
       };
 
     case "role_deleted":
@@ -189,7 +186,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
-        senderPrefix: "by ",
       };
 
     case "role_created":
@@ -199,7 +195,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: "by ",
       };
 
     case "role_reopened":
@@ -208,7 +203,6 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: personOf(event, "user").isKnown ? null : "by ",
       };
 
     case "role_filled":
@@ -217,8 +211,7 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: byline(personOf(event, "filledBy")),
-        senderPrefix: "by ",
+        ...byline(personOf(event, "filledBy")),
       };
 
     case "member_removed":

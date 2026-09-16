@@ -697,6 +697,67 @@
     "replyingTo": "Replying to {name}",
     "replyingToMessage": "Replying to a message"
   },
+  "messageNotifications": {
+    "byline": {
+      "acceptedBy": "Accepted by {name}",
+      "appliedBy": "Applied by {name}",
+      "approvedBy": "Approved by {name}",
+      "by": "by {name}",
+      "byYou": "by You",
+      "cancelledBy": "Cancelled by {name}",
+      "declinedBy": "Declined by {name}",
+      "from": "from {name}",
+      "invitedBy": "Invited by {name}"
+    },
+    "header": {
+      "applicationApproved": "Application Approved",
+      "applicationDeclined": "Application Declined",
+      "invitationAccepted": "Invitation Accepted",
+      "invitationCancelled": "Invitation Cancelled",
+      "invitationDeclined": "Invitation Declined",
+      "newApplication": "New Application",
+      "newBadge": "New Badge for you!",
+      "newEvent": "New Event",
+      "newMessage": "New Message",
+      "removedFromTeam": "Removed from Team",
+      "roleInvitation": "Role Invitation",
+      "roleOfferCreated": "Role Offer Created",
+      "teamInvitation": "Team Invitation",
+      "teamRoleApplicationApproved": "Team & Role Application Approved",
+      "teamRoleInvitation": "Team & Role Invitation",
+      "teamRoleInviteAccepted": "Team & Role Invite Accepted",
+      "teamRoleInviteCancelled": "Team & Role Invite Cancelled",
+      "teamRoleInviteDeclined": "Team & Role Invite Declined"
+    },
+    "roleStatus": {
+      "closed": "{userType, select, applicant {The role \"{role}\" you applied for has been closed} other {The role \"{role}\" you were invited to has been closed}}",
+      "deleted": "{userType, select, applicant {The role \"{role}\" you applied for has been deleted} other {The role \"{role}\" you were invited to has been deleted}}",
+      "filled": "{userType, select, applicant {The role \"{role}\" you applied for has been filled} other {The role \"{role}\" you were invited to has been filled}}",
+      "reopened": "{userType, select, applicant {The role \"{role}\" you applied for is open again} other {The role \"{role}\" you were invited to is open again}}",
+      "updated": "{userType, select, applicant {The role \"{role}\" you applied for has been updated} other {The role \"{role}\" you were invited to has been updated}}"
+    },
+    "text": {
+      "applicationApproved": "Your application to \"{team}\" was approved!",
+      "applicationApprovedRole": "Your application to \"{team}\" for {role} was approved!",
+      "applicationReceived": "New application to join \"{team}\"",
+      "applicationReceivedRole": "New role application for \"{team}\"",
+      "applicationRejected": "Your application to \"{team}\" was declined",
+      "badgeAwarded": "You received the \"{badge}\" badge!",
+      "invitationAccepted": "Your invitation to \"{team}\" was accepted!",
+      "invitationAcceptedRole": "Your invitation to join \"{team}\" as {role} was accepted!",
+      "invitationCancelled": "Your invitation to \"{team}\" was cancelled",
+      "invitationCancelledRole": "Your invitation to join \"{team}\" as {role} was cancelled",
+      "invitationDeclined": "Your invitation to \"{team}\" was declined",
+      "invitationDeclinedRole": "Your invitation to join \"{team}\" as {role} was declined",
+      "invitationReceived": "You've been invited to join \"{team}\"!",
+      "invitationReceivedRole": "You've been invited to join \"{team}\" as {role}!",
+      "removed": "You were removed from \"{team}\"",
+      "removedNoTeam": "You were removed from the team",
+      "roleApplicationDeferredInvite": "Your application for {role} in \"{team}\" is now a role offer",
+      "roleInvitation": "You've been invited to fill the role \"{role}\" in \"{team}\""
+    },
+    "unreadOnLogin": "{count, plural, one {You have # unread message} other {You have # unread messages}}"
+  },
   "modal": {
     "close": "Close modal"
   },
