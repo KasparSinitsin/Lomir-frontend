@@ -285,6 +285,7 @@
       "uploadImageRejected": "Bild konnte nicht hochgeladen werden"
     },
     "formerTeamMember": "{name} (ehemaliges Teammitglied)",
+    "formerTeamMemberTooltip": "Ehemaliges Teammitglied",
     "leaveTeam": {
       "confirmLabel": "Verlassen",
       "fallbackTeamName": "dieses Team",
@@ -294,6 +295,8 @@
     },
     "loadConversationsFailed": "Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
     "loadEarlier": "Ältere Nachrichten laden",
+    "mentionLookupFailed": "„{name}“ konnte nicht nachgeschlagen werden.",
+    "mentionNotFound": "„{name}“ konnte nicht geöffnet werden – Person nicht gefunden.",
     "searchAria": "Chats durchsuchen",
     "searchClearAria": "Chat-Suche löschen",
     "searchCountMatches": "{filtered} von {total} Chats · {matches, plural, one {# Treffer} other {# Treffer}}",
@@ -673,7 +676,6 @@
     "deleteMessage": "Nachricht löschen",
     "edit": "Nachricht bearbeiten",
     "edited": "Nachricht bearbeitet",
-    "formerUser": "Ehemaliger Lomir-Nutzer",
     "mediaExpired": "Bild oder Datei ist nicht mehr verfügbar",
     "messageDeleted": "Diese Nachricht wurde gelöscht.",
     "messageUnavailable": "Nachricht nicht verfügbar",
@@ -820,6 +822,7 @@
   "user": {
     "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
     "fallbackName": "Person",
+    "formerUser": "Ehemaliger Lomir-Nutzer",
     "joinedOn": "Bei Lomir seit {date}",
     "privateProfile": "Privates Profil",
     "profileImageAlt": "Profilbild von {name}",

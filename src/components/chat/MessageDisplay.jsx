@@ -96,7 +96,14 @@ const MessageDisplay = ({
 
   // Mention lookup (frontend-only)
   const [resolvingName, setResolvingName] = useState(false);
+  // A code + the name, resolved at render, so an open warning follows a
+  // language switch instead of keeping the sentence it was set with.
   const [nameResolveError, setNameResolveError] = useState(null);
+  const nameResolveErrorText = !nameResolveError
+    ? null
+    : nameResolveError.code === "notFound"
+      ? t("chatPage.mentionNotFound", { name: nameResolveError.name })
+      : t("chatPage.mentionLookupFailed", { name: nameResolveError.name });
 
   const [nameToIdCache, setNameToIdCache] = useState({});
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
@@ -573,14 +580,14 @@ const MessageDisplay = ({
       const userId = await resolveUserIdByName(safe);
 
       if (!userId) {
-        setNameResolveError(`Could not open "${safe}" (user not found).`);
+        setNameResolveError({ code: "notFound", name: safe });
         return;
       }
 
       handleUserClick(userId, safe);
     } catch (err) {
       console.error("Error resolving user by name:", err);
-      setNameResolveError(`Could not look up "${safe}".`);
+      setNameResolveError({ code: "lookupFailed", name: safe });
     } finally {
       setResolvingName(false);
     }
@@ -589,16 +596,17 @@ const MessageDisplay = ({
   const Mention = ({ name }) => {
     const safe = (name || "").trim();
     if (!safe) return null;
+    // The stored name is the English wire value; only the display translates.
     if (safe === DELETED_USER_DISPLAY_NAME) {
       return (
         <span className="font-medium text-base-content/50">
-          {renderHighlightedSearchText(safe, searchQuery)}
+          {renderHighlightedSearchText(t("user.formerUser"), searchQuery)}
         </span>
       );
     }
 
     return (
-      <Tooltip content={`Open ${safe}`} position="top">
+      <Tooltip content={detailsTooltip(safe)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
@@ -612,11 +620,11 @@ const MessageDisplay = ({
   };
 
   const MentionById = ({ userId, name }) => {
-    const safeName = (name || "").trim() || "User";
+    const safeName = (name || "").trim() || t("user.fallbackName");
     if (!userId) {
       return safeName === DELETED_USER_DISPLAY_NAME ? (
         <span className="font-medium text-base-content/50">
-          {renderHighlightedSearchText(safeName, searchQuery)}
+          {renderHighlightedSearchText(t("user.formerUser"), searchQuery)}
         </span>
       ) : (
         <Mention name={safeName} />
@@ -624,7 +632,7 @@ const MessageDisplay = ({
     }
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
@@ -653,7 +661,7 @@ const MessageDisplay = ({
   // No quotation marks here: the event sentences carry their own („…“ in
   // German, D6).
   const TeamMentionById = ({ teamId, name }) => {
-    const safeName = (name || "").trim() || "Team";
+    const safeName = (name || "").trim() || t("team.unknownName");
 
     // legacy / missing id => non-clickable fallback
     if (!teamId) {
@@ -665,7 +673,7 @@ const MessageDisplay = ({
     }
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
@@ -840,10 +848,12 @@ const MessageDisplay = ({
     filledUserName = null,
     filledAt = null,
   }) => {
+    // ⚠️ "Role" is unreachable: every role format the parser matches carries
+    // a non-empty name. Not "Vacant Role" either — that is a saved name.
     const safeName = (name || "").trim() || "Role";
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:opacity-80 transition-opacity"
@@ -1000,10 +1010,10 @@ const MessageDisplay = ({
   // Get display name with former member indicator
   const getSenderDisplayName = (senderInfo, includeFormerLabel = true) => {
     if (!senderInfo || senderInfo.isDeletedUser) {
-      return DELETED_USER_DISPLAY_NAME;
+      return t("user.formerUser");
     }
 
-    let name = getDeletedUserDisplayName(senderInfo, "Unknown");
+    let name = getDeletedUserDisplayName(senderInfo, t("user.unknown"));
 
     // Add the "(former team member)" suffix if they're no longer a member
     if (includeFormerLabel && senderInfo.isCurrentMember === false) {
@@ -1023,7 +1033,7 @@ const MessageDisplay = ({
 
     if (isDeletedSender) {
       return (
-        <Tooltip content={DELETED_USER_DISPLAY_NAME} wrapperClassName="inline-flex flex-shrink-0 mr-2">
+        <Tooltip content={t("user.formerUser")} wrapperClassName="inline-flex flex-shrink-0 mr-2">
           <UserAvatar
             user={senderInfo}
             deleted
@@ -1058,7 +1068,7 @@ const MessageDisplay = ({
     const formerMemberTooltip = isClickable
       ? detailsTooltip(getSenderDisplayName(senderInfo, false))
       : isFormerMember
-        ? "Former team member"
+        ? t("chatPage.formerTeamMemberTooltip")
         : undefined;
 
     return (
@@ -1244,7 +1254,7 @@ const MessageDisplay = ({
       <>
         <div className="space-y-6">
           {nameResolveError && (
-            <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+            <div className="mb-2 text-sm text-warning">{nameResolveErrorText}</div>
           )}
 
           {resolvedConversationPartner && conversationType === "direct" && (
@@ -1361,7 +1371,7 @@ const MessageDisplay = ({
     <>
       <div className="space-y-6">
         {nameResolveError && (
-          <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
+          <div className="mb-2 text-sm text-warning">{nameResolveErrorText}</div>
         )}
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}

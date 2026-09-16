@@ -142,10 +142,10 @@ const InlineUserLink = ({
     (userModalContext || onOpenUser);
   const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
   const name = isFormerUser
-    ? getDisplayName(inlineUser)
+    ? getDisplayName(inlineUser, t("user.formerUser"))
     : isPrivateUser
       ? t("badges.card.privateProfile")
-      : displayName ?? getDisplayName(inlineUser);
+      : displayName ?? getDisplayName(inlineUser, t("user.formerUser"));
   const showDemoIndicator =
     !isFormerUser && !isPrivateUser && isSyntheticUser(inlineUser);
 
