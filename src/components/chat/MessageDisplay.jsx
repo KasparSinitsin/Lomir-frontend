@@ -1254,6 +1254,7 @@ const MessageDisplay = ({
     conversationType,
     teamMembers,
     searchQuery,
+    t,
   });
 
   // --------------------------------------------

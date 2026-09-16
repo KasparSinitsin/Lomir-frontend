@@ -104,7 +104,7 @@ const MessageInput = ({
   // The whole user is needed, not just the id: the id-less legacy formats
   // (OWNERSHIP_TEAM, the 👋/🎯 messages) can only recognise the reader by name.
   const replyEventPreview = replyingTo?.content
-    ? getEventPreview(replyingTo.content, user)
+    ? getEventPreview(replyingTo.content, user, t)
     : null;
   const ReplyEventIcon = replyEventPreview
     ? EVENT_PREVIEW_ICONS[replyEventPreview.icon]

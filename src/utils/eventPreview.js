@@ -1,4 +1,5 @@
 import { describeEvent, personOf } from "./describeEvent";
+import { getEventSentenceText } from "./eventSentences";
 
 // Short, one-line rendering of a chat event: the conversation list, the reply
 // bar in MessageInput and the notification toast. The long form lives in
@@ -8,6 +9,10 @@ import { describeEvent, personOf } from "./describeEvent";
 //
 // ⚠️ `getActorLabel` used to return the STRING "You" and twelve places in this
 // file compared against it. It is gone: perspective is `person.isViewer`.
+//
+// ⚠️ `t` is required for the families that are translated (see
+// eventSentences.js). Pass the caller's own `t` from useTranslation, so a
+// language switch re-renders the preview.
 
 export const EVENT_PREVIEW_TEXT_COLORS = {
   "event-banner--admin": "#9a8ef0",
@@ -40,13 +45,12 @@ const possessive = (person, fallback) =>
  */
 const byline = (person) => (person.isViewer ? "You" : person.name || null);
 
-export const getEventPreview = (lastMessage, currentUser = null) => {
+export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
   const event = describeEvent(lastMessage, currentUser);
 
   if (!event) return null;
 
   const { team, role } = event;
-  const roleName = role.name || "Vacant Role";
 
   switch (event.type) {
     case "role_changed": {
@@ -189,109 +193,37 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       };
     }
 
-    case "role_application_approved": {
-      const applicant = personOf(event, "applicant");
-
+    // The roles family — sentences from eventSentences.js, in the active
+    // language. Only the styling stays here.
+    case "role_application_approved":
+    case "role_application_filled":
+    case "role_invitation_filled":
+    case "role_invitation_accepted":
+    case "role_invitation_assigned_legacy":
       return {
-        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
+        ...(event.type === "role_application_filled" && {
+          senderName: byline(personOf(event, "approver")),
+          senderPrefix: "by ",
+        }),
       };
-    }
 
-    case "role_application_filled": {
-      const applicant = personOf(event, "applicant");
-      const approver = personOf(event, "approver");
-
+    case "role_application_deferred_invite":
       return {
-        text: getRoleFilledSentence(roleName, applicant, approver),
-        icon: "UserCheck",
-        bannerClass: null,
-        color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: byline(approver),
-        senderPrefix: "by ",
-      };
-    }
-
-    case "role_application_deferred_invite": {
-      const applicant = personOf(event, "applicant");
-      const approver = personOf(event, "approver");
-
-      return {
-        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved as a role offer`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: byline(approver),
+        senderName: byline(personOf(event, "approver")),
         senderPrefix: "by ",
       };
-    }
-
-    case "role_invitation_filled": {
-      const invitee = personOf(event, "invitee");
-
-      return {
-        text: invitee.isKnown
-          ? invitee.isViewer
-            ? `You accepted an invitation to fill ${roleName} and are now filling that role`
-            : `${invitee.name} accepted an invitation to fill ${roleName} and is now filling that role`
-          : `An invitation to fill ${roleName} was accepted and the role is now filled`,
-        icon: "UserCheck",
-        bannerClass: null,
-        color: EVENT_PREVIEW_TEXT_COLORS.role,
-      };
-    }
-
-    case "role_invitation_accepted": {
-      const invitee = personOf(event, "invitee");
-      const inviter = personOf(event, "inviter");
-      const invitation = inviter.isKnown
-        ? `${inviter.isViewer ? "your" : `${inviter.name}'s`} invitation`
-        : "an invitation";
-
-      // ⚠️ The nameless invitee used to render the literal word "Someone" in
-      // the subject. The clause is dropped instead — the same rule the
-      // transcript and the quoted reply now follow.
-      if (!invitee.isKnown) {
-        return {
-          text: event.fillRole
-            ? `An invitation to fill ${roleName} was accepted and the role is now filled`
-            : `An invitation for ${roleName} was accepted`,
-          icon: "UserCheck",
-          bannerClass: null,
-          color: EVENT_PREVIEW_TEXT_COLORS.role,
-        };
-      }
-
-      return {
-        text: event.fillRole
-          ? invitee.isViewer
-            ? `You accepted ${invitation} to fill ${roleName} and are now filling that role`
-            : `${invitee.name} accepted ${invitation} to fill ${roleName}`
-          : invitee.isViewer
-            ? `You accepted ${invitation} for ${roleName}`
-            : `${invitee.name} accepted ${invitation} for ${roleName}`,
-        icon: "UserCheck",
-        bannerClass: null,
-        color: EVENT_PREVIEW_TEXT_COLORS.role,
-      };
-    }
-
-    case "role_invitation_assigned_legacy": {
-      const invitee = personOf(event, "invitee");
-
-      return {
-        text: `${subject(invitee, "Someone")} accepted an invitation for ${role.name || "a role"}`,
-        icon: "UserCheck",
-        bannerClass: null,
-        color: EVENT_PREVIEW_TEXT_COLORS.role,
-      };
-    }
 
     case "role_closed":
       return {
-        text: `Role closed: ${roleName}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -300,7 +232,7 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "role_updated":
       return {
-        text: `Role edited: ${roleName}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "Pencil",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
@@ -309,7 +241,7 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "role_deleted":
       return {
-        text: `Role deleted: ${roleName}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -317,50 +249,33 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
       };
 
     case "role_created":
-      return {
-        text: `New role ${roleName} created.`,
-        icon: "UserSearch",
-        bannerClass: null,
-        color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: "by ",
-      };
-
     case "role_reopened_admin":
       return {
-        text: `Role reopened: ${roleName}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
         senderPrefix: "by ",
       };
 
-    case "role_reopened": {
-      const user = personOf(event, "user");
-
+    case "role_reopened":
       return {
-        text: user.isKnown
-          ? `${subject(user, "Member")} left the role ${roleName}. It is open again.`
-          : `Role reopened: ${roleName}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: user.isKnown ? null : "by ",
+        senderPrefix: personOf(event, "user").isKnown ? null : "by ",
       };
-    }
 
-    case "role_filled": {
-      const filler = personOf(event, "user");
-      const filledBy = personOf(event, "filledBy");
-
+    case "role_filled":
       return {
-        text: getRoleFilledSentence(roleName, filler, filledBy),
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: byline(filledBy),
+        senderName: byline(personOf(event, "filledBy")),
         senderPrefix: "by ",
       };
-    }
 
     case "application_cancelled": {
       const applicant = personOf(event, "applicant");
@@ -418,25 +333,4 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     default:
       return null;
   }
-};
-
-/**
- * The one sentence this project has proved it cannot afford to write twice:
- * `grep "has been filled by"` used to return fourteen sites in five files.
- * ROLE_FILLED and ROLE_APPLICATION_FILLED say the same thing, so they share it.
- *
- * ⚠️ With no filler, the clause is dropped rather than filled with a noun —
- * the conversation list used to claim "has been filled by Someone" while the
- * transcript said "was marked as filled" for the very same message.
- */
-export const getRoleFilledSentence = (roleName, filler, approver) => {
-  if (!filler.isKnown) {
-    return approver.isKnown
-      ? `The role ${roleName} was marked as filled by ${objectLabel(approver, "an admin")}.`
-      : `The role ${roleName} was marked as filled.`;
-  }
-
-  return approver.isKnown
-    ? `The role ${roleName} has been filled by ${objectLabel(filler, "Someone")}, approved by ${objectLabel(approver, "an admin")}.`
-    : `The role ${roleName} has been filled by ${objectLabel(filler, "Someone")}.`;
 };

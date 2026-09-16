@@ -223,7 +223,7 @@ const ReplyPreview = ({ replyPreview }) => {
   const replyHasMedia = Boolean(replyImageUrl || replyFileUrl || replyFileName);
   const ReplyFileIcon = getFileIcon(replyFileName);
   const replyEventPreview = replyPreview?.content
-    ? getEventReactionPreview(replyPreview.content, user)
+    ? getEventReactionPreview(replyPreview.content, user, t)
     : null;
   const ReplyEventIcon = replyEventPreview?.Icon;
   const ReplyEventTrailingIcon = replyEventPreview?.trailingIcon;

@@ -28,7 +28,8 @@ import {
   UserSearch,
 } from "lucide-react";
 import { describeEvent, personOf } from "./describeEvent";
-import { getRoleFilledSentence, objectLabel } from "./eventPreview";
+import { objectLabel } from "./eventPreview";
+import { getEventSentenceText } from "./eventSentences";
 
 // Maps a file name to its lucide icon component reference (not JSX). Shared by
 // FileAttachment and the reply-preview block in MessageDisplay.
@@ -61,14 +62,15 @@ const possessive = (person, fallback) =>
 
 /**
  * @param {string} content        the stored message
- * @param {object|null} viewer    the reader — `{ id }` is enough
+ * @param {object|null} viewer    the reader — the whole user, not only `{ id }`:
+ *                                the id-less formats match the reader by name
+ * @param {Function|null} t       i18next `t` — required for the translated families
  */
-export const getEventReactionPreview = (content, viewer = null) => {
+export const getEventReactionPreview = (content, viewer = null, t = null) => {
   const event = describeEvent(content, viewer);
   if (!event) return null;
 
-  const { team, role, currentRole } = event;
-  const roleName = role.name || "Vacant Role";
+  const { team, role } = event;
 
   switch (event.type) {
     case "team_join": {
@@ -111,164 +113,46 @@ export const getEventReactionPreview = (content, viewer = null) => {
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
     }
-    case "role_application_approved": {
-      const applicant = personOf(event, "applicant");
+    // The roles family — the same sentence as the transcript above it (D1),
+    // with the reader's perspective (D2), from eventSentences.js.
+    case "role_application_approved":
+    case "role_application_filled":
+    case "role_invitation_filled":
+    case "role_invitation_accepted":
+    case "role_invitation_assigned_legacy":
+    case "role_filled":
       return {
-        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    }
-    case "role_application_filled": {
-      const applicant = personOf(event, "applicant");
-      const approver = personOf(event, "approver");
+    case "role_application_deferred_invite":
+    case "role_created":
+    case "role_reopened":
+    case "role_reopened_admin":
       return {
-        // The 14-site sentence, now written once — in eventPreview.js, which
-        // the short preview uses as well.
-        text: getRoleFilledSentence(`"${roleName}"`, applicant, approver),
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_application_deferred_invite": {
-      const applicant = personOf(event, "applicant");
-      return {
-        text: `${possessive(applicant, "Applicant")} application for "${roleName}" was approved as a role offer because they already fill "${currentRole.name || "another role"}".`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    }
-    case "role_invitation_filled": {
-      const invitee = personOf(event, "invitee");
+    case "role_updated":
       return {
-        text: invitee.isViewer
-          ? `You accepted an invitation to fill the role "${roleName}" in this team and are now filling that role.`
-          : invitee.isKnown
-            ? `${invitee.name} accepted an invitation to fill the role "${roleName}" in this team and is now filling that role.`
-            : `An invitation to fill the role "${roleName}" was accepted and the role is now filled.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_invitation_accepted": {
-      const invitee = personOf(event, "invitee");
-      const inviter = personOf(event, "inviter");
-
-      if (!invitee.isKnown) {
-        return {
-          text: event.fillRole
-            ? `An invitation to fill "${roleName}" was accepted and the role is now filled.`
-            : `An invitation for "${roleName}" was accepted.`,
-          Icon: UserCheck,
-          color: EVENT_REACTION_PREVIEW_COLORS.role,
-        };
-      }
-
-      // ⚠️ With no inviter the sentence changes subject instead of naming
-      // "Someone" — the invitee did the accepting, and that is what is known.
-      if (!inviter.isKnown) {
-        return {
-          text: event.fillRole
-            ? invitee.isViewer
-              ? `You accepted an invitation to fill "${roleName}" and are now filling that role.`
-              : `${invitee.name} accepted an invitation to fill "${roleName}" and is now filling that role.`
-            : `${subject(invitee, "Someone")} accepted an invitation for "${roleName}".`,
-          Icon: UserCheck,
-          color: EVENT_REACTION_PREVIEW_COLORS.role,
-        };
-      }
-
-      return {
-        text: event.fillRole
-          ? `${subject(inviter, "Someone")} invited ${objectLabel(invitee, "someone")} to fill "${roleName}". They accepted and are now filling that role.`
-          : `${subject(inviter, "Someone")} invited ${objectLabel(invitee, "someone")} for "${roleName}". They accepted the invitation.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_invitation_assigned_legacy": {
-      const invitee = personOf(event, "invitee");
-      return {
-        text: invitee.isViewer
-          ? `You accepted an invitation and were assigned to the role "${roleName}".`
-          : `${invitee.name || "Someone"} accepted an invitation and was assigned to the role "${roleName}".`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_created": {
-      const creator = personOf(event, "creator");
-      return {
-        text: creator.isKnown
-          ? `The new role "${roleName}" has been created by ${objectLabel(creator, "an admin")}. It is open to be filled.`
-          : `The new role "${roleName}" is open to be filled.`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_closed": {
-      const closedBy = personOf(event, "closedBy");
-      return {
-        text: closedBy.isKnown
-          ? `The role "${roleName}" has been closed by ${objectLabel(closedBy, "an admin")}.`
-          : `The role "${roleName}" has been closed.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
-    }
-    case "role_updated": {
-      const updatedBy = personOf(event, "updatedBy");
-      return {
-        text: updatedBy.isKnown
-          ? `The role "${roleName}" has been updated by ${objectLabel(updatedBy, "an admin")}.`
-          : `The role "${roleName}" has been updated.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: Pencil,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    }
-    case "role_deleted": {
-      const deletor = personOf(event, "deletor");
+    case "role_closed":
       return {
-        text: deletor.isKnown
-          ? `The role "${roleName}" has been deleted by ${objectLabel(deletor, "an admin")}.`
-          : `The role "${roleName}" has been deleted.`,
+        text: getEventSentenceText(t, event, "full"),
+        Icon: CircleX,
+        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
+      };
+    case "role_deleted":
+      return {
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    }
-    case "role_reopened": {
-      const user = personOf(event, "user");
-      return {
-        text: user.isViewer
-          ? `You have left the role ${roleName}. The role is open again to be filled.`
-          : user.isKnown
-            ? `${user.name} has left the role ${roleName}. The role is open again to be filled.`
-            : `The role ${roleName} is open again to be filled.`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_reopened_admin": {
-      const user = personOf(event, "user");
-      return {
-        text: user.isViewer
-          ? `You have reopened the role ${roleName}. It is open again to be filled.`
-          : user.isKnown
-            ? `${user.name} has reopened the role ${roleName}. It is open again to be filled.`
-            : `The role ${roleName} has been reopened and is open to be filled.`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
-    case "role_filled": {
-      const filler = personOf(event, "user");
-      const filledBy = personOf(event, "filledBy");
-      return {
-        text: getRoleFilledSentence(roleName, filler, filledBy),
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    }
     case "application_response":
     case "invitation_response":
       return {

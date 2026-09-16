@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Award,
@@ -660,6 +661,9 @@ const MessageNotifications = () => {
     search: location.search,
   });
   const { isAuthenticated, user } = useAuth();
+  // Only for the event sentences shared with the chat (D8); this file's own
+  // strings wait for Phase 2 step 2.
+  const { t } = useTranslation();
   const prevIsAuthenticatedRef = useRef(false);
   const currentUserRemovalSuppressionsRef = useRef(new Map());
   const combinedApplicationApprovalSuppressionsRef = useRef(new Map());
@@ -881,7 +885,7 @@ const MessageNotifications = () => {
 
       const eventPreview =
         getRoleEventTypePreview(message, user) ||
-        getEventPreview(eventContent, user) ||
+        getEventPreview(eventContent, user, t) ||
         getFallbackRoleEventPreview(eventContent);
       const dedupeKey =
         getRoleReopenedToastKey(eventContent, message) ||
@@ -914,6 +918,7 @@ const MessageNotifications = () => {
     isCombinedApplicationApprovalSuppressed,
     upsertCurrentUserRemovalToast,
     user,
+    t,
   ]);
 
   const handleMessageDeleted = useCallback((payload) => {
@@ -1142,7 +1147,7 @@ const MessageNotifications = () => {
             backgroundColor: notification.eventBackgroundColor,
           }) ||
           getFallbackRoleEventPreview(notification.text) ||
-          getEventPreview(notification.text, user);
+          getEventPreview(notification.text, user, t);
         const isEvent = Boolean(renderEventPreview);
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock

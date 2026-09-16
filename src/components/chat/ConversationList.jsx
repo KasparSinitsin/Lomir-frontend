@@ -635,6 +635,7 @@ const ConversationList = ({
           const eventPreview = getEventPreview(
             lastMessageText,
             currentUser,
+            t,
           );
           // During search the matched message may be an older system/event
           // message (not the conversation's last message). Style it through the
@@ -643,7 +644,7 @@ const ConversationList = ({
           const hasSearchMessageMatch =
             isSearchActive && Boolean(conversation.searchMatchContent);
           const searchEventPreview = hasSearchMessageMatch
-            ? getEventPreview(conversation.searchMatchContent, currentUser)
+            ? getEventPreview(conversation.searchMatchContent, currentUser, t)
             : null;
           // When the hit is on the conversation's metadata (e.g. team name) and
           // no message matched, the preview shows the last message — style it the
