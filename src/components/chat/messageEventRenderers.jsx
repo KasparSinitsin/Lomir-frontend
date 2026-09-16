@@ -14,6 +14,7 @@ import {
   UserPlus,
   UserSearch,
 } from "lucide-react";
+import { describeEvent, personOf } from "../../utils/describeEvent";
 import { formatLocalTime } from "../../utils/dateHelpers";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import ReadReceipt from "./ReadReceipt";
@@ -36,10 +37,21 @@ export const createEventRenderers = (ctx) => {
     highlightEventContent,
     getReadByTooltip,
     currentUserId,
+    currentUser,
     conversationType,
     teamMembers,
     searchQuery,
   } = ctx;
+
+  // The transcript is one of four paths that render an event; all of them now
+  // start here. `person.isKnown` replaces the
+  // `name.trim().toLowerCase() !== "someone"` guards this file used to carry —
+  // the placeholder is nulled by parseSystemMessage before it arrives.
+  const eventOf = (parsedMessage) =>
+    describeEvent(
+      parsedMessage,
+      currentUser ?? (currentUserId != null ? { id: currentUserId } : null),
+    );
 
   /**
    * Render an application approved DM message with special formatting (green theme)
@@ -133,8 +145,17 @@ export const createEventRenderers = (ctx) => {
     message,
     parsedMessage,
   ) => {
-    const isApplicantCurrentUser = isCurrentViewer(parsedMessage.applicantId);
-    const isApproverCurrentUser = isCurrentViewer(parsedMessage.approverId);
+    // ⚠️ This is the prose format — names only, no ids — so both checks were
+    // permanently false and the approver read about herself in the third
+    // person ("… was added by Anna Madlen Albers", to Anna Madlen Albers).
+    const isApplicantCurrentUser = isCurrentViewer(
+      parsedMessage.applicantId,
+      parsedMessage.applicantName,
+    );
+    const isApproverCurrentUser = isCurrentViewer(
+      parsedMessage.approverId,
+      parsedMessage.approverName,
+    );
 
     const welcomeText = isApplicantCurrentUser ? (
       <>
@@ -234,20 +255,20 @@ export const createEventRenderers = (ctx) => {
       />
     );
 
-    const hasKnownApplicant =
-      parsedMessage.applicantName &&
-      parsedMessage.applicantName.trim().toLowerCase() !== "someone";
-    const hasKnownApprover =
-      parsedMessage.approverName &&
-      parsedMessage.approverName.trim().toLowerCase() !== "someone";
-    const applicantMention = hasKnownApplicant
-      ? userMentionOrYou(parsedMessage.applicantId, parsedMessage.applicantName)
-      : "someone";
-    const approverMention = hasKnownApprover
-      ? userMentionOrYou(parsedMessage.approverId, parsedMessage.approverName)
+    const event = eventOf(parsedMessage);
+    const applicant = personOf(event, "applicant");
+    const approver = personOf(event, "approver");
+    const applicantMention = applicant.isKnown
+      ? userMentionOrYou(applicant.id, applicant.name)
+      : null;
+    const approverMention = approver.isKnown
+      ? userMentionOrYou(approver.id, approver.name)
       : null;
 
-    const messageText = (
+    // ⚠️ With no applicant the clause is dropped rather than filled with the
+    // word "someone" — the conversation list said "filled by Someone" for the
+    // same message the transcript called "marked as filled".
+    const messageText = applicantMention ? (
       <>
         The role {roleMention} has been filled by {applicantMention}
         {approverMention ? (
@@ -256,6 +277,12 @@ export const createEventRenderers = (ctx) => {
           "."
         )}
       </>
+    ) : approverMention ? (
+      <>
+        The role {roleMention} was marked as filled by {approverMention}.
+      </>
+    ) : (
+      <>The role {roleMention} was marked as filled.</>
     );
 
     return (
@@ -360,14 +387,17 @@ export const createEventRenderers = (ctx) => {
       />
     );
 
-    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
+    const invitee = personOf(eventOf(parsedMessage), "invitee");
+    const isInviteeCurrentUser = isCurrentViewer(
+      parsedMessage.inviteeId,
+      parsedMessage.inviteeName,
+    );
     const messageText = isInviteeCurrentUser ? (
       <>
         You accepted an invitation to fill the role {roleMention} in this team
         and are now filling that role.
       </>
-    ) : parsedMessage.inviteeName &&
-      parsedMessage.inviteeName.trim().toLowerCase() !== "someone" ? (
+    ) : invitee.isKnown ? (
       <>
         <MentionById
           userId={parsedMessage.inviteeId}
@@ -409,12 +439,9 @@ export const createEventRenderers = (ctx) => {
   // renderRoleInvitationAcceptedMessage - Orange role theme (invitation accepted, with inviter)
   // =============================================================================
   const renderRoleInvitationAcceptedMessage = (message, parsedMessage) => {
-    const hasInvitee =
-      parsedMessage.inviteeName &&
-      parsedMessage.inviteeName.trim().toLowerCase() !== "someone";
-    const hasInviter =
-      parsedMessage.inviterName &&
-      parsedMessage.inviterName.trim().toLowerCase() !== "someone";
+    const acceptedEvent = eventOf(parsedMessage);
+    const hasInvitee = personOf(acceptedEvent, "invitee").isKnown;
+    const hasInviter = personOf(acceptedEvent, "inviter").isKnown;
     const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
 
     const roleMention = (
@@ -427,26 +454,17 @@ export const createEventRenderers = (ctx) => {
       />
     );
 
-    const messageText = parsedMessage.fillRole ? (
-      <>
-        {hasInviter && (
-          <>
-            {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName, {
-              capitalized: true,
-            })}
-            {" invited "}
-          </>
-        )}
-        {hasInvitee ? (
-          userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)
-        ) : (
-          "Someone"
-        )}
-        {" for the role "}{roleMention}
-        {isInviteeCurrentUser
-          ? ". You accepted and are now filling that role."
-          : ". They accepted and are now filling that role."}
-      </>
+    // ⚠️ Without an invitee the sentence has no subject to name, so it is
+    // rewritten rather than filled with the literal word "Someone".
+    const messageText = !hasInvitee ? (
+      parsedMessage.fillRole ? (
+        <>
+          An invitation to fill the role {roleMention} was accepted and the role
+          is now filled.
+        </>
+      ) : (
+        <>An invitation for the role {roleMention} was accepted.</>
+      )
     ) : (
       <>
         {hasInviter && (
@@ -457,15 +475,15 @@ export const createEventRenderers = (ctx) => {
             {" invited "}
           </>
         )}
-        {hasInvitee ? (
-          userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)
-        ) : (
-          "Someone"
-        )}
+        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)}
         {" for the role "}{roleMention}
-        {isInviteeCurrentUser
-          ? ". You accepted the invitation."
-          : ". They accepted the invitation."}
+        {parsedMessage.fillRole
+          ? isInviteeCurrentUser
+            ? ". You accepted and are now filling that role."
+            : ". They accepted and are now filling that role."
+          : isInviteeCurrentUser
+            ? ". You accepted the invitation."
+            : ". They accepted the invitation."}
       </>
     );
 
@@ -535,7 +553,7 @@ export const createEventRenderers = (ctx) => {
     );
     const messageText = parsedMessage.userName ? (
       <>
-        {isCurrentViewer(parsedMessage.userId) ? (
+        {isCurrentViewer(parsedMessage.userId, parsedMessage.userName) ? (
           <>You have left the role {roleMention}. The role is open again to be filled.</>
         ) : (
           <>
@@ -582,7 +600,7 @@ export const createEventRenderers = (ctx) => {
     );
     const messageText = parsedMessage.userName ? (
       <>
-        {isCurrentViewer(parsedMessage.userId) ? (
+        {isCurrentViewer(parsedMessage.userId, parsedMessage.userName) ? (
           <>You have reopened the role {roleMention}. It is open again to be filled.</>
         ) : (
           <>
@@ -620,12 +638,9 @@ export const createEventRenderers = (ctx) => {
   // renderRoleFilledMessage - Orange role theme
   // =============================================================================
   const renderRoleFilledMessage = (message, parsedMessage) => {
-    const hasKnownFilledUser =
-      parsedMessage.userName &&
-      parsedMessage.userName.trim().toLowerCase() !== "someone";
-    const hasKnownFilledBy =
-      parsedMessage.filledByName &&
-      parsedMessage.filledByName.trim().toLowerCase() !== "someone";
+    const filledEvent = eventOf(parsedMessage);
+    const hasKnownFilledUser = personOf(filledEvent, "user").isKnown;
+    const hasKnownFilledBy = personOf(filledEvent, "filledBy").isKnown;
 
     const roleMention = (
       <RoleMentionById
@@ -649,6 +664,8 @@ export const createEventRenderers = (ctx) => {
           "."
         )}
       </>
+    ) : filledByMention ? (
+      <>The role {roleMention} was marked as filled by {filledByMention}.</>
     ) : (
       <>The role {roleMention} was marked as filled.</>
     );
@@ -686,9 +703,14 @@ export const createEventRenderers = (ctx) => {
       />
     );
 
-    const creatorId = parsedMessage.creatorId ?? senderId ?? null;
-    const creatorName =
-      parsedMessage.creatorName ||
+    const creator = personOf(eventOf(parsedMessage), "creator");
+    const creatorId = creator.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const creatorName = creator.isDeleted
+      ? null
+      : creator.name ||
       (senderInfo
         ? [
             senderInfo.firstName || senderInfo.first_name,
@@ -737,9 +759,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleClosedMessage - Neutral grey theme
   // =============================================================================
   const renderRoleClosedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const closedById = parsedMessage.closedById ?? senderId ?? null;
-    const closedByName =
-      parsedMessage.closedByName ||
+    const closedBy = personOf(eventOf(parsedMessage), "closedBy");
+    const closedById = closedBy.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const closedByName = closedBy.isDeleted
+      ? null
+      : closedBy.name ||
       (senderInfo
         ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
             .filter(Boolean)
@@ -778,9 +805,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleUpdatedMessage - Orange role theme
   // =============================================================================
   const renderRoleUpdatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const updatedById = parsedMessage.updatedById ?? senderId ?? null;
-    const updatedByName =
-      parsedMessage.updatedByName ||
+    const updatedBy = personOf(eventOf(parsedMessage), "updatedBy");
+    const updatedById = updatedBy.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const updatedByName = updatedBy.isDeleted
+      ? null
+      : updatedBy.name ||
       (senderInfo
         ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
             .filter(Boolean)
@@ -825,9 +857,14 @@ export const createEventRenderers = (ctx) => {
   // renderRoleDeletedMessage - Neutral grey theme
   // =============================================================================
   const renderRoleDeletedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const deletorId = parsedMessage.deletorId ?? senderId ?? null;
-    const deletorName =
-      parsedMessage.deletorName ||
+    const deletor = personOf(eventOf(parsedMessage), "deletor");
+    const deletorId = deletor.id ?? senderId ?? null;
+    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
+    // drops. Without this the transcript named "Former Lomir User" while
+    // the conversation list and the quoted reply said nothing.
+    const deletorName = deletor.isDeleted
+      ? null
+      : deletor.name ||
       (senderInfo
         ? [
             senderInfo.firstName || senderInfo.first_name,
@@ -907,7 +944,9 @@ export const createEventRenderers = (ctx) => {
   // renderUserLeftLomirMessage - Neutral grey theme
   // =============================================================================
   const renderUserLeftLomirMessage = (message) => {
-    const leaveText = <>Former Lomir Member has left Lomir.</>;
+    // ⚠️ Said "Former Lomir Member" while DELETED_USER_DISPLAY_NAME, which both
+    // repos write into the message, is "Former Lomir User". One name now.
+    const leaveText = <>Former Lomir User has left Lomir.</>;
 
     return (
       <div className="flex flex-col items-center w-full my-4">
@@ -998,9 +1037,13 @@ export const createEventRenderers = (ctx) => {
         {roleMention}. Say hello to {pronoun}!
       </>
     ) : (
+      // ⚠️ This used to read "has followed your invite and joined your team",
+      // which every member of the team chat saw — including the ones who sent
+      // no invite and do not own the team. The role branch above was already
+      // neutral; both say the same thing now.
       <>
-        <Mention name={parsedMessage.userName} /> has followed your invite and
-        joined your team. Say hello to {pronoun}!
+        <Mention name={parsedMessage.userName} /> joined the team. Say hello to{" "}
+        {pronoun}!
       </>
     );
 
@@ -1642,19 +1685,28 @@ export const createEventRenderers = (ctx) => {
   // renderOwnershipTeamMessage - Pink owner theme (team chat)
   // =============================================================================
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
-    const isPreviousOwnerCurrentUser = isCurrentViewer(parsedMessage.prevOwnerId);
-    const isNewOwnerCurrentUser = isCurrentViewer(parsedMessage.newOwnerId);
+    // ⚠️ OWNERSHIP_TEAM carries names only — no ids (messageSystemParser
+    // "Pattern 14"). So the id-based check could never be true here, and the
+    // transcript said "Anna transferred ownership to Anna Madlen Albers" to
+    // Anna Madlen Albers herself while the conversation list said "You
+    // received ownership". The descriptor falls back to the name, as the
+    // preview always did.
+    const ownershipEvent = eventOf(parsedMessage);
+    const isPreviousOwnerCurrentUser = personOf(ownershipEvent, "prevOwner").isViewer;
+    const isNewOwnerCurrentUser = personOf(ownershipEvent, "newOwner").isViewer;
+    // ⚠️ These three ended without a full stop while the quoted reply of the
+    // same event ended with one.
     const messageText = isPreviousOwnerCurrentUser ? (
       <>
         You transferred ownership to{" "}
-        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}
+        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}.
       </>
     ) : isNewOwnerCurrentUser ? (
       <>
         {userMentionOrYou(parsedMessage.prevOwnerId, parsedMessage.prevOwnerName, {
           capitalized: true,
         })}{" "}
-        transferred ownership to you
+        transferred ownership to you.
       </>
     ) : (
       <>
@@ -1662,7 +1714,7 @@ export const createEventRenderers = (ctx) => {
           capitalized: true,
         })}{" "}
         transferred ownership to{" "}
-        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}
+        {userMentionOrYou(parsedMessage.newOwnerId, parsedMessage.newOwnerName)}.
       </>
     );
 

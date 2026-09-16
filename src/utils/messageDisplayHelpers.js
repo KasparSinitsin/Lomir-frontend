@@ -3,6 +3,12 @@
 // trailingIcon, color }) — the Icon/trailingIcon values are lucide component
 // references, not JSX. formatReplyTooltipText renders a reply's plain-text
 // tooltip. EVENT_REACTION_PREVIEW_COLORS is the shared color palette.
+//
+// This is the QUOTE path of the four that render an event (see
+// `lomir-docs-internal/PROPOSAL-event-sentences.md`): the quoted reply above a
+// message and its tooltip. It now starts from the same descriptor as the
+// transcript and the short preview, so it knows who the reader is — the quote
+// used to say "Anna has left the team." to Anna herself.
 
 import {
   AlertTriangle,
@@ -21,7 +27,8 @@ import {
   UserPlus,
   UserSearch,
 } from "lucide-react";
-import { parseSystemMessage } from "./messageSystemParser";
+import { describeEvent, personOf } from "./describeEvent";
+import { getRoleFilledSentence, objectLabel } from "./eventPreview";
 
 // Maps a file name to its lucide icon component reference (not JSX). Shared by
 // FileAttachment and the reply-preview block in MessageDisplay.
@@ -44,191 +51,306 @@ const EVENT_REACTION_PREVIEW_COLORS = {
   error: "#dc2626",
 };
 
-export const getEventReactionPreview = (content) => {
-  const parsedMessage = parseSystemMessage(content);
-  if (!parsedMessage) return null;
+/** Subject position: "You" / "Anna" / a fallback noun. */
+const subject = (person, fallback) =>
+  person.isViewer ? "You" : person.name || fallback;
 
-  switch (parsedMessage.type) {
-    case "team_join":
+/** Possessive: "Your" / "Anna's" / "Applicant's". */
+const possessive = (person, fallback) =>
+  person.isViewer ? "Your" : `${person.name || fallback}'s`;
+
+/**
+ * @param {string} content        the stored message
+ * @param {object|null} viewer    the reader — `{ id }` is enough
+ */
+export const getEventReactionPreview = (content, viewer = null) => {
+  const event = describeEvent(content, viewer);
+  if (!event) return null;
+
+  const { team, role, currentRole } = event;
+  const roleName = role.name || "Vacant Role";
+
+  switch (event.type) {
+    case "team_join": {
+      const user = personOf(event, "user");
+      // ⚠️ Every viewer branch below exists for verb agreement, not politeness:
+      // "You has applied" is what a bare name substitution produces.
       return {
-        text: parsedMessage.roleName
-          ? `${parsedMessage.userName} joined the team as ${parsedMessage.roleName}. Say hello to them!`
-          : `${parsedMessage.userName} has followed your invite and joined your team. Say hello to them!`,
+        text: user.isViewer
+          ? role.name
+            ? `You joined the team as ${role.name}. Welcome aboard!`
+            : "You joined the team. Welcome aboard!"
+          : role.name
+            ? `${user.name} joined the team as ${role.name}. Say hello to them!`
+            : `${user.name} joined the team. Say hello to them!`,
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
-    case "application_approved":
+    }
+    case "application_approved": {
+      const applicant = personOf(event, "applicant");
+      const approver = personOf(event, "approver");
       return {
-        text: `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them!`,
+        text: applicant.isViewer
+          ? `Your application was approved by ${objectLabel(approver, "an admin")}. Welcome to the team!`
+          : approver.isViewer
+            ? `You approved ${applicant.name ? `${applicant.name}'s ` : "the "}application. Say hello to them!`
+            : `${applicant.name || "Someone"} has applied successfully and was added by ${objectLabel(approver, "an admin")}. Say hello to them!`,
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
-    case "application_approved_dm":
+    }
+    case "application_approved_dm": {
+      const applicant = personOf(event, "applicant");
       return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was approved.`,
+        text: `${possessive(applicant, "Applicant")} application for ${team.name || "the team"} was approved.`,
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
-    case "role_application_approved":
+    }
+    case "role_application_approved": {
+      const applicant = personOf(event, "applicant");
       return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`,
+        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved.`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_application_filled":
+    }
+    case "role_application_filled": {
+      const applicant = personOf(event, "applicant");
+      const approver = personOf(event, "approver");
       return {
-        text: parsedMessage.approverName
-          ? `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}, approved by ${parsedMessage.approverName}.`
-          : `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}.`,
+        // The 14-site sentence, now written once — in eventPreview.js, which
+        // the short preview uses as well.
+        text: getRoleFilledSentence(`"${roleName}"`, applicant, approver),
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_application_deferred_invite":
+    }
+    case "role_application_deferred_invite": {
+      const applicant = personOf(event, "applicant");
       return {
-        text: `${parsedMessage.applicantName}'s application for "${parsedMessage.roleName}" was approved as a role offer because they already fill "${parsedMessage.currentRoleName}".`,
+        text: `${possessive(applicant, "Applicant")} application for "${roleName}" was approved as a role offer because they already fill "${currentRole.name || "another role"}".`,
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_invitation_filled":
+    }
+    case "role_invitation_filled": {
+      const invitee = personOf(event, "invitee");
       return {
-        text: `${parsedMessage.inviteeName} has accepted an invitation to fill the role "${parsedMessage.roleName}" in this team and is now filling that role.`,
+        text: invitee.isViewer
+          ? `You accepted an invitation to fill the role "${roleName}" in this team and are now filling that role.`
+          : invitee.isKnown
+            ? `${invitee.name} accepted an invitation to fill the role "${roleName}" in this team and is now filling that role.`
+            : `An invitation to fill the role "${roleName}" was accepted and the role is now filled.`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_invitation_accepted":
+    }
+    case "role_invitation_accepted": {
+      const invitee = personOf(event, "invitee");
+      const inviter = personOf(event, "inviter");
+
+      if (!invitee.isKnown) {
+        return {
+          text: event.fillRole
+            ? `An invitation to fill "${roleName}" was accepted and the role is now filled.`
+            : `An invitation for "${roleName}" was accepted.`,
+          Icon: UserCheck,
+          color: EVENT_REACTION_PREVIEW_COLORS.role,
+        };
+      }
+
+      // ⚠️ With no inviter the sentence changes subject instead of naming
+      // "Someone" — the invitee did the accepting, and that is what is known.
+      if (!inviter.isKnown) {
+        return {
+          text: event.fillRole
+            ? invitee.isViewer
+              ? `You accepted an invitation to fill "${roleName}" and are now filling that role.`
+              : `${invitee.name} accepted an invitation to fill "${roleName}" and is now filling that role.`
+            : `${subject(invitee, "Someone")} accepted an invitation for "${roleName}".`,
+          Icon: UserCheck,
+          color: EVENT_REACTION_PREVIEW_COLORS.role,
+        };
+      }
+
       return {
-        text: parsedMessage.fillRole
-          ? `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} to fill "${parsedMessage.roleName}". They accepted and are now filling that role.`
-          : `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} for "${parsedMessage.roleName}". They accepted the invitation.`,
+        text: event.fillRole
+          ? `${subject(inviter, "Someone")} invited ${objectLabel(invitee, "someone")} to fill "${roleName}". They accepted and are now filling that role.`
+          : `${subject(inviter, "Someone")} invited ${objectLabel(invitee, "someone")} for "${roleName}". They accepted the invitation.`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_invitation_assigned_legacy":
+    }
+    case "role_invitation_assigned_legacy": {
+      const invitee = personOf(event, "invitee");
       return {
-        text: `${parsedMessage.inviteeName} accepted an invitation and was assigned to the role "${parsedMessage.roleName}".`,
+        text: invitee.isViewer
+          ? `You accepted an invitation and were assigned to the role "${roleName}".`
+          : `${invitee.name || "Someone"} accepted an invitation and was assigned to the role "${roleName}".`,
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_created":
+    }
+    case "role_created": {
+      const creator = personOf(event, "creator");
       return {
-        text: parsedMessage.creatorName
-          ? `The new role "${parsedMessage.roleName}" has been created by ${parsedMessage.creatorName}. It is open to be filled.`
-          : `The new role "${parsedMessage.roleName}" is open to be filled.`,
+        text: creator.isKnown
+          ? `The new role "${roleName}" has been created by ${objectLabel(creator, "an admin")}. It is open to be filled.`
+          : `The new role "${roleName}" is open to be filled.`,
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_closed":
+    }
+    case "role_closed": {
+      const closedBy = personOf(event, "closedBy");
       return {
-        text: parsedMessage.closedByName
-          ? `The role "${parsedMessage.roleName}" has been closed by ${parsedMessage.closedByName}.`
-          : `The role "${parsedMessage.roleName}" has been closed.`,
+        text: closedBy.isKnown
+          ? `The role "${roleName}" has been closed by ${objectLabel(closedBy, "an admin")}.`
+          : `The role "${roleName}" has been closed.`,
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "role_updated":
+    }
+    case "role_updated": {
+      const updatedBy = personOf(event, "updatedBy");
       return {
-        text: parsedMessage.updatedByName
-          ? `The role "${parsedMessage.roleName}" has been updated by ${parsedMessage.updatedByName}.`
-          : `The role "${parsedMessage.roleName}" has been updated.`,
+        text: updatedBy.isKnown
+          ? `The role "${roleName}" has been updated by ${objectLabel(updatedBy, "an admin")}.`
+          : `The role "${roleName}" has been updated.`,
         Icon: Pencil,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_deleted":
+    }
+    case "role_deleted": {
+      const deletor = personOf(event, "deletor");
       return {
-        text: parsedMessage.deletorName
-          ? `The role "${parsedMessage.roleName}" has been deleted by ${parsedMessage.deletorName}.`
-          : `The role "${parsedMessage.roleName}" has been deleted.`,
+        text: deletor.isKnown
+          ? `The role "${roleName}" has been deleted by ${objectLabel(deletor, "an admin")}.`
+          : `The role "${roleName}" has been deleted.`,
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "role_reopened":
+    }
+    case "role_reopened": {
+      const user = personOf(event, "user");
       return {
-        text: parsedMessage.userName
-          ? `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`
-          : `The role ${parsedMessage.roleName} is open again to be filled.`,
+        text: user.isViewer
+          ? `You have left the role ${roleName}. The role is open again to be filled.`
+          : user.isKnown
+            ? `${user.name} has left the role ${roleName}. The role is open again to be filled.`
+            : `The role ${roleName} is open again to be filled.`,
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_reopened_admin":
+    }
+    case "role_reopened_admin": {
+      const user = personOf(event, "user");
       return {
-        text: parsedMessage.userName
-          ? `${parsedMessage.userName} has reopened the role ${parsedMessage.roleName}. It is open again to be filled.`
-          : `The role ${parsedMessage.roleName} has been reopened and is open to be filled.`,
+        text: user.isViewer
+          ? `You have reopened the role ${roleName}. It is open again to be filled.`
+          : user.isKnown
+            ? `${user.name} has reopened the role ${roleName}. It is open again to be filled.`
+            : `The role ${roleName} has been reopened and is open to be filled.`,
         Icon: UserSearch,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
-    case "role_filled":
+    }
+    case "role_filled": {
+      const filler = personOf(event, "user");
+      const filledBy = personOf(event, "filledBy");
       return {
-        text: parsedMessage.userName && parsedMessage.filledByName
-          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}, approved by ${parsedMessage.filledByName}.`
-          : parsedMessage.userName
-          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}.`
-          : `The role ${parsedMessage.roleName} has been marked filled.`,
+        text: getRoleFilledSentence(roleName, filler, filledBy),
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
+    }
     case "application_response":
     case "invitation_response":
       return {
-        text: `Response for ${parsedMessage.teamName}.`,
+        text: `Response for ${team.name || "the team"}.`,
         Icon: FileText,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "team_leave":
+    case "team_leave": {
+      const user = personOf(event, "user");
       return {
-        text: `${parsedMessage.userName} has left the team.`,
+        text: `${subject(user, "Member")} ${user.isViewer ? "have" : "has"} left the team.`,
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
+    }
     case "user_left_lomir":
       return {
-        text: "Former Lomir Member has left Lomir.",
+        text: "Former Lomir User has left Lomir.",
         Icon: LogOut,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "member_removed_public":
+    case "member_removed_public": {
+      const user = personOf(event, "user");
       return {
-        text: `${parsedMessage.userName} has been removed from the team.`,
+        text: user.isViewer
+          ? "You were removed from the team."
+          : `${user.name || "Member"} has been removed from the team.`,
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "application_declined":
+    }
+    case "application_declined": {
+      const applicant = personOf(event, "applicant");
       return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was declined.`,
+        text: `${possessive(applicant, "Applicant")} application for ${team.name || "the team"} was declined.`,
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "invitation_declined":
+    }
+    case "invitation_declined": {
+      const invitee = personOf(event, "invitee");
       return {
-        text: `${parsedMessage.inviteeName} declined the invitation for ${parsedMessage.teamName}.`,
+        text: `${subject(invitee, "Invitee")} declined the invitation for ${team.name || "the team"}.`,
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "invitation_cancelled":
+    }
+    case "invitation_cancelled": {
+      const invitee = personOf(event, "invitee");
       return {
-        text: `Invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName} was cancelled.`,
+        text: `Invitation for ${objectLabel(invitee, "an invitee")} to join ${team.name || "the team"} was cancelled.`,
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "application_cancelled":
+    }
+    case "application_cancelled": {
+      const applicant = personOf(event, "applicant");
       return {
-        text: `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}.`,
+        text: applicant.isViewer
+          ? `You cancelled your application for ${team.name || "the team"}.`
+          : `${applicant.name || "Applicant"} cancelled their application for ${team.name || "the team"}.`,
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "member_removed":
+    }
+    case "member_removed": {
+      const member = personOf(event, "member");
       return {
-        text: `${parsedMessage.memberName} was removed from ${parsedMessage.teamName}.`,
+        text: member.isViewer
+          ? `You were removed from ${team.name || "the team"}.`
+          : `${member.name || "Member"} was removed from ${team.name || "the team"}.`,
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
+    }
     case "role_changed": {
-      const isAdmin = parsedMessage.newRole === "admin";
+      const member = personOf(event, "member");
+      const isAdmin = event.newRole === "admin";
+      // ⚠️ Used to interpolate the raw enum: "role was changed to admin".
+      const newRoleLabel = isAdmin ? "Admin" : "Member";
       return {
-        text: `${parsedMessage.memberName}'s role was changed to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`,
+        text: `${possessive(member, "Member")} role was changed to ${newRoleLabel} in ${team.name || "the team"}.`,
         Icon: isAdmin ? Shield : User,
         trailingIcon: isAdmin ? PartyPopper : null,
         color: isAdmin
@@ -236,25 +358,37 @@ export const getEventReactionPreview = (content) => {
           : EVENT_REACTION_PREVIEW_COLORS.member,
       };
     }
-    case "ownership_transferred":
+    case "ownership_transferred": {
+      const prevOwner = personOf(event, "prevOwner");
+      const newOwner = personOf(event, "newOwner");
       return {
-        text: `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}.`,
+        text: `${subject(prevOwner, "The previous owner")} transferred ownership of ${team.name || "the team"} to ${objectLabel(newOwner, "a new owner")}.`,
         Icon: Crown,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
-    case "ownership_team":
+    }
+    case "ownership_team": {
+      const prevOwner = personOf(event, "prevOwner");
+      const newOwner = personOf(event, "newOwner");
       return {
-        text: `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}.`,
+        text: prevOwner.isKnown
+          ? `${subject(prevOwner, "The previous owner")} transferred ownership to ${objectLabel(newOwner, "a new owner")}.`
+          : `Ownership was transferred to ${objectLabel(newOwner, "a new owner")}.`,
         Icon: Crown,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
-    case "team_deleted":
+    }
+    case "team_deleted": {
+      const owner = personOf(event, "owner");
       return {
-        text: `${parsedMessage.ownerName} archived ${parsedMessage.teamName}.`,
+        text: owner.isKnown
+          ? `${subject(owner, "The owner")} archived ${team.name || "this team"}.`
+          : `${team.name || "This team"} was archived.`,
         Icon: AlertTriangle,
         color: EVENT_REACTION_PREVIEW_COLORS.error,
       };
+    }
     default:
       return null;
   }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   AlertTriangle,
   CircleX,
@@ -79,6 +80,7 @@ const MessageInput = ({
   onClearReply,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const expirationText = useFileExpirationText();
 
   /**
@@ -97,8 +99,12 @@ const MessageInput = ({
   const typingTimerRef = useRef(null);
   const isTypingRef = useRef(false);
   const inputRef = useRef(null);
+  // ⚠️ The reader was not passed here, so the reply bar described your own
+  // event in the third person while the conversation list above it said "You".
+  // The whole user is needed, not just the id: the id-less legacy formats
+  // (OWNERSHIP_TEAM, the 👋/🎯 messages) can only recognise the reader by name.
   const replyEventPreview = replyingTo?.content
-    ? getEventPreview(replyingTo.content)
+    ? getEventPreview(replyingTo.content, user)
     : null;
   const ReplyEventIcon = replyEventPreview
     ? EVENT_PREVIEW_ICONS[replyEventPreview.icon]

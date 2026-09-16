@@ -1,5 +1,6 @@
 import React, { forwardRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   AlertTriangle,
   Check,
@@ -207,6 +208,7 @@ const MessageActions = ({
 
 const ReplyPreview = ({ replyPreview }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const expirationText = useFileExpirationText();
   const replyImageUrl = replyPreview?.imageUrl || replyPreview?.image_url;
   const replyFileUrl = replyPreview?.fileUrl || replyPreview?.file_url;
@@ -221,7 +223,7 @@ const ReplyPreview = ({ replyPreview }) => {
   const replyHasMedia = Boolean(replyImageUrl || replyFileUrl || replyFileName);
   const ReplyFileIcon = getFileIcon(replyFileName);
   const replyEventPreview = replyPreview?.content
-    ? getEventReactionPreview(replyPreview.content)
+    ? getEventReactionPreview(replyPreview.content, user)
     : null;
   const ReplyEventIcon = replyEventPreview?.Icon;
   const ReplyEventTrailingIcon = replyEventPreview?.trailingIcon;

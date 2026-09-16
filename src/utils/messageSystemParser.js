@@ -16,7 +16,7 @@ const parseIdNameToken = (token) => {
  * Parse system messages (join notifications, invitation responses)
  * Returns structured data if it's a system message, null otherwise
  */
-export const parseSystemMessage = (content) => {
+const parseSystemMessageRaw = (content) => {
   if (!content) return null;
 
   // Pattern 1: Team join message — with optional role and optional personal message
@@ -708,3 +708,78 @@ export const parseSystemMessage = (content) => {
 
   return null;
 };
+
+/**
+ * Placeholder names both repos write INTO the stored message when a name
+ * cannot be resolved — `roleEventMessages.js`, `vacantRoleController.js`,
+ * `teamMembersController.js`, `invitationController.js`,
+ * `teamApplicationsController.js`.
+ *
+ * ⚠️ They sit in historical rows and cannot be migrated away, so the frontend
+ * has to keep recognising them no matter what the backend does later.
+ */
+export const PERSON_NAME_PLACEHOLDERS = Object.freeze(["someone", "unknown"]);
+
+/**
+ * The same problem for the two entity slots — but shorter than it looks, and
+ * one candidate had to be removed after reading a real transcript.
+ *
+ * 🔴 **"Vacant Role" is NOT a placeholder.** It is the default `roleName` in
+ * `CreateVacantRoleModal.jsx:54,116`, saved to the database as a real role
+ * name and deliberately kept English (settled decision, STATUS.md). A chat
+ * from 18 May 2026 shows it as a clickable role: "The new role Vacant Role has
+ * been created by you". Neutralising it would erase a name a user actually
+ * chose.
+ *
+ * ⚠️ NOT neutralised yet either: a null role or team name needs a sentence
+ * that does not mention one ("The role was closed"), and those arrive with the
+ * per-family translation PRs.
+ */
+export const ENTITY_NAME_PLACEHOLDERS = Object.freeze([
+  "this role",
+  "their current role",
+  "your team",
+]);
+
+const ENTITY_NAME_KEYS = new Set(["teamName", "roleName", "currentRoleName"]);
+
+const isPlaceholderPersonName = (value) =>
+  typeof value === "string" &&
+  PERSON_NAME_PLACEHOLDERS.includes(value.trim().toLowerCase());
+
+/**
+ * Turns an unresolvable person name into `null`, so that no renderer has to
+ * compare a name against an English word to find out whether it knows who
+ * acted. Before this, `"someone"` was compared at ten sites across the four
+ * event files — and two of them had no such guard, which is why the same
+ * ROLE_FILLED message read "was marked as filled" in the transcript and
+ * "has been filled by Someone" in the conversation list.
+ *
+ * ⚠️ An account genuinely called "Someone" is treated as nameless. That was
+ * already true wherever a guard existed; it is the price of a placeholder
+ * that lives in the same slot as real data.
+ */
+const normalizePlaceholderNames = (parsed) => {
+  if (!parsed) return parsed;
+
+  let changed = false;
+  const normalized = {};
+
+  for (const [key, value] of Object.entries(parsed)) {
+    if (
+      key.endsWith("Name") &&
+      !ENTITY_NAME_KEYS.has(key) &&
+      isPlaceholderPersonName(value)
+    ) {
+      normalized[key] = null;
+      changed = true;
+      continue;
+    }
+    normalized[key] = value;
+  }
+
+  return changed ? normalized : parsed;
+};
+
+export const parseSystemMessage = (content) =>
+  normalizePlaceholderNames(parseSystemMessageRaw(content));

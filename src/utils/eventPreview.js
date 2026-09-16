@@ -1,5 +1,13 @@
-import { parseSystemMessage } from "./messageSystemParser";
-import { getDisplayName } from "./userHelpers";
+import { describeEvent, personOf } from "./describeEvent";
+
+// Short, one-line rendering of a chat event: the conversation list, the reply
+// bar in MessageInput and the notification toast. The long form lives in
+// messageEventRenderers.jsx (transcript) and messageDisplayHelpers.js (quoted
+// reply); all three now start from the same descriptor, so "who is this" and
+// "do we know who acted" are decided once.
+//
+// ⚠️ `getActorLabel` used to return the STRING "You" and twelve places in this
+// file compared against it. It is gone: perspective is `person.isViewer`.
 
 export const EVENT_PREVIEW_TEXT_COLORS = {
   "event-banner--admin": "#9a8ef0",
@@ -10,63 +18,54 @@ export const EVENT_PREVIEW_TEXT_COLORS = {
   role: "#f59e0b",
 };
 
-const teamText = (teamName) => (teamName ? ` for "${teamName}"` : "");
-const inTeamText = (teamName) => (teamName ? ` in "${teamName}"` : "");
+const teamText = (team) => (team?.name ? ` for "${team.name}"` : "");
+const inTeamText = (team) => (team?.name ? ` in "${team.name}"` : "");
 
-const possessive = (name) => (name === "You" ? "Your" : `${name}'s`);
-const sentenceObject = (name) => (name === "You" ? "you" : name);
+/** Subject position: "You" / "Anna" / the caller's fallback noun. */
+const subject = (person, fallback) =>
+  person.isViewer ? "You" : person.name || fallback;
 
-const getActorLabel = (userId, userName, currentUser) => {
-  const currentUserName = currentUser ? getDisplayName(currentUser) : null;
+/** Object position: "you" / "Anna" / the caller's fallback noun. */
+export const objectLabel = (person, fallback) =>
+  person.isViewer ? "you" : person.name || fallback;
 
-  if (
-    userId != null &&
-    currentUser?.id != null &&
-    String(userId) === String(currentUser.id)
-  ) {
-    return "You";
-  }
+/** Possessive: "Your" / "Anna's" / "Applicant's". */
+const possessive = (person, fallback) =>
+  person.isViewer ? "Your" : `${person.name || fallback}'s`;
 
-  if (
-    userName &&
-    userId == null &&
-    currentUserName &&
-    userName.trim().toLowerCase() === currentUserName.trim().toLowerCase()
-  ) {
-    return "You";
-  }
-
-  return userName || null;
-};
+/**
+ * The byline the conversation list and the toast print as "by …".
+ * ⚠️ Capitalised on purpose — it is rendered as its own fragment after the
+ * sentence, not inside one.
+ */
+const byline = (person) => (person.isViewer ? "You" : person.name || null);
 
 export const getEventPreview = (lastMessage, currentUser = null) => {
-  const parsedMessage = parseSystemMessage(lastMessage);
+  const event = describeEvent(lastMessage, currentUser);
 
-  if (!parsedMessage) return null;
+  if (!event) return null;
 
-  switch (parsedMessage.type) {
+  const { team, role } = event;
+  const roleName = role.name || "Vacant Role";
+
+  switch (event.type) {
     case "role_changed": {
-      const memberName = getActorLabel(
-        parsedMessage.memberId,
-        parsedMessage.memberName,
-        currentUser,
-      );
+      const member = personOf(event, "member");
 
-      if (parsedMessage.newRole === "admin") {
+      if (event.newRole === "admin") {
         return {
-          text:
-            memberName === "You"
-              ? `You were promoted to Admin${inTeamText(parsedMessage.teamName)}`
-              : `${memberName || "Member"} was promoted to Admin${inTeamText(parsedMessage.teamName)}`,
+          text: `${subject(member, "Member")} ${
+            member.isViewer ? "were" : "was"
+          } promoted to Admin${inTeamText(team)}`,
           icon: "Shield",
           bannerClass: "event-banner--admin",
           color: EVENT_PREVIEW_TEXT_COLORS["event-banner--admin"],
         };
       }
 
-      if (parsedMessage.newRole === "member") {
+      if (event.newRole === "member") {
         return {
-          text: `${possessive(memberName || "Member")} role changed to Member${inTeamText(parsedMessage.teamName)}`,
+          text: `${possessive(member, "Member")} role changed to Member${inTeamText(team)}`,
           icon: "User",
           bannerClass: "event-banner--member",
           color: EVENT_PREVIEW_TEXT_COLORS["event-banner--member"],
@@ -77,17 +76,10 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "ownership_transferred": {
-      const newOwnerName = getActorLabel(
-        parsedMessage.newOwnerId,
-        parsedMessage.newOwnerName,
-        currentUser,
-      );
+      const newOwner = personOf(event, "newOwner");
 
       return {
-        text:
-          newOwnerName === "You"
-            ? `You received ownership${teamText(parsedMessage.teamName)}`
-            : `${newOwnerName || "New owner"} received ownership${teamText(parsedMessage.teamName)}`,
+        text: `${subject(newOwner, "New owner")} received ownership${teamText(team)}`,
         icon: "Crown",
         bannerClass: "event-banner--owner",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--owner"],
@@ -95,17 +87,10 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "ownership_team": {
-      const newOwnerName = getActorLabel(
-        parsedMessage.newOwnerId,
-        parsedMessage.newOwnerName,
-        currentUser,
-      );
+      const newOwner = personOf(event, "newOwner");
 
       return {
-        text:
-          newOwnerName === "You"
-            ? "You received ownership"
-            : `${newOwnerName || "New owner"} received ownership`,
+        text: `${subject(newOwner, "New owner")} received ownership`,
         icon: "Crown",
         bannerClass: "event-banner--owner",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--owner"],
@@ -113,11 +98,12 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "team_join": {
-      const actor = getActorLabel(parsedMessage.userId, parsedMessage.userName, currentUser) || "Someone";
+      const user = personOf(event, "user");
+
       return {
-        text: parsedMessage.roleName
-          ? `${actor} joined the team as ${parsedMessage.roleName}`
-          : `${actor} joined the team`,
+        text: role.name
+          ? `${subject(user, "Someone")} joined the team as ${role.name}`
+          : `${subject(user, "Someone")} joined the team`,
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
@@ -125,17 +111,10 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "team_leave": {
-      const userName = getActorLabel(
-        parsedMessage.userId,
-        parsedMessage.userName,
-        currentUser,
-      );
+      const user = personOf(event, "user");
 
       return {
-        text:
-          userName === "You"
-            ? "You left the team"
-            : `${userName || "Member"} left the team`,
+        text: `${subject(user, "Member")} left the team`,
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -143,38 +122,31 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "user_left_lomir":
+      // ⚠️ Was "Former Lomir Member" here and in two other files, while the
+      // constant both repos write is "Former Lomir User". One name now.
       return {
-        text: "Former Lomir Member left Lomir",
+        text: "Former Lomir User left Lomir",
         icon: "LogOut",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
 
-    case "invitation_accepted":
-      return {
-        text: `${getActorLabel(parsedMessage.inviteeId, parsedMessage.inviteeName, currentUser) || "Invitee"} accepted invitation${teamText(parsedMessage.teamName)}`,
-        icon: "UserPlus",
-        bannerClass: "event-banner--success",
-        color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
-      };
+    case "invitation_declined": {
+      const invitee = personOf(event, "invitee");
 
-    case "invitation_declined":
       return {
-        text: `${getActorLabel(parsedMessage.inviteeId, parsedMessage.inviteeName, currentUser) || "Invitee"} declined invitation${teamText(parsedMessage.teamName)}`,
+        text: `${subject(invitee, "Invitee")} declined invitation${teamText(team)}`,
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
+    }
 
     case "application_declined": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
 
       return {
-        text: `${possessive(applicantName || "Applicant")} application was declined${teamText(parsedMessage.teamName)}`,
+        text: `${possessive(applicant, "Applicant")} application was declined${teamText(team)}`,
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -183,24 +155,19 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "application_response":
       return {
-        text: `Response to application${teamText(parsedMessage.teamName)}`,
+        text: `Response to application${teamText(team)}`,
         icon: "FileText",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
       };
 
     case "invitation_cancelled": {
-      const inviteeName = getActorLabel(
-        parsedMessage.inviteeId,
-        parsedMessage.inviteeName,
-        currentUser,
-      );
+      const invitee = personOf(event, "invitee");
 
       return {
-        text:
-          inviteeName === "You"
-            ? `Your invitation was cancelled${teamText(parsedMessage.teamName)}`
-            : `Invitation cancelled for ${inviteeName || "invitee"}${teamText(parsedMessage.teamName)}`,
+        text: invitee.isViewer
+          ? `Your invitation was cancelled${teamText(team)}`
+          : `Invitation cancelled for ${invitee.name || "invitee"}${teamText(team)}`,
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -209,36 +176,24 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "application_approved":
     case "application_approved_dm": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
-      const approverName = getActorLabel(
-        parsedMessage.approverId,
-        parsedMessage.approverName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
+      const approver = personOf(event, "approver");
 
       return {
-        text: `${possessive(applicantName || "Applicant")} application was approved${teamText(parsedMessage.teamName)}`,
+        text: `${possessive(applicant, "Applicant")} application was approved${teamText(team)}`,
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
-        senderName: approverName || parsedMessage.approverName || null,
+        senderName: byline(approver),
         senderPrefix: "by ",
       };
     }
 
     case "role_application_approved": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
 
       return {
-        text: `${possessive(applicantName || "Applicant")} application for ${parsedMessage.roleName} was approved`,
+        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
@@ -246,61 +201,42 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "role_application_filled": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
-      const approverName = getActorLabel(
-        parsedMessage.approverId,
-        parsedMessage.approverName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
+      const approver = personOf(event, "approver");
 
       return {
-        text: approverName
-          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}, approved by ${sentenceObject(approverName)}.`
-          : `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(applicantName) || "Someone"}.`,
+        text: getRoleFilledSentence(roleName, applicant, approver),
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: approverName || parsedMessage.approverName || null,
+        senderName: byline(approver),
         senderPrefix: "by ",
       };
     }
 
     case "role_application_deferred_invite": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
+      const approver = personOf(event, "approver");
 
       return {
-        text: `${possessive(applicantName || "Applicant")} application for ${parsedMessage.roleName} was approved as a role offer`,
+        text: `${possessive(applicant, "Applicant")} application for ${roleName} was approved as a role offer`,
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: parsedMessage.approverName || null,
+        senderName: byline(approver),
         senderPrefix: "by ",
       };
     }
 
     case "role_invitation_filled": {
-      const inviteeName = getActorLabel(
-        parsedMessage.inviteeId,
-        parsedMessage.inviteeName,
-        currentUser,
-      );
-      const hasKnownInvitee =
-        inviteeName && inviteeName.trim().toLowerCase() !== "someone";
+      const invitee = personOf(event, "invitee");
 
       return {
-        text: hasKnownInvitee
-          ? inviteeName === "You"
-            ? `You accepted an invitation to fill ${parsedMessage.roleName} and are now filling that role`
-            : `${inviteeName} accepted an invitation to fill ${parsedMessage.roleName} and is now filling that role`
-          : `An invitation to fill ${parsedMessage.roleName} was accepted and the role is now filled`,
+        text: invitee.isKnown
+          ? invitee.isViewer
+            ? `You accepted an invitation to fill ${roleName} and are now filling that role`
+            : `${invitee.name} accepted an invitation to fill ${roleName} and is now filling that role`
+          : `An invitation to fill ${roleName} was accepted and the role is now filled`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
@@ -308,49 +244,52 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "role_invitation_accepted": {
-      const inviteeName = getActorLabel(
-        parsedMessage.inviteeId,
-        parsedMessage.inviteeName,
-        currentUser,
-      );
-      const inviterName = getActorLabel(
-        parsedMessage.inviterId,
-        parsedMessage.inviterName,
-        currentUser,
-      );
-      const hasKnownInviter =
-        inviterName && inviterName.trim().toLowerCase() !== "someone";
+      const invitee = personOf(event, "invitee");
+      const inviter = personOf(event, "inviter");
+      const invitation = inviter.isKnown
+        ? `${inviter.isViewer ? "your" : `${inviter.name}'s`} invitation`
+        : "an invitation";
 
-      if (parsedMessage.fillRole) {
+      // ⚠️ The nameless invitee used to render the literal word "Someone" in
+      // the subject. The clause is dropped instead — the same rule the
+      // transcript and the quoted reply now follow.
+      if (!invitee.isKnown) {
         return {
-          text: inviteeName === "You"
-            ? `You accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation to fill ${parsedMessage.roleName} and are now filling that role`
-            : `${inviteeName || "Someone"} accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation to fill ${parsedMessage.roleName}`,
+          text: event.fillRole
+            ? `An invitation to fill ${roleName} was accepted and the role is now filled`
+            : `An invitation for ${roleName} was accepted`,
           icon: "UserCheck",
           bannerClass: null,
           color: EVENT_PREVIEW_TEXT_COLORS.role,
         };
       }
+
       return {
-        text: inviteeName === "You"
-          ? `You accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation for ${parsedMessage.roleName}`
-          : `${inviteeName || "Someone"} accepted ${hasKnownInviter ? `${inviterName}'s` : "an"} invitation for ${parsedMessage.roleName}`,
+        text: event.fillRole
+          ? invitee.isViewer
+            ? `You accepted ${invitation} to fill ${roleName} and are now filling that role`
+            : `${invitee.name} accepted ${invitation} to fill ${roleName}`
+          : invitee.isViewer
+            ? `You accepted ${invitation} for ${roleName}`
+            : `${invitee.name} accepted ${invitation} for ${roleName}`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
       };
     }
 
-    case "role_invitation_assigned_legacy":
+    case "role_invitation_assigned_legacy": {
+      const invitee = personOf(event, "invitee");
+
       return {
-        text: `${parsedMessage.inviteeName || "Someone"} accepted an invitation for ${parsedMessage.roleName || "a role"}`,
+        text: `${subject(invitee, "Someone")} accepted an invitation for ${role.name || "a role"}`,
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
       };
+    }
 
-    case "role_closed": {
-      const roleName = parsedMessage.roleName || "Vacant Role";
+    case "role_closed":
       return {
         text: `Role closed: ${roleName}`,
         icon: "CircleX",
@@ -358,10 +297,8 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
         senderPrefix: "by ",
       };
-    }
 
-    case "role_updated": {
-      const roleName = parsedMessage.roleName || "Vacant Role";
+    case "role_updated":
       return {
         text: `Role edited: ${roleName}`,
         icon: "Pencil",
@@ -369,10 +306,8 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
         color: EVENT_PREVIEW_TEXT_COLORS.role,
         senderPrefix: "by ",
       };
-    }
 
-    case "role_deleted": {
-      const roleName = parsedMessage.roleName || "Vacant Role";
+    case "role_deleted":
       return {
         text: `Role deleted: ${roleName}`,
         icon: "UserMinus",
@@ -380,10 +315,8 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
         senderPrefix: "by ",
       };
-    }
 
-    case "role_created": {
-      const roleName = parsedMessage.roleName || "Vacant Role";
+    case "role_created":
       return {
         text: `New role ${roleName} created.`,
         icon: "UserSearch",
@@ -391,76 +324,51 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
         color: EVENT_PREVIEW_TEXT_COLORS.role,
         senderPrefix: "by ",
       };
-    }
 
-    case "role_reopened_admin": {
+    case "role_reopened_admin":
       return {
-        text: `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
+        text: `Role reopened: ${roleName}`,
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
         senderPrefix: "by ",
       };
-    }
 
     case "role_reopened": {
-      const userName = getActorLabel(
-        parsedMessage.userId,
-        parsedMessage.userName,
-        currentUser,
-      );
+      const user = personOf(event, "user");
 
       return {
-        text: userName
-          ? userName === "You"
-            ? `You left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
-            : `${userName} left the role ${parsedMessage.roleName || "Vacant Role"}. It is open again.`
-          : `Role reopened: ${parsedMessage.roleName || "Vacant Role"}`,
+        text: user.isKnown
+          ? `${subject(user, "Member")} left the role ${roleName}. It is open again.`
+          : `Role reopened: ${roleName}`,
         icon: "UserSearch",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderPrefix: userName ? null : "by ",
+        senderPrefix: user.isKnown ? null : "by ",
       };
     }
 
     case "role_filled": {
-      const filledUserName = getActorLabel(
-        parsedMessage.userId,
-        parsedMessage.userName,
-        currentUser,
-      );
-      const filledByName = getActorLabel(
-        parsedMessage.filledById,
-        parsedMessage.filledByName,
-        currentUser,
-      );
+      const filler = personOf(event, "user");
+      const filledBy = personOf(event, "filledBy");
 
       return {
-        text: filledUserName && filledByName
-          ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}, approved by ${sentenceObject(filledByName)}.`
-          : filledUserName
-            ? `The role ${parsedMessage.roleName} has been filled by ${sentenceObject(filledUserName)}.`
-            : `The role ${parsedMessage.roleName} has been marked filled.`,
+        text: getRoleFilledSentence(roleName, filler, filledBy),
         icon: "UserCheck",
         bannerClass: null,
         color: EVENT_PREVIEW_TEXT_COLORS.role,
-        senderName: filledByName || parsedMessage.filledByName || null,
+        senderName: byline(filledBy),
         senderPrefix: "by ",
       };
     }
 
     case "application_cancelled": {
-      const applicantName = getActorLabel(
-        parsedMessage.applicantId,
-        parsedMessage.applicantName,
-        currentUser,
-      );
+      const applicant = personOf(event, "applicant");
 
       return {
-        text:
-          applicantName === "You"
-            ? `You cancelled your application${teamText(parsedMessage.teamName)}`
-            : `${applicantName || "Applicant"} cancelled application${teamText(parsedMessage.teamName)}`,
+        text: applicant.isViewer
+          ? `You cancelled your application${teamText(team)}`
+          : `${applicant.name || "Applicant"} cancelled application${teamText(team)}`,
         icon: "CircleX",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -469,22 +377,18 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "member_removed":
     case "member_removed_public": {
-      const memberName = getActorLabel(
-        parsedMessage.memberId ?? parsedMessage.userId,
-        parsedMessage.memberName ?? parsedMessage.userName,
-        currentUser,
-      );
-      const teamName = parsedMessage.teamName;
+      const member = personOf(event, "member").isKnown
+        ? personOf(event, "member")
+        : personOf(event, "user");
 
       return {
-        text:
-          memberName === "You"
-            ? teamName
-              ? `You were removed from "${teamName}"`
-              : "You were removed from the team"
-            : teamName
-              ? `${memberName || "Member"} was removed from "${teamName}"`
-              : `${memberName || "Member"} was removed from the team`,
+        text: member.isViewer
+          ? team.name
+            ? `You were removed from "${team.name}"`
+            : "You were removed from the team"
+          : team.name
+            ? `${member.name || "Member"} was removed from "${team.name}"`
+            : `${member.name || "Member"} was removed from the team`,
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -492,17 +396,10 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     }
 
     case "team_deleted": {
-      const ownerName = getActorLabel(
-        parsedMessage.ownerId,
-        parsedMessage.ownerName,
-        currentUser,
-      );
+      const owner = personOf(event, "owner");
 
       return {
-        text:
-          ownerName === "You"
-            ? "You archived this team (scheduled for deletion)"
-            : `${ownerName || "Owner"} archived this team (scheduled for deletion)`,
+        text: `${subject(owner, "Owner")} archived this team (scheduled for deletion)`,
         icon: "Archive",
         bannerClass: null,
         color: "#dc2626",
@@ -512,7 +409,7 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
 
     case "invitation_response":
       return {
-        text: `Response to invitation${teamText(parsedMessage.teamName)}`,
+        text: `Response to invitation${teamText(team)}`,
         icon: "FileText",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -521,4 +418,25 @@ export const getEventPreview = (lastMessage, currentUser = null) => {
     default:
       return null;
   }
+};
+
+/**
+ * The one sentence this project has proved it cannot afford to write twice:
+ * `grep "has been filled by"` used to return fourteen sites in five files.
+ * ROLE_FILLED and ROLE_APPLICATION_FILLED say the same thing, so they share it.
+ *
+ * ⚠️ With no filler, the clause is dropped rather than filled with a noun —
+ * the conversation list used to claim "has been filled by Someone" while the
+ * transcript said "was marked as filled" for the very same message.
+ */
+export const getRoleFilledSentence = (roleName, filler, approver) => {
+  if (!filler.isKnown) {
+    return approver.isKnown
+      ? `The role ${roleName} was marked as filled by ${objectLabel(approver, "an admin")}.`
+      : `The role ${roleName} was marked as filled.`;
+  }
+
+  return approver.isKnown
+    ? `The role ${roleName} has been filled by ${objectLabel(filler, "Someone")}, approved by ${objectLabel(approver, "an admin")}.`
+    : `The role ${roleName} has been filled by ${objectLabel(filler, "Someone")}.`;
 };
