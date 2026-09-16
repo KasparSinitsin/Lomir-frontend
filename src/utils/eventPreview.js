@@ -24,7 +24,6 @@ export const EVENT_PREVIEW_TEXT_COLORS = {
 };
 
 const teamText = (team) => (team?.name ? ` for "${team.name}"` : "");
-const inTeamText = (team) => (team?.name ? ` in "${team.name}"` : "");
 
 /** Subject position: "You" / "Anna" / the caller's fallback noun. */
 const subject = (person, fallback) =>
@@ -50,17 +49,13 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
 
   if (!event) return null;
 
-  const { team, role } = event;
+  const { team } = event;
 
   switch (event.type) {
     case "role_changed": {
-      const member = personOf(event, "member");
-
       if (event.newRole === "admin") {
         return {
-          text: `${subject(member, "Member")} ${
-            member.isViewer ? "were" : "was"
-          } promoted to Admin${inTeamText(team)}`,
+          text: getEventSentenceText(t, event, "short"),
           icon: "Shield",
           bannerClass: "event-banner--admin",
           color: EVENT_PREVIEW_TEXT_COLORS["event-banner--admin"],
@@ -69,7 +64,7 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
 
       if (event.newRole === "member") {
         return {
-          text: `${possessive(member, "Member")} role changed to Member${inTeamText(team)}`,
+          text: getEventSentenceText(t, event, "short"),
           icon: "User",
           bannerClass: "event-banner--member",
           color: EVENT_PREVIEW_TEXT_COLORS["event-banner--member"],
@@ -80,10 +75,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
     }
 
     case "ownership_transferred": {
-      const newOwner = personOf(event, "newOwner");
-
       return {
-        text: `${subject(newOwner, "New owner")} received ownership${teamText(team)}`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "Crown",
         bannerClass: "event-banner--owner",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--owner"],
@@ -91,10 +84,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
     }
 
     case "ownership_team": {
-      const newOwner = personOf(event, "newOwner");
-
       return {
-        text: `${subject(newOwner, "New owner")} received ownership`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "Crown",
         bannerClass: "event-banner--owner",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--owner"],
@@ -102,12 +93,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
     }
 
     case "team_join": {
-      const user = personOf(event, "user");
-
       return {
-        text: role.name
-          ? `${subject(user, "Someone")} joined the team as ${role.name}`
-          : `${subject(user, "Someone")} joined the team`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserPlus",
         bannerClass: "event-banner--success",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--success"],
@@ -115,10 +102,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
     }
 
     case "team_leave": {
-      const user = personOf(event, "user");
-
       return {
-        text: `${subject(user, "Member")} left the team`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -129,7 +114,7 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
       // ⚠️ Was "Former Lomir Member" here and in two other files, while the
       // constant both repos write is "Former Lomir User". One name now.
       return {
-        text: "Former Lomir User left Lomir",
+        text: getEventSentenceText(t, event, "short"),
         icon: "LogOut",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -292,18 +277,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
 
     case "member_removed":
     case "member_removed_public": {
-      const member = personOf(event, "member").isKnown
-        ? personOf(event, "member")
-        : personOf(event, "user");
-
       return {
-        text: member.isViewer
-          ? team.name
-            ? `You were removed from "${team.name}"`
-            : "You were removed from the team"
-          : team.name
-            ? `${member.name || "Member"} was removed from "${team.name}"`
-            : `${member.name || "Member"} was removed from the team`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "UserMinus",
         bannerClass: "event-banner--neutral",
         color: EVENT_PREVIEW_TEXT_COLORS["event-banner--neutral"],
@@ -311,10 +286,8 @@ export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
     }
 
     case "team_deleted": {
-      const owner = personOf(event, "owner");
-
       return {
-        text: `${subject(owner, "Owner")} archived this team (scheduled for deletion)`,
+        text: getEventSentenceText(t, event, "short"),
         icon: "Archive",
         bannerClass: null,
         color: "#dc2626",

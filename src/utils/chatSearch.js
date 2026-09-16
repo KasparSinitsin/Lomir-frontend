@@ -116,7 +116,9 @@ const addUserSearchParts = (parts, user) => {
 const getTranslatedEventSearchParts = (message, { viewer = null, t = null } = {}) => {
   const event = describeEvent(message?.content ?? null, viewer);
   const full = getEventSentenceText(t, event, "full");
-  return full == null ? null : [full];
+  if (full == null) return null;
+  // What the member typed is shown beside the banner, so it stays searchable.
+  return event.personalMessage ? [full, event.personalMessage] : [full];
 };
 
 /**
@@ -195,31 +197,10 @@ const buildSystemMessageSearchSnippetText = (parsedMessage) => {
       ].join(". ");
     case "invitation_response":
       return `Response to your invitation for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
-    case "team_join":
-      return `${searchName(parsedMessage.userName)} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
-    case "team_leave":
-      return `${searchName(parsedMessage.userName)} has left the team. You have left the team.`;
-    case "member_removed_public":
-      return `${searchName(parsedMessage.userName)} has been removed from the team. You removed ${searchName(parsedMessage.userName)} from the team.`;
     case "invitation_cancelled":
       return `${searchName(parsedMessage.cancellerName)} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${searchName(parsedMessage.inviteeName)} to join ${parsedMessage.teamName}.`;
     case "application_cancelled":
       return `${searchName(parsedMessage.applicantName)} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
-    case "member_removed":
-      return `You were removed from ${parsedMessage.teamName} by ${searchName(parsedMessage.removerName)}. You removed ${searchName(parsedMessage.memberName)} from ${parsedMessage.teamName}.`;
-    case "role_changed": {
-      // ⚠️ Used to index the raw enum ("changed to admin"), so searching for
-      // the word the UI shows — "Admin" — matched the transcript but not the
-      // conversation counter.
-      const newRoleLabel = parsedMessage.newRole === "admin" ? "Admin" : "Member";
-      return `Your role in ${parsedMessage.teamName} was changed to ${newRoleLabel} by ${searchName(parsedMessage.changerName)}. You changed ${searchName(parsedMessage.memberName)}'s role to ${newRoleLabel} in ${parsedMessage.teamName}.`;
-    }
-    case "ownership_team":
-      return `${searchName(parsedMessage.prevOwnerName)} transferred ownership to ${searchName(parsedMessage.newOwnerName)}`;
-    case "ownership_transferred":
-      return `${searchName(parsedMessage.prevOwnerName)} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${searchName(parsedMessage.newOwnerName)}. Congratulations`;
-    case "team_deleted":
-      return `${searchName(parsedMessage.ownerName)} deleted the team ${parsedMessage.teamName}. You deleted the team ${parsedMessage.teamName}.`;
     default:
       return "";
   }
