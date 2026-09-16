@@ -386,5 +386,34 @@
     "applyToJoinAndFill": "Bewerben, um dem Team beizutreten und diese Rolle zu übernehmen",
     "applyWithinTeam": "Innerhalb deines Teams auf diese Rolle bewerben",
     "submitFailed": "Bewerbung auf die Rolle konnte nicht gesendet werden"
+  },
+  "vacantRoleForm": {
+    "validation": {
+      "nameRequired": "Rollenname ist erforderlich"
+    },
+    "saveFailed": "Vakante Rolle konnte nicht gespeichert werden",
+    "editTitleFilled": "Besetzte Rolle bearbeiten",
+    "editTitleClosed": "Geschlossene Rolle bearbeiten",
+    "editTitleVacant": "Vakante Rolle bearbeiten",
+    "createTitle": "Vakante Rolle hinzufügen",
+    "deleteTooltip": "Diese Rolle endgültig löschen. Du wirst um Bestätigung gebeten.",
+    "saveTooltip": "Änderungen an der Rolle speichern",
+    "updated": "Vakante Rolle wurde aktualisiert!",
+    "created": "Vakante Rolle erstellt. Bau dein Team weiter auf und suche jetzt nach einem passenden Match.",
+    "sectionDetails": "Rollendetails",
+    "nameLabel": "Rollenname",
+    "namePlaceholder": "z. B. Drummer, Frontend-Dev, Designer",
+    "descriptionLabel": "Beschreibung (optional)",
+    "descriptionPlaceholder": "Beschreibe, wen du für diese Rolle suchst …",
+    "sectionLocation": "Standort-Präferenz",
+    "locationHasLabel": "Hat Standort-Präferenz",
+    "locationRemoteLabel": "Offen für Remote / überall",
+    "locationHelper": "Gib einen bevorzugten Standort und Suchradius an.",
+    "remoteHelper": "Keine geografische Präferenz für diese Rolle.",
+    "maxDistanceLabel": "Maximaler Umkreis (km)",
+    "sectionFocusAreas": "Gewünschte Fokusbereiche",
+    "focusAreasPrompt": "Welche Fähigkeiten oder Fokusbereiche sollte diese Person mitbringen? (optional)",
+    "sectionBadges": "Gewünschte Badges",
+    "badgesPrompt": "Welche Eigenschaften oder Badges sollte diese Person mitbringen? (optional)"
   }
 }

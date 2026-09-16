@@ -62,6 +62,7 @@ import {
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
+import { getBadgeName } from "../../utils/badgeLabels";
 
 const userPendingApplicationsCache = new Map();
 const userReceivedInvitationsCache = new Map();
@@ -1035,8 +1036,10 @@ const VacantRoleCard = ({
     );
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames, 3);
+    // Display only — badgeNames holds the stored English names (UserCard and
+    // TeamCard translate at the same point).
     const { summary: badgesSummary, tooltip: badgesTooltip } =
-      summarizeList(badgeNames, 3);
+      summarizeList(badgeNames.map((name) => getBadgeName(name, t)), 3);
     const listSubtitle =
       scoreSubtitleItem ||
       postedDateSubtitleItem ||
