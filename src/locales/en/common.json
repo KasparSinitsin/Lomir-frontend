@@ -132,6 +132,56 @@
       "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     }
   },
+  "chatEvents": {
+    "roleApplicationApproved": {
+      "full": "{applicant, select, you {Your application for <role/> was approved.} named {<applicant/>'s application for <role/> was approved.} other {An application for <role/> was approved.}}"
+    },
+    "roleApplicationDeferredInvite": {
+      "full": "{applicant, select, you {{approver, select, named {Your application for <role/> was approved by <approver/>. You already fill <currentRole/>, so this is now a role offer you can accept once you leave your current role.} other {Your application for <role/> was approved. You already fill <currentRole/>, so this is now a role offer you can accept once you leave your current role.}}} named {{approver, select, you {<applicant/>'s application for <role/> was approved by you. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} named {<applicant/>'s application for <role/> was approved by <approver/>. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} other {<applicant/>'s application for <role/> was approved. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.}}} other {{approver, select, you {An application for <role/> was approved by you. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.} named {An application for <role/> was approved by <approver/>. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.} other {An application for <role/> was approved. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.}}}}",
+      "short": "{applicant, select, you {Your application for <role/> was approved as a role offer} named {<applicant/>'s application for <role/> was approved as a role offer} other {An application for <role/> was approved as a role offer}}"
+    },
+    "roleClosed": {
+      "full": "{actor, select, you {The role <role/> has been closed by you.} named {The role <role/> has been closed by <actor/>.} other {The role <role/> has been closed.}}",
+      "short": "Role closed: <role/>"
+    },
+    "roleCreated": {
+      "full": "{actor, select, you {The new role <role/> has been created by you in this team. It is open to be filled.} named {The new role <role/> has been created by <actor/> in this team. It is open to be filled.} other {The new role <role/> is open to be filled.}}",
+      "short": "New role <role/> created."
+    },
+    "roleDeleted": {
+      "full": "{actor, select, you {The role <role/> has been deleted by you from this team.} named {The role <role/> has been deleted by <actor/> from this team.} other {The role <role/> has been deleted from this team.}}",
+      "short": "Role deleted: <role/>"
+    },
+    "roleFilled": {
+      "full": "{filler, select, you {{approver, select, you {The role <role/> has been filled by you, approved by you.} named {The role <role/> has been filled by you, approved by <approver/>.} other {The role <role/> has been filled by you.}}} named {{approver, select, you {The role <role/> has been filled by <filler/>, approved by you.} named {The role <role/> has been filled by <filler/>, approved by <approver/>.} other {The role <role/> has been filled by <filler/>.}}} other {{approver, select, you {The role <role/> was marked as filled by you.} named {The role <role/> was marked as filled by <approver/>.} other {The role <role/> was marked as filled.}}}}"
+    },
+    "roleInvitationAccepted": {
+      "fill": "{invitee, select, you {{inviter, select, named {<inviter/> invited you for the role <role/>. You accepted and are now filling that role.} other {You accepted an invitation for the role <role/> and are now filling that role.}}} named {{inviter, select, you {You invited <invitee/> for the role <role/>. They accepted and are now filling that role.} named {<inviter/> invited <invitee/> for the role <role/>. They accepted and are now filling that role.} other {<invitee/> accepted an invitation for the role <role/> and is now filling that role.}}} other {An invitation to fill the role <role/> was accepted and the role is now filled.}}",
+      "fillShort": "{invitee, select, you {{inviter, select, named {You accepted <inviter/>'s invitation to fill <role/> and are now filling that role} other {You accepted an invitation to fill <role/> and are now filling that role}}} named {{inviter, select, you {<invitee/> accepted your invitation to fill <role/>} named {<invitee/> accepted <inviter/>'s invitation to fill <role/>} other {<invitee/> accepted an invitation to fill <role/>}}} other {An invitation to fill <role/> was accepted and the role is now filled}}",
+      "noFill": "{invitee, select, you {{inviter, select, named {<inviter/> invited you for the role <role/>. You accepted the invitation.} other {You accepted an invitation for the role <role/>.}}} named {{inviter, select, you {You invited <invitee/> for the role <role/>. They accepted the invitation.} named {<inviter/> invited <invitee/> for the role <role/>. They accepted the invitation.} other {<invitee/> accepted an invitation for the role <role/>.}}} other {An invitation for the role <role/> was accepted.}}",
+      "noFillShort": "{invitee, select, you {{inviter, select, named {You accepted <inviter/>'s invitation for <role/>} other {You accepted an invitation for <role/>}}} named {{inviter, select, you {<invitee/> accepted your invitation for <role/>} named {<invitee/> accepted <inviter/>'s invitation for <role/>} other {<invitee/> accepted an invitation for <role/>}}} other {An invitation for <role/> was accepted}}"
+    },
+    "roleInvitationAssigned": {
+      "full": "{invitee, select, you {You accepted an invitation to fill the role <role/> in this team.} named {<invitee/> accepted an invitation to fill the role <role/> in this team.} other {An invitation to fill the role <role/> was accepted.}}",
+      "short": "{invitee, select, you {You accepted an invitation for <role/>} named {<invitee/> accepted an invitation for <role/>} other {An invitation for <role/> was accepted}}"
+    },
+    "roleInvitationFilled": {
+      "full": "{invitee, select, you {You accepted an invitation to fill the role <role/> in this team and are now filling that role.} named {<invitee/> has accepted an invitation to fill the role <role/> in this team and is now filling that role.} other {An invitation to fill the role <role/> was accepted and the role is now filled.}}",
+      "short": "{invitee, select, you {You accepted an invitation to fill <role/> and are now filling that role} named {<invitee/> accepted an invitation to fill <role/> and is now filling that role} other {An invitation to fill <role/> was accepted and the role is now filled}}"
+    },
+    "roleReopened": {
+      "full": "{user, select, you {You have left the role <role/>. The role is open again to be filled.} named {<user/> has left the role <role/>. The role is open again to be filled.} other {The role <role/> is open again to be filled.}}",
+      "short": "{user, select, you {You left the role <role/>. It is open again.} named {<user/> left the role <role/>. It is open again.} other {Role reopened: <role/>}}"
+    },
+    "roleReopenedAdmin": {
+      "full": "{actor, select, you {You have reopened the role <role/>. It is open again to be filled.} named {<actor/> has reopened the role <role/>. It is open again to be filled.} other {The role <role/> has been reopened and is open to be filled.}}",
+      "short": "Role reopened: <role/>"
+    },
+    "roleUpdated": {
+      "full": "{actor, select, you {The role <role/> has been updated by you.} named {The role <role/> has been updated by <actor/>.} other {The role <role/> has been updated.}}",
+      "short": "Role edited: <role/>"
+    }
+  },
   "chatHeader": {
     "backToList": "Back to conversation list",
     "directChat": "DM Chat",

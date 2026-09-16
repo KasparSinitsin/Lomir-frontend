@@ -1,4 +1,6 @@
 import { parseSystemMessage } from "../utils/messageSystemParser";
+import { describeEvent } from "../utils/describeEvent";
+import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
 import { messageService } from "../services/messageService";
@@ -97,14 +99,39 @@ const addUserSearchParts = (parts, user) => {
   ]);
 };
 
-export const buildMessageSearchText = (message) => {
+/**
+ * The sentence a translated event shows THIS reader, in the active language —
+ * the transcript/quote form (D3). `null` for everything that is not a
+ * translated event, which keeps its old index.
+ *
+ * ⚠️ The stored content is deliberately NOT indexed for these: it is English
+ * or a wire format ("ROLE_CLOSED: 12:Chor | …"), so a German reader searching
+ * „geschlossen" found nothing and a search for "closed" found a German banner.
+ *
+ * ⚠️ Only the long form, not the list form as well: both usually share the
+ * verb, so every event counted twice ("34 Treffer" for 17 banners) in the
+ * number that orders the conversation list. Decided 2026-09-16; the cost is
+ * a word that only the short form uses ("Rolle wieder geöffnet").
+ */
+const getTranslatedEventSearchParts = (message, { viewer = null, t = null } = {}) => {
+  const event = describeEvent(message?.content ?? null, viewer);
+  const full = getEventSentenceText(t, event, "full");
+  return full == null ? null : [full];
+};
+
+/**
+ * @param {object} message
+ * @param {{ viewer?: object|null, t?: Function|null }} [options]
+ *   the reader and the active `t` — required for the translated event families
+ */
+export const buildMessageSearchText = (message, options = {}) => {
   const parts = [];
-  const parsedSystemMessage = parseSystemMessage(message?.content);
+  const eventParts = getTranslatedEventSearchParts(message, options);
+  const parsedSystemMessage = eventParts ? null : parseSystemMessage(message?.content);
   const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
 
   addSearchPart(parts, [
-    message?.content,
-    systemMessageText,
+    ...(eventParts ?? [message?.content, systemMessageText]),
     message?.fileName,
     message?.file_name,
     message?.senderUsername,
@@ -172,16 +199,6 @@ const buildSystemMessageSearchSnippetText = (parsedMessage) => {
       return `${searchName(parsedMessage.userName)} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
     case "team_leave":
       return `${searchName(parsedMessage.userName)} has left the team. You have left the team.`;
-    case "role_application_approved":
-      return `${searchName(parsedMessage.applicantName)}'s application for ${parsedMessage.roleName} was approved.`;
-    case "role_reopened":
-      return `${searchName(parsedMessage.userName)} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
-    case "role_filled":
-      // ⚠️ The "Someone" comparison is gone: parseSystemMessage nulls the
-      // placeholder, so an unknown filler is simply a missing name.
-      return parsedMessage.userName
-        ? `${searchName(parsedMessage.userName)} is now filling the role ${parsedMessage.roleName}.`
-        : `The role ${parsedMessage.roleName} was marked as filled.`;
     case "member_removed_public":
       return `${searchName(parsedMessage.userName)} has been removed from the team. You removed ${searchName(parsedMessage.userName)} from the team.`;
     case "invitation_cancelled":
@@ -208,9 +225,11 @@ const buildSystemMessageSearchSnippetText = (parsedMessage) => {
   }
 };
 
-const buildMessageSearchSnippet = (message) => {
-  const parsedSystemMessage = parseSystemMessage(message?.content);
-  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
+const buildMessageSearchSnippet = (message, options = {}) => {
+  const eventParts = getTranslatedEventSearchParts(message, options);
+  const systemMessageText =
+    eventParts?.[0] ??
+    buildSystemMessageSearchSnippet(parseSystemMessage(message?.content));
   const senderName = [
     message?.senderFirstName || message?.sender_first_name,
     message?.senderLastName || message?.sender_last_name,
@@ -448,7 +467,7 @@ const getMessageSearchTimestampValue = (message) =>
   message?.updated_at ||
   null;
 
-export const buildMessageSearchSnippets = (messages) =>
+export const buildMessageSearchSnippets = (messages, options = {}) =>
   (messages || [])
     .map((message, index) => ({
       message,
@@ -458,7 +477,7 @@ export const buildMessageSearchSnippets = (messages) =>
     .sort((a, b) => a.timestamp - b.timestamp || a.index - b.index)
     .map(({ message }) => ({
       id: getMessageSearchId(message),
-      text: buildMessageSearchSnippet(message),
+      text: buildMessageSearchSnippet(message, options),
       // Raw content is kept alongside the humanised search text so the
       // conversation list can render a matched system/event message with its
       // canonical icon + colour styling (via getEventPreview), not just plain text.
@@ -488,8 +507,13 @@ export const buildLatestMatchPreview = (snippet, normalizedQuery) => {
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 };
 
-export const buildMessagesSearchText = (messages) =>
-  normalizeChatSearchText((messages || []).map(buildMessageSearchText).join(" "));
+// ⚠️ Not `.map(buildMessageSearchText)`: map would pass the index as `options`.
+export const buildMessagesSearchText = (messages, options = {}) =>
+  normalizeChatSearchText(
+    (messages || [])
+      .map((message) => buildMessageSearchText(message, options))
+      .join(" "),
+  );
 
 export const buildConversationSearchText = (conversation) => {
   const parts = [];

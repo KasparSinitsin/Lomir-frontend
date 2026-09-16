@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
@@ -39,10 +40,18 @@ const useActiveChatConversation = ({
   user,
 }) => {
   const dedupeMessagesRef = useRef(dedupeMessages);
+  const { t } = useTranslation();
+  // Read through a ref like dedupeMessages: a language switch must re-match
+  // the search target, not refetch the conversation.
+  const searchOptionsRef = useRef({ viewer: user, t });
 
   useEffect(() => {
     dedupeMessagesRef.current = dedupeMessages;
   }, [dedupeMessages]);
+
+  useEffect(() => {
+    searchOptionsRef.current = { viewer: user, t };
+  }, [user, t]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -300,7 +309,9 @@ const useActiveChatConversation = ({
             const query = searchTarget.query;
             const allMatchingIds = query
               ? fetchedMessages
-                  .filter((msg) => buildMessageSearchText(msg).includes(query))
+                  .filter((msg) =>
+                    buildMessageSearchText(msg, searchOptionsRef.current).includes(query),
+                  )
                   .map((msg) => msg.id)
                   .filter(Boolean)
               : [];

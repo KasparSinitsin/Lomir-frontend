@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../contexts/AuthContext";
 import { messageService } from "../services/messageService";
 import { getConversationUpdatedAt } from "../utils/chatHelpers";
 import {
@@ -30,6 +32,17 @@ const useChatSearchState = ({
   const searchNoResultsQueryRef = useRef(null);
   const [searchChatVisible, setSearchChatVisible] = useState(false);
   const chatSearchLoadingKeysRef = useRef(new Set());
+  // ⚠️ The index holds event sentences as THIS reader sees them, in the active
+  // language (D3). Both are therefore part of the index's identity: when either
+  // changes, the index is dropped and rebuilt rather than left stale.
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const searchOptions = useMemo(() => ({ viewer: user, t }), [user, t]);
+
+  useEffect(() => {
+    setChatMessageSearchIndex({});
+    setChatMessageSearchSnippets({});
+  }, [i18n.language, user?.id]);
 
   const normalizedChatSearchQuery = useMemo(
     () => normalizeChatSearchText(chatSearchQuery.trim()),
@@ -73,16 +86,19 @@ const useChatSearchState = ({
     }
 
     return {
-      text: buildMessagesSearchText(allMessages),
-      snippets: buildMessageSearchSnippets(allMessages),
+      text: buildMessagesSearchText(allMessages, searchOptions),
+      snippets: buildMessageSearchSnippets(allMessages, searchOptions),
     };
-  }, []);
+  }, [searchOptions]);
 
   useEffect(() => {
     if (!conversationId || messages.length === 0) return;
 
     const key = `${conversationType}:${conversationId}`;
-    const activeMessagesSearchText = buildMessagesSearchText(messages);
+    const activeMessagesSearchText = buildMessagesSearchText(
+      messages,
+      searchOptions,
+    );
 
     setChatMessageSearchIndex((prev) => ({
       ...prev,
@@ -92,9 +108,9 @@ const useChatSearchState = ({
     }));
     setChatMessageSearchSnippets((prev) => ({
       ...prev,
-      [key]: buildMessageSearchSnippets(messages),
+      [key]: buildMessageSearchSnippets(messages, searchOptions),
     }));
-  }, [conversationId, conversationType, messages]);
+  }, [conversationId, conversationType, messages, searchOptions]);
 
   useEffect(() => {
     if (!isAuthenticated || !isChatSearchActive || conversations.length === 0) {

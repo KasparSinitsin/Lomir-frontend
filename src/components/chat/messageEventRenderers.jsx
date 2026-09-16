@@ -15,6 +15,7 @@ import {
   UserSearch,
 } from "lucide-react";
 import { describeEvent, personOf } from "../../utils/describeEvent";
+import { getEventSentence, splitEventSentence } from "../../utils/eventSentences";
 import { formatLocalTime } from "../../utils/dateHelpers";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import ReadReceipt from "./ReadReceipt";
@@ -41,6 +42,7 @@ export const createEventRenderers = (ctx) => {
     conversationType,
     teamMembers,
     searchQuery,
+    t,
   } = ctx;
 
   // The transcript is one of four paths that render an event; all of them now
@@ -198,105 +200,79 @@ export const createEventRenderers = (ctx) => {
   };
 
   // =============================================================================
-  // renderRoleApplicationApprovedMessage - Orange role theme
+  // The roles family — one sentence per event from eventSentences.js, shared
+  // with the short preview, the quoted reply and the search index. This file
+  // only decides what each slot looks like: a clickable person, a role link.
   // =============================================================================
-  const renderRoleApplicationApprovedMessage = (message, parsedMessage) => {
-    const messageText = (
-      <>
-        {possessiveUserMentionOrYour(
-          parsedMessage.applicantId,
-          parsedMessage.applicantName,
-        )}{" "}
-        application for{" "}
-        <RoleMentionById
-          roleId={parsedMessage.roleId}
-          name={parsedMessage.roleName}
-          filledUserId={parsedMessage.applicantId}
-          filledUserName={parsedMessage.applicantName}
-          filledAt={message.createdAt}
-        />{" "}
-        was approved.
-      </>
-    );
 
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
+  /**
+   * The four "by …" renderers fall back to the message's sender when the
+   * payload carries no actor name. A deleted account stays nameless (D4).
+   */
+  const withSenderFallback = (person, senderInfo, senderId) => {
+    if (person.isKnown || person.isDeleted || !senderInfo) return person;
 
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
+    const name =
+      [
+        senderInfo.firstName || senderInfo.first_name,
+        senderInfo.lastName || senderInfo.last_name,
+      ]
+        .filter(Boolean)
+        .join(" ") ||
+      senderInfo.username ||
+      senderInfo.userName ||
+      null;
+    if (!name) return person;
+
+    const id = person.id ?? senderId ?? null;
+    return {
+      id,
+      name,
+      isViewer: isCurrentViewer(id, name),
+      isDeleted: false,
+      isKnown: true,
+    };
   };
 
-  // =============================================================================
-  // renderRoleApplicationFilledMessage - Orange role theme (combined approval + fill)
-  // =============================================================================
-  const renderRoleApplicationFilledMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-        filledUserId={parsedMessage.applicantId}
-        filledUserName={parsedMessage.applicantName}
-        filledAt={message.createdAt}
-      />
-    );
-
-    const event = eventOf(parsedMessage);
-    const applicant = personOf(event, "applicant");
-    const approver = personOf(event, "approver");
-    const applicantMention = applicant.isKnown
-      ? userMentionOrYou(applicant.id, applicant.name)
-      : null;
-    const approverMention = approver.isKnown
-      ? userMentionOrYou(approver.id, approver.name)
-      : null;
-
-    // ⚠️ With no applicant the clause is dropped rather than filled with the
-    // word "someone" — the conversation list said "filled by Someone" for the
-    // same message the transcript called "marked as filled".
-    const messageText = applicantMention ? (
-      <>
-        The role {roleMention} has been filled by {applicantMention}
-        {approverMention ? (
-          <span>, approved by {approverMention}.</span>
-        ) : (
-          "."
-        )}
-      </>
-    ) : approverMention ? (
-      <>
-        The role {roleMention} was marked as filled by {approverMention}.
-      </>
+  const personMention = (person) =>
+    person.id ? (
+      <MentionById userId={person.id} name={person.name} />
     ) : (
-      <>The role {roleMention} was marked as filled.</>
+      <Mention name={person.name} />
     );
+
+  /**
+   * ⚠️ Names reach the sentence only as components, never as text inside it —
+   * see the header of eventSentences.js for why.
+   */
+  const renderSentence = (sentence, roleElements) =>
+    splitEventSentence(sentence).map((part, index) => (
+      <React.Fragment key={index}>
+        {"text" in part
+          ? part.text
+          : part.value.kind === "role"
+            ? roleElements[part.slot]
+            : personMention(part.value.person)}
+      </React.Fragment>
+    ));
+
+  const ROLE_BANNER_STYLE = {
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    color: "#f59e0b",
+  };
+
+  const renderRoleEventBanner = (message, options) => {
+    const { sentence, roleElements, Icon, neutral = false } = options;
 
     return (
       <div className="flex flex-col items-center w-full my-4">
         <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
+          className={`event-banner mb-3${neutral ? " event-banner--neutral" : ""}`}
+          style={neutral ? undefined : ROLE_BANNER_STYLE}
         >
           <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
+            <Icon size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(renderSentence(sentence, roleElements))}
           </span>
         </div>
 
@@ -307,605 +283,193 @@ export const createEventRenderers = (ctx) => {
     );
   };
 
-  // =============================================================================
-  // renderRoleApplicationDeferredInviteMessage - Orange role theme (approval offer)
-  // =============================================================================
-  const renderRoleApplicationDeferredInviteMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-      />
-    );
-    const currentRoleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.currentRoleId}
-        name={parsedMessage.currentRoleName}
-        filledUserId={parsedMessage.applicantId}
-        filledUserName={parsedMessage.applicantName}
-      />
-    );
-    const applicantMention = userMentionOrYou(
-      parsedMessage.applicantId,
-      parsedMessage.applicantName,
-      { capitalized: true },
-    );
-    const approverMention = userMentionOrYou(
-      parsedMessage.approverId,
-      parsedMessage.approverName,
-    );
-    const isApplicantCurrentUser = isCurrentViewer(parsedMessage.applicantId);
+  const plainRoleMention = (parsedMessage) => (
+    <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
+  );
 
-    const messageText = (
-      <>
-        {isApplicantCurrentUser ? "Your application" : <>{applicantMention}{"'s application"}</>}
-        {" for "}{roleMention}{" was approved by "}
-        {approverMention}
-        {". "}
-        {isApplicantCurrentUser ? "You already fill " : "They already fill "}
-        {currentRoleMention}
-        {", so this is now a role offer "}
-        {isApplicantCurrentUser
-          ? "you can accept once you leave your current role."
-          : "they can accept once they leave their current role."}
-      </>
-    );
+  const renderRoleApplicationApprovedMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: {
+        role: (
+          <RoleMentionById
+            roleId={parsedMessage.roleId}
+            name={parsedMessage.roleName}
+            filledUserId={parsedMessage.applicantId}
+            filledUserName={parsedMessage.applicantName}
+            filledAt={message.createdAt}
+          />
+        ),
+      },
+      Icon: UserCheck,
+    });
 
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserSearch size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
+  const renderRoleApplicationFilledMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: {
+        role: (
+          <RoleMentionById
+            roleId={parsedMessage.roleId}
+            name={parsedMessage.roleName}
+            filledUserId={parsedMessage.applicantId}
+            filledUserName={parsedMessage.applicantName}
+            filledAt={message.createdAt}
+          />
+        ),
+      },
+      Icon: UserCheck,
+    });
 
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
+  const renderRoleApplicationDeferredInviteMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: {
+        role: plainRoleMention(parsedMessage),
+        currentRole: (
+          <RoleMentionById
+            roleId={parsedMessage.currentRoleId}
+            name={parsedMessage.currentRoleName}
+            filledUserId={parsedMessage.applicantId}
+            filledUserName={parsedMessage.applicantName}
+          />
+        ),
+      },
+      Icon: UserSearch,
+    });
 
-  // =============================================================================
-  // renderRoleInvitationFilledMessage - Orange role theme (invitation accepted + fill)
-  // =============================================================================
-  const renderRoleInvitationFilledMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-        filledUserId={parsedMessage.inviteeId}
-        filledUserName={parsedMessage.inviteeName}
-        filledAt={message.createdAt}
-      />
-    );
+  const renderRoleInvitationFilledMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: {
+        role: (
+          <RoleMentionById
+            roleId={parsedMessage.roleId}
+            name={parsedMessage.roleName}
+            filledUserId={parsedMessage.inviteeId}
+            filledUserName={parsedMessage.inviteeName}
+            filledAt={message.createdAt}
+          />
+        ),
+      },
+      Icon: UserCheck,
+    });
 
-    const invitee = personOf(eventOf(parsedMessage), "invitee");
-    const isInviteeCurrentUser = isCurrentViewer(
-      parsedMessage.inviteeId,
-      parsedMessage.inviteeName,
-    );
-    const messageText = isInviteeCurrentUser ? (
-      <>
-        You accepted an invitation to fill the role {roleMention} in this team
-        and are now filling that role.
-      </>
-    ) : invitee.isKnown ? (
-      <>
-        <MentionById
-          userId={parsedMessage.inviteeId}
-          name={parsedMessage.inviteeName}
-        />{" "}
-        has accepted an invitation to fill the role {roleMention} in this team
-        and is now filling that role.
-      </>
-    ) : (
-      <>
-        An invitation to fill the role {roleMention} was accepted and the role
-        is now filled.
-      </>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
-
-  // =============================================================================
-  // renderRoleInvitationAcceptedMessage - Orange role theme (invitation accepted, with inviter)
-  // =============================================================================
   const renderRoleInvitationAcceptedMessage = (message, parsedMessage) => {
-    const acceptedEvent = eventOf(parsedMessage);
-    const hasInvitee = personOf(acceptedEvent, "invitee").isKnown;
-    const hasInviter = personOf(acceptedEvent, "inviter").isKnown;
-    const isInviteeCurrentUser = isCurrentViewer(parsedMessage.inviteeId);
+    const event = eventOf(parsedMessage);
+    const hasInvitee = personOf(event, "invitee").isKnown;
 
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-        filledUserId={parsedMessage.fillRole ? parsedMessage.inviteeId : null}
-        filledUserName={parsedMessage.fillRole && hasInvitee ? parsedMessage.inviteeName : null}
-        filledAt={parsedMessage.fillRole ? message.createdAt : null}
-      />
-    );
-
-    // ⚠️ Without an invitee the sentence has no subject to name, so it is
-    // rewritten rather than filled with the literal word "Someone".
-    const messageText = !hasInvitee ? (
-      parsedMessage.fillRole ? (
-        <>
-          An invitation to fill the role {roleMention} was accepted and the role
-          is now filled.
-        </>
-      ) : (
-        <>An invitation for the role {roleMention} was accepted.</>
-      )
-    ) : (
-      <>
-        {hasInviter && (
-          <>
-            {userMentionOrYou(parsedMessage.inviterId, parsedMessage.inviterName, {
-              capitalized: true,
-            })}
-            {" invited "}
-          </>
-        )}
-        {userMentionOrYou(parsedMessage.inviteeId, parsedMessage.inviteeName)}
-        {" for the role "}{roleMention}
-        {parsedMessage.fillRole
-          ? isInviteeCurrentUser
-            ? ". You accepted and are now filling that role."
-            : ". They accepted and are now filling that role."
-          : isInviteeCurrentUser
-            ? ". You accepted the invitation."
-            : ". They accepted the invitation."}
-      </>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{ backgroundColor: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
+      roleElements: {
+        role: (
+          <RoleMentionById
+            roleId={parsedMessage.roleId}
+            name={parsedMessage.roleName}
+            filledUserId={parsedMessage.fillRole ? parsedMessage.inviteeId : null}
+            filledUserName={
+              parsedMessage.fillRole && hasInvitee ? parsedMessage.inviteeName : null
+            }
+            filledAt={parsedMessage.fillRole ? message.createdAt : null}
+          />
+        ),
+      },
+      Icon: UserCheck,
+    });
   };
 
-  // =============================================================================
-  // renderRoleInvitationAssignedLegacyMessage - Orange role theme (backend 🎯 format)
-  // =============================================================================
-  const renderRoleInvitationAssignedLegacyMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={null}
-        name={parsedMessage.roleName}
-      />
-    );
+  // The backend's 🎯 format carries a name but no ids.
+  const renderRoleInvitationAssignedLegacyMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: {
+        role: <RoleMentionById roleId={null} name={parsedMessage.roleName} />,
+      },
+      Icon: UserCheck,
+    });
 
-    const messageText = (
-      <>
-        <MentionById userId={null} name={parsedMessage.inviteeName} />
-        {" accepted an invitation to fill the role "}{roleMention}{" in this team."}
-      </>
-    );
+  const renderRoleReopenedMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: { role: plainRoleMention(parsedMessage) },
+      Icon: UserSearch,
+    });
 
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{ backgroundColor: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
+  const renderRoleReopenedAdminMessage = (message, parsedMessage) =>
+    renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, eventOf(parsedMessage)),
+      roleElements: { role: plainRoleMention(parsedMessage) },
+      Icon: UserSearch,
+    });
 
-  // =============================================================================
-  // renderRoleReopenedMessage - Orange role theme
-  // =============================================================================
-  const renderRoleReopenedMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-      />
-    );
-    const messageText = parsedMessage.userName ? (
-      <>
-        {isCurrentViewer(parsedMessage.userId, parsedMessage.userName) ? (
-          <>You have left the role {roleMention}. The role is open again to be filled.</>
-        ) : (
-          <>
-            <MentionById
-              userId={parsedMessage.userId}
-              name={parsedMessage.userName}
-            />{" "}
-            has left the role {roleMention}. The role is open again to be filled.
-          </>
-        )}
-      </>
-    ) : (
-      <>The role {roleMention} is open again to be filled.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserSearch size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
-
-  // =============================================================================
-  // renderRoleReopenedAdminMessage - Orange role theme (closed → open by admin)
-  // =============================================================================
-  const renderRoleReopenedAdminMessage = (message, parsedMessage) => {
-    const roleMention = (
-      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
-    );
-    const messageText = parsedMessage.userName ? (
-      <>
-        {isCurrentViewer(parsedMessage.userId, parsedMessage.userName) ? (
-          <>You have reopened the role {roleMention}. It is open again to be filled.</>
-        ) : (
-          <>
-            <MentionById userId={parsedMessage.userId} name={parsedMessage.userName} />{" "}
-            has reopened the role {roleMention}. It is open again to be filled.
-          </>
-        )}
-      </>
-    ) : (
-      <>The role {roleMention} has been reopened and is open to be filled.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserSearch size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
-  };
-
-  // =============================================================================
-  // renderRoleFilledMessage - Orange role theme
-  // =============================================================================
   const renderRoleFilledMessage = (message, parsedMessage) => {
-    const filledEvent = eventOf(parsedMessage);
-    const hasKnownFilledUser = personOf(filledEvent, "user").isKnown;
-    const hasKnownFilledBy = personOf(filledEvent, "filledBy").isKnown;
+    const event = eventOf(parsedMessage);
+    const hasKnownFilledUser = personOf(event, "user").isKnown;
 
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-        filledUserId={parsedMessage.userId}
-        filledUserName={hasKnownFilledUser ? parsedMessage.userName : null}
-        filledAt={message.createdAt}
-      />
-    );
-    const filledByMention = hasKnownFilledBy ? (
-      userMentionOrYou(parsedMessage.filledById, parsedMessage.filledByName)
-    ) : null;
-    const messageText = hasKnownFilledUser ? (
-      <>
-        The role {roleMention} has been filled by{" "}
-        {userMentionOrYou(parsedMessage.userId, parsedMessage.userName)}
-        {filledByMention ? (
-          <span>, approved by {filledByMention}.</span>
-        ) : (
-          "."
-        )}
-      </>
-    ) : filledByMention ? (
-      <>The role {roleMention} was marked as filled by {filledByMention}.</>
-    ) : (
-      <>The role {roleMention} was marked as filled.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserCheck size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
+      roleElements: {
+        role: (
+          <RoleMentionById
+            roleId={parsedMessage.roleId}
+            name={parsedMessage.roleName}
+            filledUserId={parsedMessage.userId}
+            filledUserName={hasKnownFilledUser ? parsedMessage.userName : null}
+            filledAt={message.createdAt}
+          />
+        ),
+      },
+      Icon: UserCheck,
+    });
   };
 
-  // =============================================================================
-  // renderRoleCreatedMessage - Orange role theme
-  // =============================================================================
   const renderRoleCreatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const roleMention = (
-      <RoleMentionById
-        roleId={parsedMessage.roleId}
-        name={parsedMessage.roleName}
-      />
-    );
+    const event = eventOf(parsedMessage);
+    const creator = withSenderFallback(personOf(event, "creator"), senderInfo, senderId);
 
-    const creator = personOf(eventOf(parsedMessage), "creator");
-    const creatorId = creator.id ?? senderId ?? null;
-    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
-    // drops. Without this the transcript named "Former Lomir User" while
-    // the conversation list and the quoted reply said nothing.
-    const creatorName = creator.isDeleted
-      ? null
-      : creator.name ||
-      (senderInfo
-        ? [
-            senderInfo.firstName || senderInfo.first_name,
-            senderInfo.lastName || senderInfo.last_name,
-          ]
-            .filter(Boolean)
-            .join(" ") ||
-          senderInfo.username ||
-          senderInfo.userName ||
-          null
-        : null);
-
-    const messageText = creatorName ? (
-      <>
-        The new role {roleMention} has been created by{" "}
-        {userMentionOrYou(creatorId, creatorName)} in this team. It
-        is open to be filled.
-      </>
-    ) : (
-      <>The new role {roleMention} is open to be filled.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserSearch size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event, "full", { creator }),
+      roleElements: { role: plainRoleMention(parsedMessage) },
+      Icon: UserSearch,
+    });
   };
 
-  // =============================================================================
-  // renderRoleClosedMessage - Neutral grey theme
-  // =============================================================================
   const renderRoleClosedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const closedBy = personOf(eventOf(parsedMessage), "closedBy");
-    const closedById = closedBy.id ?? senderId ?? null;
-    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
-    // drops. Without this the transcript named "Former Lomir User" while
-    // the conversation list and the quoted reply said nothing.
-    const closedByName = closedBy.isDeleted
-      ? null
-      : closedBy.name ||
-      (senderInfo
-        ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
-            .filter(Boolean)
-            .join(" ") ||
-          senderInfo.username ||
-          senderInfo.userName ||
-          null
-        : null);
+    const event = eventOf(parsedMessage);
+    const closedBy = withSenderFallback(personOf(event, "closedBy"), senderInfo, senderId);
 
-    const roleMention = (
-      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
-    );
-    const messageText = closedByName ? (
-      <>
-        The role {roleMention} has been closed by{" "}
-        {userMentionOrYou(closedById, closedByName)}.
-      </>
-    ) : (
-      <>The role {roleMention} has been closed.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div className="event-banner mb-3 event-banner--neutral">
-          <span className="text-sm font-medium event-message-text">
-            <CircleX size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-        <div className="text-xs text-base-content/50">{formatLocalTime(message.createdAt)}</div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event, "full", { closedBy }),
+      roleElements: { role: plainRoleMention(parsedMessage) },
+      Icon: CircleX,
+      neutral: true,
+    });
   };
 
-  // =============================================================================
-  // renderRoleUpdatedMessage - Orange role theme
-  // =============================================================================
   const renderRoleUpdatedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const updatedBy = personOf(eventOf(parsedMessage), "updatedBy");
-    const updatedById = updatedBy.id ?? senderId ?? null;
-    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
-    // drops. Without this the transcript named "Former Lomir User" while
-    // the conversation list and the quoted reply said nothing.
-    const updatedByName = updatedBy.isDeleted
-      ? null
-      : updatedBy.name ||
-      (senderInfo
-        ? [senderInfo.firstName || senderInfo.first_name, senderInfo.lastName || senderInfo.last_name]
-            .filter(Boolean)
-            .join(" ") ||
-          senderInfo.username ||
-          senderInfo.userName ||
-          null
-        : null);
+    const event = eventOf(parsedMessage);
+    const updatedBy = withSenderFallback(personOf(event, "updatedBy"), senderInfo, senderId);
 
-    const roleMention = (
-      <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
-    );
-    const messageText = updatedByName ? (
-      <>
-        The role {roleMention} has been updated by{" "}
-        {userMentionOrYou(updatedById, updatedByName)}.
-      </>
-    ) : (
-      <>The role {roleMention} has been updated.</>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3"
-          style={{
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            color: "#f59e0b",
-          }}
-        >
-          <span className="text-sm font-medium event-message-text">
-            <Pencil size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-        <div className="text-xs text-base-content/50">{formatLocalTime(message.createdAt)}</div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event, "full", { updatedBy }),
+      roleElements: { role: plainRoleMention(parsedMessage) },
+      Icon: Pencil,
+    });
   };
 
-  // =============================================================================
-  // renderRoleDeletedMessage - Neutral grey theme
-  // =============================================================================
+  // A deleted role has nothing to open, so its name is not a link.
   const renderRoleDeletedMessage = (message, parsedMessage, senderInfo = null, senderId = null) => {
-    const deletor = personOf(eventOf(parsedMessage), "deletor");
-    const deletorId = deletor.id ?? senderId ?? null;
-    // ⚠️ D4: a deleted account counts as nameless, so the "by …" clause
-    // drops. Without this the transcript named "Former Lomir User" while
-    // the conversation list and the quoted reply said nothing.
-    const deletorName = deletor.isDeleted
-      ? null
-      : deletor.name ||
-      (senderInfo
-        ? [
-            senderInfo.firstName || senderInfo.first_name,
-            senderInfo.lastName || senderInfo.last_name,
-          ]
-            .filter(Boolean)
-            .join(" ") ||
-          senderInfo.username ||
-          senderInfo.userName ||
-          null
-        : null);
+    const event = eventOf(parsedMessage);
+    const deletor = withSenderFallback(personOf(event, "deletor"), senderInfo, senderId);
 
-    const messageText = deletorName ? (
-      <>
-        The role <span className="font-medium">{parsedMessage.roleName}</span>{" "}
-        has been deleted by{" "}
-        {userMentionOrYou(deletorId, deletorName)} from this team.
-      </>
-    ) : (
-      <>
-        The role <span className="font-medium">{parsedMessage.roleName}</span>{" "}
-        has been deleted from this team.
-      </>
-    );
-
-    return (
-      <div className="flex flex-col items-center w-full my-4">
-        <div
-          className="event-banner mb-3 event-banner--neutral"
-        >
-          <span className="text-sm font-medium event-message-text">
-            <UserMinus size={16} className="event-inline-icon mr-1" />
-            {highlightEventContent(messageText)}
-          </span>
-        </div>
-
-        <div className="text-xs text-base-content/50">
-          {formatLocalTime(message.createdAt)}
-        </div>
-      </div>
-    );
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event, "full", { deletor }),
+      roleElements: {
+        role: <span className="font-medium">{parsedMessage.roleName}</span>,
+      },
+      Icon: UserMinus,
+      neutral: true,
+    });
   };
 
   // =============================================================================

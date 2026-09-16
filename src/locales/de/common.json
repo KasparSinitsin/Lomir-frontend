@@ -132,6 +132,56 @@
       "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     }
   },
+  "chatEvents": {
+    "roleApplicationApproved": {
+      "full": "{applicant, select, you {Deine Bewerbung für die Rolle <role/> wurde angenommen.} named {<applicant/> wurde für die Rolle <role/> angenommen.} other {Eine Bewerbung für die Rolle <role/> wurde angenommen.}}"
+    },
+    "roleApplicationDeferredInvite": {
+      "full": "{applicant, select, you {{approver, select, named {<approver/> hat deine Bewerbung für die Rolle <role/> angenommen. Da du schon die Rolle <currentRole/> hast, ist daraus ein Rollenangebot geworden. Du kannst es annehmen, sobald du deine aktuelle Rolle verlässt.} other {Deine Bewerbung für die Rolle <role/> wurde angenommen. Da du schon die Rolle <currentRole/> hast, ist daraus ein Rollenangebot geworden. Du kannst es annehmen, sobald du deine aktuelle Rolle verlässt.}}} named {{approver, select, you {Du hast <applicant/> für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} named {<approver/> hat <applicant/> für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} other {<applicant/> wurde für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.}}} other {{approver, select, you {Du hast eine Bewerbung für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} named {<approver/> hat eine Bewerbung für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} other {Eine Bewerbung für die Rolle <role/> wurde angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.}}}}",
+      "short": "{applicant, select, you {Deine Bewerbung für <role/> wurde als Rollenangebot angenommen} named {<applicant/> wurde für <role/> als Rollenangebot angenommen} other {Eine Bewerbung für <role/> wurde als Rollenangebot angenommen}}"
+    },
+    "roleClosed": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> geschlossen.} named {<actor/> hat die Rolle <role/> geschlossen.} other {Die Rolle <role/> wurde geschlossen.}}",
+      "short": "Rolle geschlossen: <role/>"
+    },
+    "roleCreated": {
+      "full": "{actor, select, you {Du hast die neue Rolle <role/> in diesem Team erstellt. Sie ist offen und kann besetzt werden.} named {<actor/> hat die neue Rolle <role/> in diesem Team erstellt. Sie ist offen und kann besetzt werden.} other {Die neue Rolle <role/> ist offen und kann besetzt werden.}}",
+      "short": "Neue Rolle <role/> erstellt."
+    },
+    "roleDeleted": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> aus diesem Team gelöscht.} named {<actor/> hat die Rolle <role/> aus diesem Team gelöscht.} other {Die Rolle <role/> wurde aus diesem Team gelöscht.}}",
+      "short": "Rolle gelöscht: <role/>"
+    },
+    "roleFilled": {
+      "full": "{filler, select, you {{approver, select, named {<approver/> hat die Rolle <role/> mit dir besetzt.} other {Du hast die Rolle <role/> übernommen.}}} named {{approver, select, you {Du hast die Rolle <role/> mit <filler/> besetzt.} named {<approver/> hat die Rolle <role/> mit <filler/> besetzt.} other {<filler/> hat die Rolle <role/> übernommen.}}} other {{approver, select, you {Du hast die Rolle <role/> als besetzt markiert.} named {<approver/> hat die Rolle <role/> als besetzt markiert.} other {Die Rolle <role/> wurde als besetzt markiert.}}}}"
+    },
+    "roleInvitationAccepted": {
+      "fill": "{invitee, select, you {{inviter, select, named {<inviter/> hat dich für die Rolle <role/> eingeladen. Du hast angenommen und die Rolle übernommen.} other {Du hast eine Einladung für die Rolle <role/> angenommen und die Rolle übernommen.}}} named {{inviter, select, you {Du hast <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} named {<inviter/> hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} other {<invitee/> hat eine Einladung für die Rolle <role/> angenommen und die Rolle übernommen.}}} other {Eine Einladung für die Rolle <role/> wurde angenommen. Die Rolle ist jetzt besetzt.}}",
+      "fillShort": "{invitee, select, you {{inviter, select, named {Du hast die Einladung von <inviter/> für <role/> angenommen und die Rolle übernommen} other {Du hast eine Einladung für <role/> angenommen und die Rolle übernommen}}} named {{inviter, select, you {<invitee/> hat deine Einladung für <role/> angenommen} named {<invitee/> hat die Einladung von <inviter/> für <role/> angenommen} other {<invitee/> hat eine Einladung für <role/> angenommen}}} other {Eine Einladung für <role/> wurde angenommen, die Rolle ist besetzt}}",
+      "noFill": "{invitee, select, you {{inviter, select, named {<inviter/> hat dich für die Rolle <role/> eingeladen. Du hast die Einladung angenommen.} other {Du hast eine Einladung für die Rolle <role/> angenommen.}}} named {{inviter, select, you {Du hast <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} named {<inviter/> hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} other {<invitee/> hat eine Einladung für die Rolle <role/> angenommen.}}} other {Eine Einladung für die Rolle <role/> wurde angenommen.}}",
+      "noFillShort": "{invitee, select, you {{inviter, select, named {Du hast die Einladung von <inviter/> für <role/> angenommen} other {Du hast eine Einladung für <role/> angenommen}}} named {{inviter, select, you {<invitee/> hat deine Einladung für <role/> angenommen} named {<invitee/> hat die Einladung von <inviter/> für <role/> angenommen} other {<invitee/> hat eine Einladung für <role/> angenommen}}} other {Eine Einladung für <role/> wurde angenommen}}"
+    },
+    "roleInvitationAssigned": {
+      "full": "{invitee, select, you {Du hast eine Einladung für die Rolle <role/> in diesem Team angenommen.} named {<invitee/> hat eine Einladung für die Rolle <role/> in diesem Team angenommen.} other {Eine Einladung für die Rolle <role/> wurde angenommen.}}",
+      "short": "{invitee, select, you {Du hast eine Einladung für <role/> angenommen} named {<invitee/> hat eine Einladung für <role/> angenommen} other {Eine Einladung für <role/> wurde angenommen}}"
+    },
+    "roleInvitationFilled": {
+      "full": "{invitee, select, you {Du hast eine Einladung für die Rolle <role/> in diesem Team angenommen und die Rolle übernommen.} named {<invitee/> hat eine Einladung für die Rolle <role/> in diesem Team angenommen und die Rolle übernommen.} other {Eine Einladung für die Rolle <role/> wurde angenommen. Die Rolle ist jetzt besetzt.}}",
+      "short": "{invitee, select, you {Du hast eine Einladung für <role/> angenommen und die Rolle übernommen} named {<invitee/> hat eine Einladung für <role/> angenommen und die Rolle übernommen} other {Eine Einladung für <role/> wurde angenommen, die Rolle ist besetzt}}"
+    },
+    "roleReopened": {
+      "full": "{user, select, you {Du hast die Rolle <role/> verlassen. Sie ist wieder offen und kann besetzt werden.} named {<user/> hat die Rolle <role/> verlassen. Sie ist wieder offen und kann besetzt werden.} other {Die Rolle <role/> ist wieder offen und kann besetzt werden.}}",
+      "short": "{user, select, you {Du hast die Rolle <role/> verlassen. Sie ist wieder offen.} named {<user/> hat die Rolle <role/> verlassen. Sie ist wieder offen.} other {Rolle wieder geöffnet: <role/>}}"
+    },
+    "roleReopenedAdmin": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> wieder geöffnet. Sie kann wieder besetzt werden.} named {<actor/> hat die Rolle <role/> wieder geöffnet. Sie kann wieder besetzt werden.} other {Die Rolle <role/> wurde wieder geöffnet und kann besetzt werden.}}",
+      "short": "Rolle wieder geöffnet: <role/>"
+    },
+    "roleUpdated": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> bearbeitet.} named {<actor/> hat die Rolle <role/> bearbeitet.} other {Die Rolle <role/> wurde bearbeitet.}}",
+      "short": "Rolle bearbeitet: <role/>"
+    }
+  },
   "chatHeader": {
     "backToList": "Zurück zur Unterhaltungsliste",
     "directChat": "Direktnachricht",
