@@ -241,7 +241,7 @@ const content = {
         title: "2. Service",
         paragraphs: [
           "Lomir is a free, non-commercial team-matching and collaboration app. Users can create profiles, find teams and open roles, manage teams, exchange messages, upload avatars or chat files, and contact the Lomir team.",
-          "The app is provided as a portfolio and learning project. It may change, be interrupted, or be discontinued, especially while it is still under active development.",
+          "The app is provided as a portfolio and learning project. It may change, be interrupted, or be discontinued, especially during active development.",
         ],
       },
       {
@@ -254,25 +254,25 @@ const content = {
         title: "4. Account Rules",
         items: [
           "Do not create accounts for someone else without permission.",
-          "Do not share your password, login links, verification codes, or other account credentials.",
+          "Do not share any password, login links, verification codes, or other account data.",
           "Do not use Lomir to harass, deceive, spam, threaten, or unlawfully discriminate against others.",
           "Do not upload malware, illegal content, confidential third-party information, or content that infringes intellectual property rights.",
-          "Do not attempt to bypass security, scrape private data, or access accounts, teams, messages, or API endpoints without authorization.",
+          "Do not attempt to bypass security measures, scrape private data, or access accounts, teams, messages, or API endpoints without authorization.",
         ],
       },
       {
         title: "5. Profiles, Teams, and Visibility",
         paragraphs: [
-          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search, profile, card, list, and map views.",
-          "If you add location details, they may be used for matching and recommendations. Depending on your visibility settings and feature context, approximate location details such as postal code, city, district, state, or country may be visible to other users.",
+          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search results, profiles, cards, lists, or overviews.",
+          "If you add location data, it may be used for matching and recommendations. Depending on visibility settings and context, approximate location details such as postal code, city, district, state, or country may be visible to other users.",
           "Team and role visibility depends on team settings and membership context. Even when your profile is private, information needed for teams, applications, invitations, messages, and notifications may be shown to the relevant participants.",
         ],
       },
       {
         title: "6. User Content",
         paragraphs: [
-          "You keep ownership of content you submit to Lomir. By submitting content, you grant Lomir a limited, non-exclusive right to store, display, transmit, and process that content as necessary to operate the app.",
-          "You are responsible for the content you provide. Please do not include sensitive personal data, confidential information, or data about other people unless you have a lawful basis and their permission where required.",
+          "You retain the rights to the content you upload to Lomir. By uploading content, you grant Lomir a limited, non-exclusive right to store, display, transmit, and process that content as necessary to operate the app.",
+          "You are responsible for the content you provide. Do not enter sensitive personal data, confidential information, or data about other people unless you have a legal basis and, where required, their permission.",
         ],
       },
       {
@@ -288,8 +288,8 @@ const content = {
       {
         title: "8. Messages and Uploads",
         paragraphs: [
-          "Messages are visible to the relevant direct-message participant or team members. Chat file and image uploads are intended for temporary collaboration and currently expire after 60 days.",
-          "Contact form attachments are sent by email to the Lomir contact inbox. Do not send sensitive or confidential material through the contact form unless it is necessary for your request.",
+          "Messages are visible to the relevant direct-message participants or team members. Chat file and image uploads are intended for temporary collaboration and currently expire after 60 days.",
+          "Contact form attachments are sent by email to the Lomir inbox. Do not send sensitive or confidential material through the contact form unless it is necessary for your request.",
         ],
       },
       {
@@ -301,13 +301,13 @@ const content = {
       {
         title: "10. Availability and Changes",
         paragraphs: [
-          "Lomir is provided free of charge and without a promise of uninterrupted availability. Features may be changed, limited, or removed. Maintenance, hosting limits, provider outages, security incidents, or project changes may affect the app.",
+          "Lomir is provided free of charge and without a guarantee of uninterrupted availability. Features may be changed, limited, or removed. Maintenance, hosting limits, provider outages, security incidents, or project changes may affect the app.",
         ],
       },
       {
         title: "11. Suspension and Removal",
         paragraphs: [
-          "Accounts or content may be restricted, removed, or deleted if they violate these terms, harm other users, create legal risk, threaten the security of the app, or are required to be removed by law.",
+          "Accounts or content may be restricted, removed, or deleted if they violate these terms, harm other users, pose legal risks, threaten the security of the app, or are required to be removed by law.",
         ],
       },
       {
@@ -320,13 +320,13 @@ const content = {
       {
         title: "13. Privacy",
         paragraphs: [
-          <>Information about how personal data is processed is available in the {privacyLink}.</>,
+          <>You can find information about the processing of personal data in the {privacyLink}.</>,
         ],
       },
       {
         title: "14. Governing Law",
         paragraphs: [
-          "German law applies, subject to any mandatory consumer protection rules that apply in the country where a user has their habitual residence.",
+          "German law applies, subject to the mandatory consumer protection rules of the country in which you have your habitual residence.",
         ],
       },
       {
