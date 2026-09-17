@@ -308,7 +308,22 @@
     "searchCountSearching": "{filtered} von {total} Chats · Nachrichten werden durchsucht …",
     "searchNoResults": "Keine Personennamen, Teamnamen oder Nachrichten passen zu „{query}“. Versuche einen anderen Suchbegriff.",
     "searchPlaceholder": "Chats durchsuchen …",
-    "title": "Chats"
+    "title": "Chats",
+    "attachmentPreview": {
+      "named": "{kind, select, image {Bild „{fileName}“ gesendet} spreadsheet {Tabelle „{fileName}“ gesendet} other {Datei „{fileName}“ gesendet}}",
+      "unnamed": "{kind, select, image {Bild gesendet} spreadsheet {Tabelle gesendet} other {Datei gesendet}}"
+    },
+    "noMessagesYet": "Noch keine Nachrichten",
+    "sendFirstMessage": "Schreib eine Nachricht, um die Unterhaltung zu beginnen",
+    "startConversation": "Starte eure Unterhaltung …",
+    "emptyList": {
+      "title": "Noch keine Unterhaltungen",
+      "description": "Beginne einen Chat über das Profil einer Person oder die Seite eines Teams.",
+      "findPeople": "Personen finden",
+      "findTeams": "Teams finden"
+    },
+    "openConversation": "Unterhaltung öffnen",
+    "deselectConversation": "Auswahl aufheben"
   },
   "chatUploader": {
     "addAttachmentAria": "Anhang hinzufügen",

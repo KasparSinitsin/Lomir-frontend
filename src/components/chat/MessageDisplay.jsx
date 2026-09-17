@@ -1301,9 +1301,9 @@ const MessageDisplay = ({
           )}
 
           <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-base-content/70">No messages yet</p>
+            <p className="text-base-content/70">{t("chatPage.noMessagesYet")}</p>
             <p className="text-sm text-base-content/50 mt-2">
-              Send a message to start the conversation
+              {t("chatPage.sendFirstMessage")}
             </p>
           </div>
         </div>

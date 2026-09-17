@@ -163,13 +163,18 @@ const buildMessageSearchSnippet = (message, options = {}) => {
     message?.sender_username ||
     message?.sender?.username ||
     "";
+  const { t } = options;
   const body =
     systemMessageText ||
     message?.content ||
     message?.fileName ||
     message?.file_name ||
-    (message?.imageUrl || message?.image_url ? "Image" : "") ||
-    (message?.fileUrl || message?.file_url ? "File" : "");
+    (message?.imageUrl || message?.image_url
+      ? t?.("messageInput.attachmentImage") ?? ""
+      : "") ||
+    (message?.fileUrl || message?.file_url
+      ? t?.("messageBubble.attachmentFile") ?? ""
+      : "");
 
   return [sender, body].filter(Boolean).join(": ");
 };
@@ -238,21 +243,20 @@ export const getNotificationEventHighlightIds = (messages, eventTarget) => {
   return target?.id ? [target.id] : [];
 };
 
+// The conversation list's `lastMessage`: the text for a text message, and for
+// an attachment its data, never a sentence. This runs in hooks without `t` and
+// the result is kept in state, so a sentence built here would be English, or
+// stuck in the language of the moment it was built. `ConversationList` words
+// the attachment at render (and picks its icon from the data, not the text).
 export const buildConversationLastMessagePreview = (message) => {
   if (message?.content) return message.content;
 
-  const fileName = message?.fileName || message?.file_name;
-  const fileUrl = message?.fileUrl || message?.file_url;
-  const imageUrl = message?.imageUrl || message?.image_url;
+  const fileName = message?.fileName || message?.file_name || null;
+  const fileUrl = message?.fileUrl || message?.file_url || null;
+  const imageUrl = message?.imageUrl || message?.image_url || null;
 
-  if (imageUrl) {
-    return fileName ? `Image "${fileName}" sent` : "Image sent";
-  }
-
-  if (fileName || fileUrl) {
-    const ext = fileName?.split(".").pop()?.toLowerCase();
-    const label = ["xls", "xlsx", "csv"].includes(ext) ? "Spreadsheet" : "File";
-    return `${label} "${fileName || "attachment"}" sent`;
+  if (imageUrl || fileName || fileUrl) {
+    return { fileName, fileUrl, imageUrl };
   }
 
   return message?.content ?? "";
@@ -445,6 +449,10 @@ export const buildConversationSearchText = (conversation) => {
     conversation?.last_message,
     conversation?.lastMessage?.content,
     conversation?.last_message?.content,
+    // An attachment preview is data (buildConversationLastMessagePreview);
+    // its file name stays findable.
+    conversation?.lastMessage?.fileName,
+    conversation?.last_message?.fileName,
   ]);
 
   if (isTeam) {
