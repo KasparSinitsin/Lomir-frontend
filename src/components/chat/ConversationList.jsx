@@ -160,10 +160,9 @@ const pickFirst = (source, keys) => {
 
 const SPREADSHEET_EXTENSIONS = ["xls", "xlsx", "csv"];
 
-const getFileTypeLabel = (fileName) => {
+const getAttachmentKind = (fileName) => {
   const ext = fileName?.split(".").pop()?.toLowerCase();
-  if (SPREADSHEET_EXTENSIONS.includes(ext)) return "Spreadsheet";
-  return "File";
+  return SPREADSHEET_EXTENSIONS.includes(ext) ? "spreadsheet" : "file";
 };
 
 const normalizeFileName = (value) => {
@@ -184,38 +183,6 @@ const getAttachmentPreviewIcon = (attachmentPreview) => {
   if (["xls", "xlsx", "csv"].includes(extension)) return FileSpreadsheet;
 
   return File;
-};
-
-const getFormattedAttachmentPreview = (text) => {
-  const value = String(text || "");
-  const fileMatch = value.match(/^(?:File|Spreadsheet)\s+"(.+)"\s+sent$/);
-
-  if (fileMatch) {
-    return {
-      text: value,
-      type: "file",
-      fileName: fileMatch[1],
-    };
-  }
-
-  if (value === "Image sent") {
-    return {
-      text: value,
-      type: "image",
-    };
-  }
-
-  const imageMatch = value.match(/^Image\s+"(.+)"\s+sent$/);
-
-  if (imageMatch) {
-    return {
-      text: value,
-      type: "image",
-      fileName: imageMatch[1],
-    };
-  }
-
-  return null;
 };
 
 const getConversationLastMessagePayload = (conversation) => {
@@ -263,7 +230,7 @@ const getConversationLastMessageText = (conversation) => {
   ]) ?? "";
 };
 
-const getConversationAttachmentPreview = (conversation) => {
+const getConversationAttachmentPreview = (conversation, t) => {
   const candidates = getConversationMessagePayloadCandidates(conversation);
   const fileName = normalizeFileName(candidates
     .map((candidate) => pickFirst(candidate, FILE_NAME_KEYS))
@@ -275,19 +242,15 @@ const getConversationAttachmentPreview = (conversation) => {
     .map((candidate) => pickFirst(candidate, IMAGE_URL_KEYS))
     .find(Boolean);
 
-  if (imageUrl) {
+  // Worded here, at render, in the reader's language. `kind` is data; the
+  // icon is chosen from it, never from the sentence.
+  if (imageUrl || fileName || fileUrl) {
+    const kind = imageUrl ? "image" : getAttachmentKind(fileName);
     return {
-      text: fileName ? `Image "${fileName}" sent` : "Image sent",
-      type: "image",
-      fileName,
-    };
-  }
-
-  if (fileName || fileUrl) {
-    const label = getFileTypeLabel(fileName);
-    return {
-      text: `${label} "${fileName || "attachment"}" sent`,
-      type: "file",
+      text: fileName
+        ? t("chatPage.attachmentPreview.named", { kind, fileName })
+        : t("chatPage.attachmentPreview.unnamed", { kind }),
+      type: kind === "image" ? "image" : "file",
       fileName,
     };
   }
@@ -558,10 +521,11 @@ const ConversationList = ({
   }
 
   if (conversations.length === 0) {
-    const emptyTitle = emptyState?.title || "No conversations yet";
+    const emptyTitle = emptyState?.title || t("chatPage.emptyList.title");
+    // No button label is quoted: the button is named differently on a
+    // profile and on a team page, and a quoted label drifts from both.
     const emptyDescription =
-      emptyState?.description ||
-      `Start chatting with other people or team members by visiting their profile and clicking "Send Message"`;
+      emptyState?.description || t("chatPage.emptyList.description");
     const showEmptyActions = emptyState?.showActions !== false;
 
     return (
@@ -575,14 +539,14 @@ const ConversationList = ({
               className="btn btn-sm btn-primary gap-2"
             >
               <User size={16} />
-              Find People
+              {t("chatPage.emptyList.findPeople")}
             </Link>
             <Link
               to="/search?type=teams"
               className="btn btn-sm btn-primary gap-2"
             >
               <Users size={16} />
-              Find Teams
+              {t("chatPage.emptyList.findTeams")}
             </Link>
           </div>
         )}
@@ -628,7 +592,7 @@ const ConversationList = ({
           const isSearchActive = Boolean(searchQuery.trim());
           const lastMessageText = getConversationLastMessageText(conversation);
           const attachmentPreview =
-            getConversationAttachmentPreview(conversation);
+            getConversationAttachmentPreview(conversation, t);
           const eventPreview = getEventPreview(
             lastMessageText,
             currentUser,
@@ -659,13 +623,12 @@ const ConversationList = ({
             ? activeEventPreview.text
             : isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : attachmentPreview?.text || lastMessageText || "No messages yet";
-          const formattedAttachmentPreview =
-            !isSearchActive && !attachmentPreview
-              ? getFormattedAttachmentPreview(previewText)
-              : null;
-          const visibleAttachmentPreview =
-            attachmentPreview || formattedAttachmentPreview;
+              : attachmentPreview?.text ||
+                lastMessageText ||
+                (conversation.isVirtual && !isTeam
+                  ? t("chatPage.startConversation")
+                  : t("chatPage.noMessagesYet"));
+          const visibleAttachmentPreview = attachmentPreview;
           const hasConversationPreview = Boolean(
             shouldUseEventPreview ||
               visibleAttachmentPreview ||
@@ -861,9 +824,13 @@ const ConversationList = ({
                       <p className="text-sm text-base-content/70 truncate">
                         {renderPreviewWithMentions(previewText, searchQuery)}
                       </p>
+                    ) : conversation.isVirtual && !isTeam ? (
+                      <p className="text-sm text-base-content/70 truncate">
+                        {previewText}
+                      </p>
                     ) : (
                       <p className="text-sm text-base-content/50 truncate italic">
-                        This message was deleted.
+                        {t("messageBubble.messageDeleted")}
                       </p>
                     )}
                   </Tooltip>
@@ -935,13 +902,13 @@ const ConversationList = ({
 
                 {(!isActive || chatVisible) && (
                   <Tooltip
-                    content={isActive ? "Deselect Conversation" : "Open conversation"}
+                    content={isActive ? t("chatPage.deselectConversation") : t("chatPage.openConversation")}
                     position="top"
                     wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4"
                   >
                     <button
                       type="button"
-                      aria-label={isActive ? "Deselect Conversation" : "Open conversation"}
+                      aria-label={isActive ? t("chatPage.deselectConversation") : t("chatPage.openConversation")}
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectConversation(conversation.id);
@@ -964,7 +931,7 @@ const ConversationList = ({
           return (
             <Tooltip
               key={`${conversation.type}-${conversation.id}`}
-              content={isActive ? "Deselect Conversation" : undefined}
+              content={isActive ? t("chatPage.deselectConversation") : undefined}
               position="top"
               wrapperClassName="block"
             >

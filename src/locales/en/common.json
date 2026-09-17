@@ -308,7 +308,22 @@
     "searchCountSearching": "{filtered} of {total} chats · searching messages...",
     "searchNoResults": "No user names, team names, or messages match \"{query}\". Try a different search term.",
     "searchPlaceholder": "Search chats...",
-    "title": "Chats"
+    "title": "Chats",
+    "attachmentPreview": {
+      "named": "{kind, select, image {Image “{fileName}” sent} spreadsheet {Spreadsheet “{fileName}” sent} other {File “{fileName}” sent}}",
+      "unnamed": "{kind, select, image {Image sent} spreadsheet {Spreadsheet sent} other {File sent}}"
+    },
+    "noMessagesYet": "No messages yet",
+    "sendFirstMessage": "Send a message to start the conversation",
+    "startConversation": "Start your conversation…",
+    "emptyList": {
+      "title": "No conversations yet",
+      "description": "Start a chat from a person's profile or a team's page.",
+      "findPeople": "Find People",
+      "findTeams": "Find Teams"
+    },
+    "openConversation": "Open conversation",
+    "deselectConversation": "Deselect conversation"
   },
   "chatUploader": {
     "addAttachmentAria": "Add attachment",

@@ -51,13 +51,13 @@ import {
 // Stable empty fallback so the conversations query's default never changes
 // identity between renders (avoids needless re-renders / effect re-runs).
 const EMPTY_CONVERSATIONS = [];
-const EMPTY_DIRECT_CONVERSATION_PREVIEW = "Start your conversation...";
-
+// A direct chat opened from a profile before its first message exists: it has
+// no last message yet. Recognised by that, not by a placeholder sentence —
+// the list words "start your conversation" at render.
 const isTransientEmptyDirectConversation = (conversation) =>
   conversation?.type === "direct" &&
   conversation?.isVirtual &&
-  (conversation.lastMessage ?? conversation.last_message) ===
-    EMPTY_DIRECT_CONVERSATION_PREVIEW;
+  !(conversation.lastMessage ?? conversation.last_message);
 
 const Chat = () => {
   const { t } = useTranslation();
@@ -473,7 +473,7 @@ const Chat = () => {
             is_synthetic:
               userData.is_synthetic ?? userData.isSynthetic ?? undefined,
           },
-          lastMessage: EMPTY_DIRECT_CONVERSATION_PREVIEW,
+          lastMessage: "",
           updatedAt: new Date().toISOString(),
           isVirtual: true,
           unreadCount: 0,
