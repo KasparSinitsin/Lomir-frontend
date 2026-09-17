@@ -50,6 +50,7 @@ import {
 } from "../../constants/badgeConstants";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
+import { getTeamMemberCount, isTeamFull } from "../../utils/teamCapacity";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import UserAvatar from "../users/UserAvatar";
 import CardMetaItem from "../common/CardMetaItem";
@@ -1173,6 +1174,44 @@ const VacantRoleDetailsModal = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayRole, layoutRoleName, !!layoutRolePostedDate]);
 
+  // Opened from search or My Teams, the team here often carries neither member
+  // count nor maximum, so "full" could not be told. Load the team once, only
+  // where a button depends on it — apply (outsiders) and find matches
+  // (managers of an open role) — as TeamApplicationModal does for its header.
+  const [capacityTeam, setCapacityTeam] = useState(null);
+  const teamHasCapacityFields =
+    getTeamMemberCount(team) !== null &&
+    (team?.max_members !== undefined || team?.maxMembers !== undefined);
+  const shouldLoadCapacity =
+    Boolean(isOpen) &&
+    !hideActions &&
+    teamId != null &&
+    !teamHasCapacityFields &&
+    ((isAuthenticated && !viewerIsTeamMember) || (canManage && isRoleOpen));
+
+  useEffect(() => {
+    if (!shouldLoadCapacity) {
+      setCapacityTeam(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    teamService
+      .getTeamById(teamId)
+      .then((response) => {
+        if (!cancelled) setCapacityTeam(response?.data ?? response ?? null);
+      })
+      .catch((err) => {
+        // Unknown capacity never blocks: the backend still answers TEAM_FULL.
+        console.warn("Could not load team capacity for role details:", err);
+        if (!cancelled) setCapacityTeam(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldLoadCapacity, teamId]);
+
   if (!displayRole) return null;
 
   // Normalize camelCase/snake_case
@@ -1281,6 +1320,7 @@ const VacantRoleDetailsModal = ({
       team?.avatarUrl ??
       teamAvatarUrl,
   };
+  const teamIsAtCapacity = isTeamFull(capacityTeam ?? applicationTeam);
 
   const creatorFirstName =
     displayRole.creatorFirstName ?? displayRole.creator_first_name;
@@ -1939,11 +1979,20 @@ const VacantRoleDetailsModal = ({
               </Tooltip>
             )}
             {canFindRoleMatches && (
-              <Tooltip content={t("teams:vacantRoleDetails.findMatchesTooltip")}>
+              // Matches are people outside the team; a full team cannot take
+              // them, so the button is muted and says why.
+              <Tooltip
+                content={
+                  teamIsAtCapacity
+                    ? t("teams:vacantRoleDetails.findMatchesTeamFull")
+                    : t("teams:vacantRoleDetails.findMatchesTooltip")
+                }
+              >
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => window.open(buildSearchUrl(), "_blank")}
+                  disabled={teamIsAtCapacity}
                   className="flex items-center gap-1"
                 >
                   <UserSearch size={16} />
@@ -3217,6 +3266,9 @@ const VacantRoleDetailsModal = ({
                       team={applicationTeam}
                       teamId={teamId}
                       roleId={roleId}
+                      // The loaded team when the passed one lacked the counts,
+                      // else the merged team.
+                      teamIsFull={teamIsAtCapacity}
                       className="w-full"
                       buttonLabel={t("teams:vacantRoleDetails.applyToJoinAndFill")}
                       onSuccess={(applicationData, submitResponse) => {

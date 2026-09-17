@@ -223,7 +223,8 @@
   },
   "applicationButton": {
     "defaultLabel": "Apply to Join Team",
-    "submitFailed": "Failed to submit application"
+    "submitFailed": "Failed to submit application",
+    "teamFull": "This team has reached its maximum number of members."
   },
   "applicationForm": {
     "title": "Apply to join this Team",
@@ -264,7 +265,7 @@
     "preset": "Preset",
     "custom": "Custom",
     "unlimited": "Unlimited",
-    "minPlaceholder": "min. 2",
+    "minPlaceholder": "min. {count}",
     "noMemberLimit": "No member limit",
     "removeTeamPicture": "Remove Team Picture",
     "avatarRemoveFailed": "Failed to remove team picture. Please try again.",
@@ -294,7 +295,8 @@
     "saving": "Saving...",
     "creating": "Creating...",
     "createTeam": "Create Team",
-    "focusAreasPrompt": "What does this team focus on? (Optional)"
+    "focusAreasPrompt": "What does this team focus on? (Optional)",
+    "maxMembersMinimumHint": "At least {count}: the team already has that many members."
   },
   "applicationDetails": {
     "titleTeam": "Team Application",
@@ -497,6 +499,7 @@
     "closeRoleTooltip": "Close this role — stop accepting new applicants",
     "reopenRoleTooltip": "Reopen this role to accept new applicants",
     "findMatchesTooltip": "Find matching people outside this team",
+    "findMatchesTeamFull": "This team has reached its maximum number of members, so no one outside it can join.",
     "findMatches": "Find Matches",
     "loadingDetails": "Loading full role details...",
     "viewProfileOf": "Click to view {name}'s profile",
@@ -570,6 +573,7 @@
     "roleInvitationWithdrawn": "This role invitation has already been withdrawn. The team invitation is still open.",
     "inviteeHasPendingApplication": "This person has already applied to this team. You can answer their application instead.",
     "applicationAlreadyPending": "You have already sent this application. It is still waiting for a response.",
-    "applicationUnavailable": "This application is no longer available. It may have been handled or withdrawn."
+    "applicationUnavailable": "This application is no longer available. It may have been handled or withdrawn.",
+    "maxMembersBelowMemberCount": "This team already has {count, plural, one {# member} other {# members}}. The maximum cannot be lower."
   }
 }

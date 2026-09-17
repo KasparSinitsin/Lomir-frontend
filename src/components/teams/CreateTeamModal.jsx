@@ -630,7 +630,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                         className="input input-bordered w-full"
                         value={formData.maxMembers ?? ""}
                         onChange={handleChange}
-                        placeholder={t("teams:teamForm.minPlaceholder")}
+                        placeholder={t("teams:teamForm.minPlaceholder", { count: 2 })}
                         disabled={loading}
                       />
                     )}

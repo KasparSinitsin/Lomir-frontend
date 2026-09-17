@@ -23,6 +23,8 @@ import Button from "../common/Button";
 import SendMessageButton from "../common/SendMessageButton";
 import ScreenAlert from "../common/ScreenAlert";
 import Tooltip from "../common/Tooltip";
+import { getTeamMemberCount, isTeamFull } from "../../utils/teamCapacity";
+import { getTeamErrorCode, getTeamErrorText } from "../../utils/teamErrorText";
 import TagDisplay from "../common/TagDisplay";
 import LocationDisplay from "../common/LocationDisplay";
 import { uploadToImageKit } from "../../config/imagekit";
@@ -993,8 +995,17 @@ const TeamDetailsModal = ({
     }
 
     // Only validate maxMembers if it's not unlimited (null)
+    const memberCount = getTeamMemberCount(team);
     if (formData.maxMembers !== null && formData.maxMembers < 2) {
       errors.maxMembers = t("teams:teamDetails.sizeTooSmall");
+    } else if (
+      formData.maxMembers !== null &&
+      Number.isFinite(memberCount) &&
+      formData.maxMembers < memberCount
+    ) {
+      errors.maxMembers = t("teams:teamErrors.maxMembersBelowMemberCount", {
+        count: memberCount,
+      });
     }
 
     setFormErrors(errors);
@@ -1121,7 +1132,13 @@ const TeamDetailsModal = ({
       console.error("Error updating team:", err);
 
       let errorMessage = t("teams:teamDetails.updateFailed");
-      if (err.response?.data?.errors && err.response.data.errors.length > 0) {
+      if (getTeamErrorCode(err)) {
+        // A stale form: someone joined while it was open.
+        errorMessage = getTeamErrorText(err, t, errorMessage);
+        if (getTeamErrorCode(err) === "MAX_MEMBERS_BELOW_MEMBER_COUNT") {
+          setFormErrors((prev) => ({ ...prev, maxMembers: errorMessage }));
+        }
+      } else if (err.response?.data?.errors && err.response.data.errors.length > 0) {
         errorMessage = `Error: ${err.response.data.errors[0]}`;
       } else if (err.response?.data?.message) {
         errorMessage = `Error: ${err.response.data.message}`;
@@ -1393,6 +1410,7 @@ const TeamDetailsModal = ({
             team={team}
             teamId={effectiveTeamId}
             disabled={loading}
+            teamIsFull={isTeamFull(team)}
             className="w-full"
             onAfterSubmit={fetchTeamDetails}
             onSuccess={handleTeamApplicationSuccess}
@@ -1582,11 +1600,20 @@ const TeamDetailsModal = ({
         </Tooltip>
       )}
       {shouldShowHeaderApplyButton && (
-        <Tooltip content={t("teams:teamDetails.applyTooltip")} position="bottom">
+        <Tooltip
+          content={
+            isTeamFull(team)
+              ? t("teams:applicationButton.teamFull")
+              : t("teams:teamDetails.applyTooltip")
+          }
+          position="bottom"
+        >
           <TeamApplicationButton
             team={team}
             teamId={effectiveTeamId}
             disabled={loading}
+            teamIsFull={isTeamFull(team)}
+            showFullTooltip={false}
             variant="ghost"
             size="sm"
             className="flex items-center gap-1"
@@ -1636,6 +1663,7 @@ const TeamDetailsModal = ({
                 setFormData={setFormData}
                 formErrors={formErrors}
                 setFormErrors={setFormErrors}
+                memberCount={getTeamMemberCount(team)}
                 onSubmit={handleSubmit}
                 onCancel={() => setIsEditing(false)}
                 onDelete={canDeleteTeam ? handleDeleteTeam : undefined}
