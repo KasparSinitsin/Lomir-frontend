@@ -646,16 +646,19 @@ const SearchPage = () => {
     };
   }, []);
 
+  // Labels and tooltips are display only: `getSortOptionDisplay` passes them
+  // through, and every decision reads `value`. Labels shared with the criteria
+  // pills reuse the pill's key, so the menu and the pill say the same.
   const sortOptions = [
     {
       value: "name",
       defaultDir: "asc",
-      labelAsc: "Name (A-Z)",
-      labelDesc: "Name (Z-A)",
-      shortLabelAsc: "A-Z",
-      shortLabelDesc: "Z-A",
-      tooltipAsc: "Sort alphabetically from A to Z",
-      tooltipDesc: "Sort alphabetically from Z to A",
+      labelAsc: t("searchPage.sort.nameAsc"),
+      labelDesc: t("searchPage.sort.nameDesc"),
+      shortLabelAsc: t("searchPage.sort.nameAscShort"),
+      shortLabelDesc: t("searchPage.sort.nameDescShort"),
+      tooltipAsc: t("searchPage.sort.nameAscTooltip"),
+      tooltipDesc: t("searchPage.sort.nameDescTooltip"),
       iconAsc: ArrowDownAZ,
       iconDesc: ArrowUpZA,
       teamsOnly: false,
@@ -663,12 +666,12 @@ const SearchPage = () => {
     {
       value: "recent",
       defaultDir: "desc",
-      labelAsc: "Inactive",
-      labelDesc: "Active",
-      shortLabelAsc: "Inactive",
-      shortLabelDesc: "Active",
-      tooltipAsc: "Show the least recently active results first",
-      tooltipDesc: "Show the most recently active results first",
+      labelAsc: t("searchCriteria.sort.recentAsc"),
+      labelDesc: t("searchCriteria.sort.recentDesc"),
+      shortLabelAsc: t("searchCriteria.sort.recentAsc"),
+      shortLabelDesc: t("searchCriteria.sort.recentDesc"),
+      tooltipAsc: t("searchPage.sort.recentAscTooltip"),
+      tooltipDesc: t("searchPage.sort.recentDescTooltip"),
       iconAsc: Clock,
       iconDesc: Clock,
       teamsOnly: false,
@@ -676,12 +679,12 @@ const SearchPage = () => {
     {
       value: "newest",
       defaultDir: "desc",
-      labelAsc: "Oldest",
-      labelDesc: "Newest",
-      shortLabelAsc: "Oldest",
-      shortLabelDesc: "New",
-      tooltipAsc: "Show the oldest results first",
-      tooltipDesc: "Show the newest results first",
+      labelAsc: t("searchCriteria.sort.newestAsc"),
+      labelDesc: t("searchCriteria.sort.newestDesc"),
+      shortLabelAsc: t("searchCriteria.sort.newestAsc"),
+      shortLabelDesc: t("searchPage.sort.newestDescShort"),
+      tooltipAsc: t("searchPage.sort.newestAscTooltip"),
+      tooltipDesc: t("searchPage.sort.newestDescTooltip"),
       iconAsc: Sparkles,
       iconDesc: Sparkles,
       teamsOnly: false,
@@ -689,9 +692,9 @@ const SearchPage = () => {
     {
       value: "match",
       defaultDir: "asc",
-      labelAsc: "Best Match",
-      shortLabelAsc: "Match",
-      tooltipAsc: "Sort results by how well they match your profile",
+      labelAsc: t("searchCriteria.sort.match"),
+      shortLabelAsc: t("searchPage.sort.matchShort"),
+      tooltipAsc: t("searchPage.sort.matchTooltip"),
       iconAsc: Target,
       authOnly: true,
     },
@@ -699,12 +702,12 @@ const SearchPage = () => {
       value: "locationPriority",
       sortValue: "proximity",
       defaultDir: "asc",
-      labelAsc: "Nearest",
-      labelRemote: "Remote First",
-      shortLabelAsc: "Near",
-      shortLabelRemote: "Remote 1st",
-      tooltipAsc: "Keep nearby results ahead of remote-friendly results",
-      tooltipRemote: "Show remote-friendly results first",
+      labelAsc: t("searchPage.sort.nearest"),
+      labelRemote: t("searchCriteria.sort.remoteFirst"),
+      shortLabelAsc: t("searchCriteria.sort.nearestFirstShort"),
+      shortLabelRemote: t("searchPage.sort.remoteFirstShort"),
+      tooltipAsc: t("searchPage.sort.nearestTooltip"),
+      tooltipRemote: t("searchPage.sort.remoteFirstTooltip"),
       iconAsc: MapPin,
       iconRemote: Globe,
       requiresCoordinates: true,
@@ -713,20 +716,20 @@ const SearchPage = () => {
       value: "proximity",
       defaultDir: "asc",
       filterOnly: true,
-      labelAsc: "Distance",
-      shortLabelAsc: "Distance",
-      tooltipAsc: "Filter results by distance from your location",
+      labelAsc: t("searchPage.sort.distance"),
+      shortLabelAsc: t("searchPage.sort.distance"),
+      tooltipAsc: t("searchPage.sort.distanceTooltip"),
       iconAsc: Radius,
     },
     {
       value: "capacity",
       defaultDir: "desc",
-      labelAsc: "Almost Full",
-      labelDesc: "Most Spots",
-      shortLabelAsc: "Full",
-      shortLabelDesc: "Spots",
-      tooltipAsc: "Show teams with the fewest open spots first\nTeams only",
-      tooltipDesc: "Show teams with the most open spots first\nTeams only",
+      labelAsc: t("searchCriteria.sort.spotsAsc"),
+      labelDesc: t("searchCriteria.sort.spotsDesc"),
+      shortLabelAsc: t("searchPage.sort.spotsAscShort"),
+      shortLabelDesc: t("searchPage.sort.spotsDescShort"),
+      tooltipAsc: t("searchPage.sort.spotsAscTooltip"),
+      tooltipDesc: t("searchPage.sort.spotsDescTooltip"),
       iconAsc: UserMinus,
       iconDesc: UserPlus,
       teamsOnly: true,
@@ -1203,7 +1206,7 @@ const SearchPage = () => {
   const focusAreaPills = filterTagIds.map((id) => ({
     key: `tag-${id}`,
     id,
-    label: filterTagMap[id]?.name || `Tag ${id}`,
+    label: filterTagMap[id]?.name || t("searchPage.pillFallback.tag", { id }),
     category: filterTagMap[id]?.category || "",
     supercategory: filterTagMap[id]?.supercategory || "",
   }));
@@ -1212,7 +1215,7 @@ const SearchPage = () => {
     .map((id) => ({
       key: `badge-${id}`,
       id,
-      label: filterBadgeMap[id]?.name || `Badge ${id}`,
+      label: filterBadgeMap[id]?.name || t("searchPage.pillFallback.badge", { id }),
       category: filterBadgeMap[id]?.category || "",
     }))
     .sort((a, b) => {
@@ -1936,9 +1939,7 @@ const SearchPage = () => {
   const renderSortFilterToggle = (wrapperClassName = "inline-flex items-center") => (
     <Tooltip
       content={
-        showSortDropdown
-          ? "Hide Filtering & Sorting Options"
-          : "Show Filtering & Sorting Options"
+        showSortDropdown ? t("searchPage.menu.hide") : t("searchPage.menu.show")
       }
       wrapperClassName={wrapperClassName}
     >
@@ -1947,9 +1948,7 @@ const SearchPage = () => {
         onClick={handleSortDropdownToggle}
         className="shrink-0 rounded-lg p-0.5 sm:p-1 transition-colors"
         aria-label={
-          showSortDropdown
-            ? "Hide Filtering & Sorting Options"
-            : "Show Filtering & Sorting Options"
+          showSortDropdown ? t("searchPage.menu.hide") : t("searchPage.menu.show")
         }
       >
         <SlidersHorizontal
@@ -2007,21 +2006,33 @@ const SearchPage = () => {
   const renderFilterOptionsToggle = ({ reduced = false, collapseLabel = false } = {}) => (
     <Tooltip
       content={
-        showFilterOptions ? "Click to hide filters" : "Show filter controls"
+        showFilterOptions
+          ? t("searchPage.menu.hideFiltersTooltip")
+          : t("searchPage.menu.showFiltersTooltip")
       }
       wrapperClassName="inline-flex items-center shrink-0"
     >
       <FilterSortOptionButton
         onClick={handleFilterOptionsToggle}
         icon={Filter}
-        label={showFilterOptions ? "Hide Filters:" : "Show Filters ..."}
-        mobileLabel={showFilterOptions ? "Hide Filters:" : "Filters ..."}
+        label={
+          showFilterOptions
+            ? t("searchPage.menu.hideFilters")
+            : t("searchPage.menu.showFilters")
+        }
+        mobileLabel={
+          showFilterOptions
+            ? t("searchPage.menu.hideFilters")
+            : t("searchPage.menu.showFiltersShort")
+        }
         active={isFilterOptionsActive}
         disabled={loading}
         iconClassName={getReducedMenuIconClassName(reduced)}
         collapseLabel={collapseLabel && !isFilterOptionsActive}
         aria-label={
-          showFilterOptions ? "Hide filter controls" : "Show filter controls"
+          showFilterOptions
+            ? t("searchPage.menu.hideFiltersAria")
+            : t("searchPage.menu.showFiltersTooltip")
         }
       />
     </Tooltip>
@@ -2045,7 +2056,7 @@ const SearchPage = () => {
       >
         <div
           role="group"
-          aria-label="Sort options"
+          aria-label={t("searchPage.menu.sortGroup")}
           className="contents"
         >
           {visibleSortingOptions.map((option) =>
@@ -2065,7 +2076,7 @@ const SearchPage = () => {
           {renderFilterOptionsToggle({ reduced: inline, collapseLabel })}
           <div
             role="group"
-            aria-label="Filter options"
+            aria-label={t("searchPage.menu.filterGroup")}
             className="contents"
           >
             {visibleFilterOptions.map((option) =>
@@ -2076,14 +2087,14 @@ const SearchPage = () => {
           {showIncludeOwnTeamsFilter && (
             <div
               role="group"
-              aria-label="Search filters"
+              aria-label={t("searchPage.menu.searchFilters")}
               className="contents"
             >
               <Tooltip
                 content={
                   effectiveIncludeOwnTeams
-                    ? "Include My Teams"
-                    : "Exclude My Teams"
+                    ? t("searchPage.menu.includeMyTeams")
+                    : t("searchCriteria.myTeamsRemove")
                 }
                 wrapperClassName="inline-flex items-center shrink-0"
               >
@@ -2091,7 +2102,7 @@ const SearchPage = () => {
                   onClick={handleIncludeOwnTeamsToggle}
                   icon={IncludeOwnTeamsIcon}
                   prefix={effectiveIncludeOwnTeams ? "+" : "-"}
-                  label="My Teams"
+                  label={t("searchCriteria.myTeams")}
                   active={!effectiveIncludeOwnTeams}
                   disabled={loading}
                   iconClassName={getReducedMenuIconClassName(inline)}
@@ -2102,8 +2113,8 @@ const SearchPage = () => {
                   )}
                   aria-label={
                     effectiveIncludeOwnTeams
-                      ? "Include My Teams"
-                      : "Exclude My Teams"
+                      ? t("searchPage.menu.includeMyTeams")
+                      : t("searchCriteria.myTeamsRemove")
                   }
                 />
               </Tooltip>
@@ -2112,14 +2123,14 @@ const SearchPage = () => {
 
           <div
             role="group"
-            aria-label="Demo data filter"
+            aria-label={t("searchPage.menu.demoGroup")}
             className="contents"
           >
             <Tooltip
               content={
                 includeDemoData
-                  ? "Include test/demo profiles, roles and teams"
-                  : "Show only real users, roles and teams"
+                  ? t("searchPage.menu.includeDemo")
+                  : t("searchPage.menu.excludeDemo")
               }
               wrapperClassName="inline-flex items-center shrink-0"
             >
@@ -2134,8 +2145,8 @@ const SearchPage = () => {
                 }}
                 icon={FlaskConical}
                 prefix={includeDemoData ? "+" : "-"}
-                label="Demo Data"
-                mobileLabel="Demo"
+                label={t("searchPage.menu.demoData")}
+                mobileLabel={t("searchCriteria.demo")}
                 active={!includeDemoData}
                 disabled={loading}
                 iconClassName={getReducedMenuIconClassName(inline)}
@@ -2146,8 +2157,8 @@ const SearchPage = () => {
                 )}
                 aria-label={
                   includeDemoData
-                    ? "Include test/demo profiles, roles and teams"
-                    : "Show only real users, roles and teams"
+                    ? t("searchPage.menu.includeDemo")
+                    : t("searchPage.menu.excludeDemo")
                 }
               />
             </Tooltip>
@@ -2177,8 +2188,8 @@ const SearchPage = () => {
               }`}
             >
               {isCapacityRolesSort && sortDir === "asc"
-                ? "Least Roles"
-                : "Most Roles"}
+                ? t("searchPage.sort.leastRoles")
+                : t("searchPage.sort.mostRoles")}
             </button>
 
             <button
@@ -2192,7 +2203,7 @@ const SearchPage = () => {
                   : "text-[var(--color-primary-focus)] hover:text-[var(--color-primary-focus)] hover:font-medium"
               }`}
             >
-              Roles only
+              {t("searchPage.sort.rolesOnly")}
             </button>
           </div>
         )}
@@ -2346,8 +2357,8 @@ const SearchPage = () => {
     <PageContainer
       title={
         <>
-          <span className="inline-block">Find teams, people</span>{" "}
-          <span className="inline-block">or open roles</span>
+          <span className="inline-block">{t("searchPage.title.line1")}</span>{" "}
+          <span className="inline-block">{t("searchPage.title.line2")}</span>
         </>
       }
       titleAlignment="center"
@@ -2366,7 +2377,7 @@ const SearchPage = () => {
               aria-pressed={searchType === "all"}
               onClick={() => handleToggleChange("all")}
             >
-              All
+              {t("searchPage.types.all")}
             </button>
 
             <button
@@ -2376,13 +2387,13 @@ const SearchPage = () => {
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
-              data-tip="Teams"
-              aria-label="Teams"
+              data-tip={t("searchPage.types.teams")}
+              aria-label={t("searchPage.types.teams")}
               aria-pressed={searchType === "teams"}
               onClick={() => handleToggleChange("teams")}
             >
               <Users2 className="w-4 h-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">Teams</span>
+              <span className="sr-only sm:not-sr-only">{t("searchPage.types.teams")}</span>
             </button>
 
             <button
@@ -2392,13 +2403,13 @@ const SearchPage = () => {
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
-              data-tip="People"
-              aria-label="People"
+              data-tip={t("searchPage.types.people")}
+              aria-label={t("searchPage.types.people")}
               aria-pressed={searchType === "users"}
               onClick={() => handleToggleChange("users")}
             >
               <User className="w-4 h-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">People</span>
+              <span className="sr-only sm:not-sr-only">{t("searchPage.types.people")}</span>
             </button>
 
             <button
@@ -2408,13 +2419,13 @@ const SearchPage = () => {
                   ? "btn-primary"
                   : "btn-ghost hover:bg-base-200"
               }`}
-              data-tip="Open Roles"
-              aria-label="Open Roles"
+              data-tip={t("searchPage.types.roles")}
+              aria-label={t("searchPage.types.roles")}
               aria-pressed={searchType === "roles"}
               onClick={() => handleToggleChange("roles")}
             >
               <UserSearch className="w-4 h-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">Open Roles</span>
+              <span className="sr-only sm:not-sr-only">{t("searchPage.types.roles")}</span>
             </button>
           </div>
         </div>
@@ -2433,17 +2444,19 @@ const SearchPage = () => {
                   onSearch={handleBooleanSearch}
                   placeholder={
                     matchRoleId
-                      ? `Finding people matching the "${matchRoleName || "Vacant Role"}" role — type to narrow`
+                      ? t("searchPage.placeholder.roleMatch", {
+                          role:
+                            matchRoleName ||
+                            t("roleStatus.vacantRoleFallback"),
+                        })
                       : sortBy === "match"
-                        ? "Matching results to your profile — type to narrow"
-                        : "Try: hiking AND photography, or hiking NOT photography"
+                        ? t("searchPage.placeholder.match")
+                        : t("searchPage.placeholder.default")
                   }
                   compactPlaceholder={
-                    matchRoleId
-                      ? "Type to narrow results..."
-                      : sortBy === "match"
-                        ? "Type to narrow results..."
-                        : "Try: hiking AND photo"
+                    matchRoleId || sortBy === "match"
+                      ? t("searchPage.placeholder.narrowCompact")
+                      : t("searchPage.placeholder.defaultCompact")
                   }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
@@ -2464,12 +2477,12 @@ const SearchPage = () => {
                   }
                   wrappedControlsExpanded={showSortDropdown}
                   leftAdornment={
-                    <Tooltip content="Clear search input" position="top">
+                    <Tooltip content={t("searchPage.clearInput")} position="top">
                       <button
                         type="button"
                         onClick={handleResetSearchInput}
                         className="inline-flex h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
-                        aria-label="Clear search input"
+                        aria-label={t("searchPage.clearInput")}
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>
@@ -2499,8 +2512,7 @@ const SearchPage = () => {
           showNoResultsAlert
             ? {
                 type: "violet",
-                message:
-                  "No teams, users or Roles found matching this search query. Try a different search term.",
+                message: t("searchPage.noResults"),
                 onClose: () => setDismissedNoResultsAlertKey(noResultsAlertKey),
               }
             : null,
@@ -2525,20 +2537,23 @@ const SearchPage = () => {
               <div className="flex flex-wrap items-start sm:items-center justify-between gap-x-4 gap-y-1 mb-4">
                 <h2 className="flex flex-wrap items-center gap-x-2 text-sm leading-[1.15] font-semibold">
                   <span className="whitespace-nowrap">
-                    {searchType === "all" && "All"}
-                    {searchType === "teams" && "Teams"}
-                    {searchType === "users" && "People"}
-                    {searchType === "roles" && "Open Roles"}
+                    {searchType === "all" && t("searchPage.types.all")}
+                    {searchType === "teams" && t("searchPage.types.teams")}
+                    {searchType === "users" && t("searchPage.types.people")}
+                    {searchType === "roles" && t("searchPage.types.roles")}
                   </span>
                   <span className="whitespace-nowrap text-sm font-normal text-base-content/60">
                     (
-                    {searchType === "all"
-                      ? `${effectivePagination.totalItems} results`
-                      : searchType === "teams"
-                        ? `${effectivePagination.totalTeams} results`
-                        : searchType === "users"
-                          ? `${effectivePagination.totalUsers} results`
-                          : `${effectivePagination.totalRoles} results`}
+                    {t("searchPage.resultCount", {
+                      count:
+                        searchType === "all"
+                          ? effectivePagination.totalItems
+                          : searchType === "teams"
+                            ? effectivePagination.totalTeams
+                            : searchType === "users"
+                              ? effectivePagination.totalUsers
+                              : effectivePagination.totalRoles,
+                    })}
                     )
                   </span>
                 </h2>
