@@ -94,7 +94,7 @@ const content = {
           "Nachrichten und Benachrichtigungen: Direktnachrichten, Team-Nachrichten, Erwähnungen, Tipp- und Lesestatus-Anzeigen, Systemnachrichten, Benachrichtigungseinträge und Nachrichten-Metadaten.",
           "Uploads: Profil-Avatare, Team-Avatare, Chat-Bilder, Chat-Dateien und Anhänge des Kontaktformulars.",
           "Standortdaten: Postleitzahl, Stadt, Bezirk, Bundesland, Land und Koordinaten, die aus den von einem Nutzer angegebenen Standortdaten ermittelt werden. Lomir fragt nicht nach einer Straßenadresse. Postleitzahl und andere Standortangaben werden als ungefähre Standortinformationen für die Suche, entfernungsbasiertes Matching, Empfehlungen und die Standortanzeige bei Profilen, Teams und Rollen verwendet. Je nach Sichtbarkeitseinstellungen und Funktionskontext können Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere Nutzer sichtbar sein. Öffentliche Such- und Kartenergebnisse zeigen gerundete, ungefähre Koordinaten, nicht die exakt gespeicherten Koordinaten.",
-          "Kontakt- und Meldedaten: Name, E-Mail-Adresse, Thema, Nachricht, optionale Anhänge des Kontaktformulars, Vorgangsnummern von Meldungen, Meldestatus, Status der E-Mail-Weiterleitung und Metadaten von Anhängen bei Meldungen von Missbrauch oder rechtswidrigen Inhalten.",
+          "Kontakt- und Meldedaten: Name, E-Mail-Adresse, Thema, Nachricht, optionale Anhänge des Kontaktformulars, Vorgangs-IDs von Meldungen, Meldestatus, Status der E-Mail-Weiterleitung und Metadaten von Anhängen bei Meldungen von Missbrauch oder rechtswidrigen Inhalten.",
           "Sicherheits- und technische Daten: IP-bezogene Anfragedaten, die von Hosting-Anbietern verarbeitet werden, Browser- und Gerätemetadaten in Server-Logs, Daten zur Ratenbegrenzung, CAPTCHA-Verifizierungsdaten, soweit aktiviert, Sitzungs- und Authentifizierungsdaten sowie Speicherungen im Browser, die für das Funktionieren der App erforderlich sind.",
         ],
       },
@@ -234,7 +234,7 @@ const content = {
   terms: {
     title: "Nutzungsbedingungen",
     intro:
-      "Diese Nutzungsbedingungen regeln die Nutzung von Lomir. Durch das Erstellen eines Kontos oder die Nutzung der App stimmst du diesen Bedingungen zu.",
+      "Diese Nutzungsbedingungen regeln die Nutzung von Lomir. Durch das Erstellen eines Accounts oder die Nutzung der App stimmst du diesen Bedingungen zu.",
     sections: [
       {
         title: "1. Anbieter",
@@ -252,17 +252,17 @@ const content = {
       {
         title: "3. Berechtigung",
         paragraphs: [
-          "Du darfst ein Konto erstellen und Lomir nutzen, nur wenn du mindestens 16 Jahre alt bist. Du musst korrekte Kontodaten angeben und deine Anmeldedaten sicher aufbewahren.",
+          "Du darfst einen Account erstellen und Lomir nutzen, nur wenn du mindestens 16 Jahre alt bist. Du musst korrekte Account-Daten angeben und deine Anmeldedaten sicher aufbewahren.",
         ],
       },
       {
-        title: "4. Kontoregeln",
+        title: "4. Account-Regeln",
         items: [
-          "Erstelle keine Konten für andere Personen ohne deren Erlaubnis.",
-          "Gib kein Passwort, Anmeldelinks, Bestätigungscodes oder andere Kontodaten weiter.",
+          "Erstelle keine Accounts für andere Personen ohne deren Erlaubnis.",
+          "Gib kein Passwort, Anmeldelinks, Bestätigungscodes oder andere Account-Daten weiter.",
           "Nutze Lomir nicht, um andere zu belästigen, zu täuschen, Spam zu versenden, zu bedrohen oder gegen Gesetze zu diskriminieren.",
           "Lade keine Malware, illegale Inhalte, vertrauliche Informationen Dritter oder Inhalte hoch, die Rechte an geistigem Eigentum verletzen.",
-          "Versuche nicht, Sicherheitsvorkehrungen zu umgehen, private Daten abzugreifen oder ohne Autorisierung auf Konten, Teams, Nachrichten oder API-Endpunkte zuzugreifen.",
+          "Versuche nicht, Sicherheitsvorkehrungen zu umgehen, private Daten abzugreifen oder ohne Autorisierung auf Accounts, Teams, Nachrichten oder API-Endpunkte zuzugreifen.",
         ],
       },
       {
@@ -283,11 +283,11 @@ const content = {
       {
         title: "7. Meldung von illegalen Inhalten und Missbrauch",
         paragraphs: [
-          <>Falls du der Meinung bist, dass Inhalte, ein Konto, ein Team, eine Nachricht oder ein Upload auf Lomir rechtswidrig, missbräuchlich, belästigend, Spam, Malware, rechtsverletzend, die Privatsphäre verletzend oder sonst gegen diese Nutzungsbedingungen verstößt, melde dies bitte über die {contactLink} oder per E-Mail an {mailLink}.</>,
+          <>Falls du der Meinung bist, dass Inhalte, ein Account, ein Team, eine Nachricht oder ein Upload auf Lomir rechtswidrig, missbräuchlich, belästigend, Spam, Malware, rechtsverletzend, die Privatsphäre verletzend oder sonst gegen diese Nutzungsbedingungen verstößt, melde dies bitte über die {contactLink} oder per E-Mail an {mailLink}.</>,
           "Meldungen sollten ausreichend Informationen enthalten, um das Problem zu lokalisieren und zu prüfen, z. B. Benutzernamen, Teamnamen, Nachrichtenkontext, Links, Screenshots, den Grund der Meldung und eine Kontakt-E-Mail. Bitte reichst du Meldungen in gutem Glauben ein.",
-          "Meldungen, die über das Kontaktformular eingereicht werden, werden mit einer Referenz-ID aufgezeichnet, damit Lomir sie auch dann empfangen und nachverfolgen kann, wenn die E-Mail-Weiterleitung vorübergehend nicht verfügbar ist.",
-          "Lomir kann gemeldete Inhalte oder Konten prüfen und Inhalte einschränken, entfernen oder löschen; Konten sperren oder löschen; betroffene Nutzer kontaktieren; Informationen speichern, falls erforderlich; oder Angelegenheiten an zuständige Behörden melden, falls dies gesetzlich vorgeschrieben oder notwendig ist, um Nutzer, die App oder Dritte zu schützen.",
-          <>Falls dein Inhalt oder Konto eingeschränkt wurde und du der Meinung bist, dass dies ein Fehler war, kannst du Lomir über die {contactLink} oder per E-Mail an {mailLink} kontaktieren.</>,
+          "Meldungen, die über das Kontaktformular eingereicht werden, werden mit einer Vorgangs-ID aufgezeichnet, damit Lomir sie auch dann empfangen und nachverfolgen kann, wenn die E-Mail-Weiterleitung vorübergehend nicht verfügbar ist.",
+          "Lomir kann gemeldete Inhalte oder Accounts prüfen und Inhalte einschränken, entfernen oder löschen; Accounts sperren oder löschen; betroffene Nutzer kontaktieren; Informationen speichern, falls erforderlich; oder Angelegenheiten an zuständige Behörden melden, falls dies gesetzlich vorgeschrieben oder notwendig ist, um Nutzer, die App oder Dritte zu schützen.",
+          <>Falls dein Inhalt oder Account eingeschränkt wurde und du der Meinung bist, dass dies ein Fehler war, kannst du Lomir über die {contactLink} oder per E-Mail an {mailLink} kontaktieren.</>,
         ],
       },
       {
@@ -298,9 +298,9 @@ const content = {
         ],
       },
       {
-        title: "9. Kontolöschung",
+        title: "9. Account-Löschung",
         paragraphs: [
-          "Du kannst dein Konto in der App löschen. Die Löschung des Kontos ist endgültig intendiert: Dein Profil und Direktnachrichten, an denen du beteiligt bist, werden sofort nach Bestätigung gelöscht. Einige Team- und Badge-Kontexte können in anonymisierter Form oder als Systemnachricht erhalten bleiben, damit die Teamhistorie und der Zusammenarbeitskontext anderer Nutzer verständlich bleiben.",
+          "Du kannst deinen Account in der App löschen. Die Löschung des Accounts ist endgültig intendiert: Dein Profil und Direktnachrichten, an denen du beteiligt bist, werden sofort nach Bestätigung gelöscht. Einige Team- und Badge-Kontexte können in anonymisierter Form oder als Systemnachricht erhalten bleiben, damit die Teamhistorie und der Zusammenarbeitskontext anderer Nutzer verständlich bleiben.",
         ],
       },
       {
@@ -312,7 +312,7 @@ const content = {
       {
         title: "11. Sperrung und Entfernung",
         paragraphs: [
-          "Konten oder Inhalte können eingeschränkt, entfernt oder gelöscht werden, wenn sie gegen diese Nutzungsbedingungen verstoßen, andere Nutzer schädigen, rechtliche Risiken darstellen, die Sicherheit der App gefährden oder gesetzlich entfernt werden müssen.",
+          "Accounts oder Inhalte können eingeschränkt, entfernt oder gelöscht werden, wenn sie gegen diese Nutzungsbedingungen verstoßen, andere Nutzer schädigen, rechtliche Risiken darstellen, die Sicherheit der App gefährden oder gesetzlich entfernt werden müssen.",
         ],
       },
       {
