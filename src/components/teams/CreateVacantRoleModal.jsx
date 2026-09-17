@@ -11,6 +11,7 @@ import BadgeInput from "../badges/BadgeInput";
 import Tooltip from "../common/Tooltip";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { formatDistanceKm } from "../../utils/locationUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import {
   useLocationAutoFill,
   describeLocationBlock,
@@ -290,9 +291,7 @@ const CreateVacantRoleModal = ({
       }, SUCCESS_CLOSE_DELAY_MS);
     } catch (err) {
       console.error("Error saving vacant role:", err);
-      setSubmitError(
-        err.response?.data?.message || t("vacantRoleForm.saveFailed")
-      );
+      setSubmitError(getTeamErrorText(err, t, t("vacantRoleForm.saveFailed")));
     } finally {
       setLoading(false);
     }

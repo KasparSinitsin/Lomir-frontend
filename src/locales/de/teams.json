@@ -172,9 +172,7 @@
     "leftTeamWithReopened": "Du hast das Team verlassen. {count, plural, one {# besetzte Rolle wurde wieder geöffnet} other {# besetzte Rollen wurden wieder geöffnet}}.",
     "leaveFailed": "Team konnte nicht verlassen werden. Bitte versuche es erneut.",
     "inviteAccepted": "Einladung angenommen! Du bist jetzt Mitglied dieses Teams.",
-    "inviteAcceptFailed": "Einladung konnte nicht angenommen werden. Bitte versuche es erneut.",
     "inviteDeclined": "Einladung abgelehnt.",
-    "inviteDeclineFailed": "Einladung konnte nicht abgelehnt werden. Bitte versuche es erneut.",
     "nameTooShort": "Der Teamname muss mindestens 3 Zeichen lang sein",
     "descriptionRequired": "Eine Teambeschreibung ist erforderlich",
     "descriptionTooShort": "Die Beschreibung muss mindestens 10 Zeichen lang sein",
@@ -556,5 +554,22 @@
     "focusAreasPrompt": "Welche Fähigkeiten oder Fokusbereiche sollte diese Person mitbringen? (optional)",
     "sectionBadges": "Gewünschte Badges",
     "badgesPrompt": "Welche Eigenschaften oder Badges sollte diese Person mitbringen? (optional)"
+  },
+  "teamErrors": {
+    "teamNotFound": "Dieses Team gibt es nicht mehr.",
+    "teamFull": "Dieses Team hat die maximale Mitgliederzahl erreicht.",
+    "roleNotFound": "Diese Rolle gibt es nicht mehr. Sie wurde eventuell gelöscht.",
+    "roleNotOpen": "Diese Rolle ist nicht mehr offen.",
+    "roleOfferUnavailable": "Dieses Rollenangebot ist nicht mehr verfügbar.",
+    "alreadyFillingRole": "Du hast in diesem Team bereits die Rolle „{roleName}“. Gib sie ab, bevor du dieses Rollenangebot annimmst.",
+    "alreadyFillingRoleUnnamed": "Du hast in diesem Team bereits eine andere Rolle. Gib sie ab, bevor du dieses Rollenangebot annimmst.",
+    "alreadyMember": "Du bist bereits Mitglied dieses Teams. Wähle für eine Bewerbung eine offene Rolle.",
+    "inviteeAlreadyMember": "Diese Person ist bereits Mitglied dieses Teams.",
+    "invitationAlreadyPending": "Diese Person hat bereits eine offene Einladung.",
+    "invitationUnavailable": "Diese Einladung ist nicht mehr verfügbar. Sie wurde eventuell schon beantwortet oder zurückgezogen.",
+    "roleInvitationWithdrawn": "Diese Rollen-Einladung wurde bereits zurückgezogen. Die Team-Einladung ist weiterhin offen.",
+    "inviteeHasPendingApplication": "Diese Person hat sich bereits bei diesem Team beworben. Du kannst stattdessen auf ihre Bewerbung antworten.",
+    "applicationAlreadyPending": "Du hast diese Bewerbung bereits gesendet. Sie wartet noch auf eine Antwort.",
+    "applicationUnavailable": "Diese Bewerbung ist nicht mehr verfügbar. Sie wurde eventuell schon bearbeitet oder zurückgezogen."
   }
 }

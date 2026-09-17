@@ -3329,38 +3329,32 @@ const VacantRoleDetailsModal = ({
       initialRoleId={roleId}
       isInternal={true}
       onSubmit={async (applicationData) => {
-        try {
-          const submitResponse = await teamService.applyToJoinTeam(teamId, {
-            ...applicationData,
-            roleId: applicationData.roleId ?? roleId,
-          });
-          const submittedApplication = submitResponse?.data ?? {};
-          setViewerRoleApplicationRecord(
-            buildRoleStatusRecord(
-              {
-                id: submittedApplication.applicationId,
-                applicationId: submittedApplication.applicationId,
-                status: submittedApplication.status ?? "pending",
-                message: applicationData.message,
-                created_at: new Date().toISOString(),
-                roleId,
-                role_id: roleId,
-                teamId,
-                team_id: teamId,
-                isInternalRoleApplication: true,
-                is_internal_role_application: true,
-              },
-              applicationTeam,
-              displayRole,
-              { isInternalRoleApplication: true },
-            ),
-          );
-        } catch (error) {
-          throw new Error(
-            error.response?.data?.message ||
-              t("teams:vacantRoleDetails.submitFailed")
-          );
-        }
+        // A failure propagates as is: `TeamApplicationModal` words it from the code.
+        const submitResponse = await teamService.applyToJoinTeam(teamId, {
+          ...applicationData,
+          roleId: applicationData.roleId ?? roleId,
+        });
+        const submittedApplication = submitResponse?.data ?? {};
+        setViewerRoleApplicationRecord(
+          buildRoleStatusRecord(
+            {
+              id: submittedApplication.applicationId,
+              applicationId: submittedApplication.applicationId,
+              status: submittedApplication.status ?? "pending",
+              message: applicationData.message,
+              created_at: new Date().toISOString(),
+              roleId,
+              role_id: roleId,
+              teamId,
+              team_id: teamId,
+              isInternalRoleApplication: true,
+              is_internal_role_application: true,
+            },
+            applicationTeam,
+            displayRole,
+            { isInternalRoleApplication: true },
+          ),
+        );
       }}
     />
     </>

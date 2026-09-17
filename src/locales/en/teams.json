@@ -172,9 +172,7 @@
     "leftTeamWithReopened": "You have left the team. {count, plural, one {# filled role was reopened} other {# filled roles were reopened}}.",
     "leaveFailed": "Failed to leave team. Please try again.",
     "inviteAccepted": "Invitation accepted! You are now a member of this team.",
-    "inviteAcceptFailed": "Failed to accept invitation. Please try again.",
     "inviteDeclined": "Invitation declined.",
-    "inviteDeclineFailed": "Failed to decline invitation. Please try again.",
     "nameTooShort": "Team name must be at least 3 characters",
     "descriptionRequired": "Team description is required",
     "descriptionTooShort": "Description must be at least 10 characters",
@@ -556,5 +554,22 @@
     "focusAreasPrompt": "What skills or focus areas should this person have? (Optional)",
     "sectionBadges": "Desired Badges",
     "badgesPrompt": "What qualities or badges should this person have? (Optional)"
+  },
+  "teamErrors": {
+    "teamNotFound": "This team no longer exists.",
+    "teamFull": "This team has reached its maximum number of members.",
+    "roleNotFound": "This role no longer exists. It may have been deleted.",
+    "roleNotOpen": "This role is no longer open.",
+    "roleOfferUnavailable": "This role offer is no longer available.",
+    "alreadyFillingRole": "You are already filling {roleName} in this team. Leave that role before accepting this role offer.",
+    "alreadyFillingRoleUnnamed": "You are already filling another role in this team. Leave that role before accepting this role offer.",
+    "alreadyMember": "You are already a member of this team. To apply, choose an open role.",
+    "inviteeAlreadyMember": "This person is already a member of this team.",
+    "invitationAlreadyPending": "This person already has a pending invitation.",
+    "invitationUnavailable": "This invitation is no longer available. It may have been answered or withdrawn.",
+    "roleInvitationWithdrawn": "This role invitation has already been withdrawn. The team invitation is still open.",
+    "inviteeHasPendingApplication": "This person has already applied to this team. You can answer their application instead.",
+    "applicationAlreadyPending": "You have already sent this application. It is still waiting for a response.",
+    "applicationUnavailable": "This application is no longer available. It may have been handled or withdrawn."
   }
 }

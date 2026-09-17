@@ -17,6 +17,7 @@ import ScreenAlert from "../common/ScreenAlert";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import { matchingService } from "../../services/matchingService";
 import { useAuth } from "../../contexts/AuthContext";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 
 const getRoleStatus = (role) => String(role?.status ?? "").toLowerCase();
 const getRoleStatusPriority = (role) => {
@@ -183,8 +184,7 @@ const VacantRolesSection = ({
       console.error("Error updating role status:", err);
       setNotification({
         type: "error",
-        message:
-          err.response?.data?.message || t("rolesSection.statusUpdateFailed"),
+        message: getTeamErrorText(err, t, t("rolesSection.statusUpdateFailed")),
       });
     }
   };
@@ -213,9 +213,11 @@ const VacantRolesSection = ({
       await fetchRoles();
     } catch (err) {
       console.error("Error deleting vacant role:", err);
+      // Close the confirmation so the notification behind it is seen.
+      setPendingDeleteRoleId(null);
       setNotification({
         type: "error",
-        message: err.response?.data?.message || t("rolesSection.deleteFailed"),
+        message: getTeamErrorText(err, t, t("rolesSection.deleteFailed")),
       });
     } finally {
       setDeleteRoleLoading(false);

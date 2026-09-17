@@ -89,15 +89,13 @@ const TeamApplicationButton = ({
         }
       } catch (error) {
         console.error("Error submitting application:", error);
-        throw new Error(
-          error.response?.data?.message ||
-          t("applicationButton.submitFailed"),
-        );
+        // Re-thrown as is: `TeamApplicationModal` words it from the code.
+        throw error;
       } finally {
         setApplicationLoading(false);
       }
     },
-    [closeApplicationModal, effectiveTeamId, onAfterSubmit, onSuccess, roleId, t],
+    [closeApplicationModal, effectiveTeamId, onAfterSubmit, onSuccess, roleId],
   );
 
   if (!effectiveTeamId) return null;

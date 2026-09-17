@@ -23,6 +23,7 @@ import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import { getDisplayName } from "../../utils/userHelpers";
 import { splitEventSentence } from "../../utils/eventSentences";
+import { getTeamErrorCode, getTeamErrorText } from "../../utils/teamErrorText";
 import {
   buildCurrentFilledRoleForCard,
   buildInvitationRoleForCard,
@@ -70,6 +71,13 @@ const TeamInvitesModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const showSuccess = (message) => showToast(message, "success");
+  // Invitations the backend reported as answered or withdrawn meanwhile.
+  const [unavailableInvitationIds, setUnavailableInvitationIds] = useState(
+    () => new Set(),
+  );
+  const visibleInvitations = invitations.filter(
+    (invitation) => !unavailableInvitationIds.has(String(invitation.id)),
+  );
   const [pendingCancelInvitationId, setPendingCancelInvitationId] =
     useState(null);
   const [pendingCancelType, setPendingCancelType] = useState("team");
@@ -132,6 +140,7 @@ const TeamInvitesModal = ({
 
   const confirmCancelInvitation = async () => {
     if (!pendingCancelInvitationId) return;
+    const invitationId = pendingCancelInvitationId;
 
     try {
       setLoading(true);
@@ -155,8 +164,14 @@ const TeamInvitesModal = ({
       setPendingCancelInvitationId(null);
       setPendingCancelType("team");
     } catch (err) {
-      // `err.message` is the backend's prose; coding it is T4.
-      setError(err.message || t("teams:invitationsList.errors.cancelFailed"));
+      // Close the confirmation so the error, shown in the list behind it, is seen.
+      setPendingCancelInvitationId(null);
+      // An invitation answered or withdrawn meanwhile is gone: hide its row.
+      if (getTeamErrorCode(err) === "INVITATION_UNAVAILABLE") {
+        setUnavailableInvitationIds((prev) => new Set(prev).add(String(invitationId)));
+      }
+      setPendingCancelType("team");
+      setError(getTeamErrorText(err, t, t("teams:invitationsList.errors.cancelFailed")));
     } finally {
       setLoading(false);
     }
@@ -223,7 +238,7 @@ const TeamInvitesModal = ({
           )}
         </span>
       }
-      itemCount={invitations.length}
+      itemCount={visibleInvitations.length}
       itemName="invitation"
       bylineIcon={<SendHorizontal size={14} className="text-violet-500 shrink-0" />}
       footerText={t("teams:invitationsList.footer")}
@@ -281,7 +296,7 @@ const TeamInvitesModal = ({
         </Modal>
       }
     >
-      {invitations.map((invitation) => {
+      {visibleInvitations.map((invitation) => {
         // Get invitee ID for highlighting comparison
         const inviteeId = getRequestUserId(invitation, "invitee");
         const roleId = getRequestRoleId(invitation);

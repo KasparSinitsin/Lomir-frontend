@@ -27,6 +27,7 @@ import {
 } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
 import { formatDateMedium } from "../../utils/dateHelpers";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -541,7 +542,9 @@ const TeamApplicationDetailsModal = ({
       setIsCancelDialogOpen(false);
       onClose();
     } catch (err) {
-      setError(err.message || t("teams:applicationDetails.cancelFailed"));
+      // Close the confirmation so the error, shown in the modal behind it, is seen.
+      setIsCancelDialogOpen(false);
+      setError(getTeamErrorText(err, t, t("teams:applicationDetails.cancelFailed")));
     } finally {
       setActionLoading(null);
     }
