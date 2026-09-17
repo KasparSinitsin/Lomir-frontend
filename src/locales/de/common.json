@@ -1012,6 +1012,15 @@
       "demoData": "Demo-Daten",
       "includeDemo": "Test- und Demo-Profile, -Rollen und -Teams einbeziehen",
       "excludeDemo": "Nur echte Personen, Rollen und Teams anzeigen"
+    },
+    "errors": {
+      "queryEmpty": "Die Suchanfrage ist leer.",
+      "unclosedQuote": "In deiner Suche ist ein Anführungszeichen nicht geschlossen.",
+      "startsWithOperator": "Die Suche darf nicht mit „{operator}“ beginnen.",
+      "endsWithOperator": "Die Suche darf nicht mit „{operator}“ enden.",
+      "notWithoutTerm": "Auf NOT muss ein Suchbegriff folgen.",
+      "operatorWithoutTerms": "{operator} muss zwischen zwei Suchbegriffen stehen.",
+      "failed": "Bei der Suche ist etwas schiefgelaufen. Bitte versuch es noch einmal."
     }
   },
   "team": {

@@ -1,20 +1,24 @@
 import api from "./api";
 
 /**
- * Extract a human-friendly message from Axios/backend errors.
+ * What the search endpoints said went wrong, as data — the page words it.
+ *
+ * `code` and `values` follow `Lomir-backend/src/config/searchErrors.js`.
+ * `message` is the backend's own English prose, kept only as the fallback for
+ * a backend that sends no code, or a code this build does not know. It prefers
+ * `error` because a boolean-query 400 puts the specific reason there. It is
+ * null when no response arrived: axios's own `error.message` ("Network Error")
+ * is not a sentence for a reader, and the page shows its generic text instead.
  */
-export const getApiErrorMessage = (error) => {
+export const getSearchErrorDetails = (error) => {
   const data = error?.response?.data;
+  const message = data?.error || data?.message;
 
-  if (data?.error && data?.message) {
-    return data.error;
-  }
-
-  if (data?.error) return String(data.error);
-  if (data?.message) return String(data.message);
-  if (error?.message) return String(error.message);
-
-  return "Something went wrong";
+  return {
+    code: typeof data?.code === "string" ? data.code : null,
+    values: data?.values ?? {},
+    message: message ? String(message) : null,
+  };
 };
 
 const normalizePublicFlag = (item) => item?.isPublic === true;

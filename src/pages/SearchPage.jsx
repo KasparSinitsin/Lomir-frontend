@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTeamMemberBadges } from "../hooks/useTeamQueries";
-import { getApiErrorMessage } from "../services/searchService";
+import { getSearchErrorDetails } from "../services/searchService";
 import {
   globalSearchQueryKey,
   useGlobalSearch,
@@ -572,9 +572,52 @@ const SearchPage = () => {
   // Mirror the query error into the dismissable `error` alert state. Only
   // re-runs when the query error itself flips, so a manual dismiss (or the
   // explicit setError(null) clears elsewhere) sticks until the next fetch.
+  // The error itself is stored, not a sentence: it is worded at render, so an
+  // open alert follows a language switch (STATUS.md decision 6).
   useEffect(() => {
-    setError(searchQueryError ? getApiErrorMessage(searchQueryError) : null);
+    setError(searchQueryError ?? null);
   }, [searchQueryError]);
+
+  /**
+   * A search failure, said in the reader's language.
+   *
+   * One literal key per code, as on the contact page: a key built from the
+   * code would be invisible to `npm run i18n:check`. A backend without codes,
+   * or a code this build does not know, falls back to the backend's prose, so
+   * the change needs no deploy order. `operator` is syntax and stays English
+   * (plan decision E1).
+   */
+  const getSearchErrorText = (searchError) => {
+    const { code, values, message } = getSearchErrorDetails(searchError);
+
+    switch (code) {
+      // The same refusal the input already words below the field.
+      case "QUERY_TOO_SHORT":
+        return t("searchInput.minQueryHint");
+      case "QUERY_EMPTY":
+        return t("searchPage.errors.queryEmpty");
+      case "UNCLOSED_QUOTE":
+        return t("searchPage.errors.unclosedQuote");
+      case "STARTS_WITH_OPERATOR":
+        return t("searchPage.errors.startsWithOperator", {
+          operator: values.operator,
+        });
+      case "ENDS_WITH_OPERATOR":
+        return t("searchPage.errors.endsWithOperator", {
+          operator: values.operator,
+        });
+      case "NOT_WITHOUT_TERM":
+        return t("searchPage.errors.notWithoutTerm");
+      case "OPERATOR_WITHOUT_TERMS":
+        return t("searchPage.errors.operatorWithoutTerms", {
+          operator: values.operator,
+        });
+      case "SEARCH_FAILED":
+        return t("searchPage.errors.failed");
+      default:
+        return message || t("searchPage.errors.failed");
+    }
+  };
 
   const withResolvedDistance = useCallback((item, viewerEntity) => {
     if (!item) return item;
@@ -2519,7 +2562,7 @@ const SearchPage = () => {
           error
             ? {
                 type: "error",
-                message: error,
+                message: getSearchErrorText(error),
                 onClose: () => setError(null),
               }
             : null,
