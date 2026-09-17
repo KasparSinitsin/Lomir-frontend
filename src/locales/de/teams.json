@@ -404,6 +404,7 @@
     "alreadyMember": "Du bist bereits Mitglied dieses Teams",
     "teamMember": "Team-Mitglied",
     "inviterMessage": "Einladungsnachricht von {name}:",
+    "inviterMessageUnnamed": "Einladungsnachricht:",
     "responseLabel": "Deine Antwort (optional):",
     "responsePrompt": "Persönliche Antwort hinzufügen (optional)",
     "responsePlaceholder": "Füge deiner Entscheidung eine persönliche Nachricht hinzu. Ablehnungen gehen nur als DM an die einladende Person, Zusagen in den Team-Chat.",
@@ -420,6 +421,72 @@
     "joining": "Tritt bei...",
     "decline": "Ablehnen",
     "declining": "Wird abgelehnt..."
+  },
+  "inviteForm": {
+    "title": "{name} in ein Team einladen",
+    "selectTeam": "Wähle ein Team, in das du die Person einladen möchtest:",
+    "otherTeamsAvailable": "{count, plural, one {# weiteres Team verfügbar} other {# weitere Teams verfügbar}}",
+    "noTeams": "Du hast kein Team, in das du Mitglieder einladen kannst.",
+    "noTeamsHint": "Erstelle ein Team oder werde Admin, um Einladungen zu senden.",
+    "badge": {
+      "invited": "Eingeladen",
+      "applied": "Beworben",
+      "invite": "Einladen",
+      "inviteToTeam": "Ins Team einladen",
+      "inviteToRole": "Für Rolle einladen"
+    },
+    "selectRole": "Wähle eine Rolle, die du in diesem Team besetzen möchtest:",
+    "collapseBlocked": "Wähle eine Rolle, bevor du diesen Bereich einklappst",
+    "openRoleDetails": "{hasRole, select, yes {Details zu „{role}“ öffnen} other {Details zu dieser Rolle öffnen}}",
+    "prefill": {
+      "roleInTeam": "Aus dem Match übernommen: „{role}“ in „{team}“.",
+      "role": "Aus dem Match übernommen: „{role}“.",
+      "team": "Vorausgewähltes Team: „{team}“."
+    },
+    "noOpenRoles": "Dieses Team hat gerade keine offenen Rollen.",
+    "memberNeedsRole": "Diese Person ist bereits Mitglied des Teams. Um sie einzuladen, braucht es eine offene Rolle.",
+    "prefillRoleUnavailable": "„{role}“ ist gerade nicht verfügbar. Du kannst trotzdem eine allgemeine Team-Einladung senden.",
+    "generalInviteHint": "Du kannst auch ohne Rolle eine allgemeine Team-Einladung senden.",
+    "roleRequired": "Wähle eine Rolle, um dieses Team-Mitglied für eine bestimmte Position einzuladen.",
+    "noRoleSelected": "Keine Rolle ausgewählt. Deine Einladung wird als allgemeine Team-Einladung gesendet.",
+    "addMessage": "Nachricht hinzufügen (optional)",
+    "messagePlaceholder": "Hallo {name}, ich möchte dich gern in unser Team einladen …",
+    "send": "Einladung senden",
+    "sent": "Einladung an {name} gesendet!",
+    "errors": {
+      "loadTeams": "Deine Teams konnten nicht geladen werden. Bitte versuch es noch einmal.",
+      "selectTeam": "Bitte wähle ein Team aus",
+      "sendFailed": "Die Einladung konnte nicht gesendet werden. Bitte versuch es noch einmal."
+    }
+  },
+  "invitationsList": {
+    "title": "Einladungen für <team/>",
+    "footer": "Einladungen, auf die noch niemand geantwortet hat, kannst du zurückziehen.",
+    "emptyMessage": "Einladungen, die du verschickst, erscheinen hier.",
+    "messageLabel": "Einladungsnachricht:",
+    "messageLabelNamed": "Einladungsnachricht an {name}:",
+    "toast": {
+      "roleCanceled": "Rollen-Einladung zurückgezogen.",
+      "teamCanceled": "Team-Einladung zurückgezogen."
+    },
+    "errors": {
+      "cancelFailed": "Die Einladung konnte nicht zurückgezogen werden"
+    },
+    "cancelDialog": {
+      "titleRole": "Rollen-Einladung zurückziehen",
+      "titleTeam": "Team-Einladung zurückziehen",
+      "bodyRole": "{named, select, yes {Rollen-Einladung für {name} zurückziehen?} other {Rollen-Einladung für diese Person zurückziehen?}}",
+      "bodyTeam": "{named, select, yes {Team-Einladung für {name} zurückziehen? Die Person kann dann nicht mehr darauf antworten.} other {Team-Einladung für diese Person zurückziehen? Die Person kann dann nicht mehr darauf antworten.}}",
+      "alsoRole": "Damit wird auch die zugehörige Rollen-Einladung zurückgezogen."
+    },
+    "actions": {
+      "cancelRole": "Rollen-Einladung zurückziehen",
+      "cancelRoleOnlyTooltip": "Nur die Rollen-Einladung zurückziehen",
+      "cancelTeamAndRole": "Rollen- und Team-Einladung zurückziehen",
+      "cancelTeamAndRoleTooltip": "Team- und Rollen-Einladung zurückziehen",
+      "cancelInvite": "Einladung zurückziehen",
+      "cancelTeamTooltip": "Team-Einladung zurückziehen"
+    }
   },
   "vacantRoleDetails": {
     "viewApplicationOf": "Klicken, um die vollständige Bewerbung von {name} für das Team zu sehen",

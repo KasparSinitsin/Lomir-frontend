@@ -38,6 +38,7 @@ import {
   extractRoleMatchData,
   getMemberUserId,
   getPrivateAwareUserLabel,
+  isPrivateProfileUser,
   idsMatch,
   isExistingMemberStatus,
   normalizeBoolean,
@@ -815,7 +816,10 @@ const TeamInvitationDetailsModal = ({
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MailOpen size={12} className="text-info mr-1" />
-              {t("teams:invitationDetails.inviterMessage", { name: getPrivateAwareUserLabel(inviter, "them") })}
+              {/* No name for a private profile: its stand-in label is not a name. */}
+              {inviter && !isPrivateProfileUser(inviter) && getPrivateAwareUserLabel(inviter, null)
+                ? t("teams:invitationDetails.inviterMessage", { name: getPrivateAwareUserLabel(inviter, null) })
+                : t("teams:invitationDetails.inviterMessageUnnamed")}
             </p>
             <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
               <p className="text-sm text-base-content/90 leading-relaxed">
