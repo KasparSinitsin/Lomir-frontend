@@ -50,7 +50,7 @@ import {
   userProfileQueryKey,
 } from "../../hooks/useUserQueries";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import {
   getTeamInitials,
   getUserInitials,
@@ -253,15 +253,17 @@ const getLatLng = (item) => {
   return isValidCoordinate(lat, lng) ? { lat, lng } : null;
 };
 
+// The stored name, or null. It is also compared against request role names,
+// so the display fallback is added at render by `getPointName`, never here.
 const getDisplayName = (item, type) => {
-  if (type === "team") return item.name || "Team";
+  if (type === "team") return item.name || null;
   if (type === "role") {
-    return item.roleName ?? item.role_name ?? item.title ?? "Open role";
+    return item.roleName ?? item.role_name ?? item.title ?? null;
   }
 
   const firstName = item.first_name || item.firstName || "";
   const lastName = item.last_name || item.lastName || "";
-  return [firstName, lastName].filter(Boolean).join(" ") || item.username || "Person";
+  return [firstName, lastName].filter(Boolean).join(" ") || item.username || null;
 };
 
 const getMapPointType = (item) =>
@@ -931,6 +933,9 @@ const getTypeLabel = (type, t) => {
   return t("mapPopup.typeUser");
 };
 
+// The name shown for a point; a result without one is named by its type.
+const getPointName = (point, t) => point.name ?? getTypeLabel(point.type, t);
+
 const getTypeTooltipLabel = (type, t) => {
   if (type === "team") return t("mapPopup.typeTeam");
   if (type === "role") return t("mapPopup.typeRole");
@@ -1050,9 +1055,17 @@ const getRequestRoleName = (entry) => {
     return roleName.trim();
   }
 
-  const roleId = firstPresent(entry?.role?.id, entry?.roleId, entry?.role_id);
-  return roleId != null ? "Vacant Role" : null;
+  return null;
 };
+
+const getRequestRoleId = (entry) =>
+  firstPresent(entry?.role?.id, entry?.roleId, entry?.role_id);
+
+// A request for a role whose name did not come along is shown as the
+// translated vacant-role fallback; a request without a role has no name.
+const getRequestRoleLabel = (entry, t) =>
+  getRequestRoleName(entry) ??
+  (getRequestRoleId(entry) != null ? t("roleStatus.vacantRoleFallback") : null);
 
 const requestTargetsTeam = (entry, teamId) => {
   const entryTeamId = getRequestTeamId(entry);
@@ -1082,6 +1095,7 @@ const isActiveInvitationRequest = (entry) => {
 
 const isRoleScopedRequest = (entry) =>
   Boolean(getRequestRoleName(entry)) ||
+  getRequestRoleId(entry) != null ||
   isTruthyValue(firstPresent(
     entry?.isInternal,
     entry?.is_internal,
@@ -1225,7 +1239,7 @@ const normalizeMapPoint = (
     String(rawId) === String(viewerUser.id);
 
   return {
-    id: `${type}-${rawId ?? getDisplayName(item, type)}`,
+    id: `${type}-${rawId ?? getDisplayName(item, type) ?? type}`,
     rawId,
     type,
     item,
@@ -1249,12 +1263,10 @@ const normalizeMapPoint = (
     hasTeamInvitation: Boolean(teamInvitation),
     teamRoleInvitation,
     hasTeamRoleInvitation: Boolean(teamRoleInvitation),
-    teamRoleInvitationName: getRequestRoleName(teamRoleInvitation),
     teamApplication,
     hasTeamApplication: Boolean(teamApplication),
     teamRoleApplication,
     hasTeamRoleApplication: Boolean(teamRoleApplication),
-    teamRoleApplicationName: getRequestRoleName(teamRoleApplication),
     isCombinedTeamApplication: Boolean(teamRoleApplication) && !(
       teamRoleApplication?.isInternalRoleApplication ||
       teamRoleApplication?.is_internal_role_application
@@ -1333,6 +1345,7 @@ const MapInstanceCapture = ({ onReady }) => {
 };
 
 const MarkerTooltipContent = ({ point, showMatchScore = false }) => {
+  const { t } = useTranslation();
   const meta = TYPE_META[point.type] ?? TYPE_META.team;
   const Icon = meta.Icon;
   const matchTier = showMatchScore
@@ -1344,7 +1357,7 @@ const MarkerTooltipContent = ({ point, showMatchScore = false }) => {
     <div className="flex flex-col items-center gap-1 text-center">
       <div className="flex items-center justify-center gap-1.5">
         <Icon size={13} className="block shrink-0" aria-hidden="true" />
-        <span className="font-medium leading-none">{point.name}</span>
+        <span className="font-medium leading-none">{getPointName(point, t)}</span>
         {point.isDemo && (
           <FlaskConical
             size={11}
@@ -1544,52 +1557,23 @@ const LocationStatusIndicator = ({ point }) => {
 const getPointMatchDetails = (point) =>
   point?.item?.matchDetails ?? point?.item?.match_details ?? null;
 
-const getPointMatchTooltip = (point, matchTier) => {
-  const matchDetails = getPointMatchDetails(point);
-  const matchType = point?.item?.matchType ?? point?.item?.match_type ?? null;
-  const matchLabel = matchType === "role_match" ? "role match" : "match";
+// Same sentences as `UserCard` and `TeamCard`: keys are written out per
+// variant, because a key built from `variant` is invisible to `i18n:check`.
+const getPointMatchTooltip = (point, matchTier, t) => {
+  const { variant, values } = getMatchTooltipParts(
+    matchTier,
+    getPointMatchDetails(point),
+  );
 
-  if (
-    matchDetails &&
-    ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
-      (matchDetails.badgeScore ?? matchDetails.badge_score) != null ||
-      (matchDetails.distanceScore ?? matchDetails.distance_score) != null)
-  ) {
-    const tagPct = Math.round(
-      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
-    );
-    const badgePct = Math.round(
-      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
-    );
-    const distPct = Math.round(
-      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
-    );
-
-    return `${matchTier.pct}% ${matchLabel} — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
-  }
-
-  if (matchDetails) {
-    const sharedTags =
-      matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
-    const sharedBadges =
-      matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-
-    if (sharedTags > 0 || sharedBadges > 0) {
-      return `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
-    }
-  }
-
-  const fallbackMatchLabel =
-    matchType === "role_match"
-      ? "role match"
-      : point?.type === "role"
-        ? "match"
-        : "profile match";
-
-  return `${matchTier.pct}% ${fallbackMatchLabel}`;
+  if (variant === "breakdown") return t("matchScore.breakdown", values);
+  if (variant === "shared") return t("matchScore.shared", values);
+  if (variant === "sharedFocus") return t("matchScore.sharedFocus", values);
+  if (variant === "plain") return t("matchScore.plain", values);
+  return "";
 };
 
 const MatchScoreSublineItem = ({ point, showMatchScore = false }) => {
+  const { t } = useTranslation();
   if (!showMatchScore) return null;
 
   const rawScore = getResultMatchScore(point?.item);
@@ -1599,7 +1583,7 @@ const MatchScoreSublineItem = ({ point, showMatchScore = false }) => {
   const MatchIcon = matchTier.Icon;
 
   return (
-    <Tooltip content={getPointMatchTooltip(point, matchTier)}>
+    <Tooltip content={getPointMatchTooltip(point, matchTier, t)}>
       <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-normal leading-none">
         <MatchIcon
           size={POPUP_SUBLINE_ICON_SIZE}
@@ -1695,14 +1679,16 @@ const TeamMetaLine = ({
     />
   ) : null;
   const roleTooltip = getTeamRoleTooltip(point.currentUserRole, t);
-  const roleInvitationTooltip = point.teamRoleInvitationName
+  const teamRoleInvitationName = getRequestRoleLabel(point.teamRoleInvitation, t);
+  const teamRoleApplicationName = getRequestRoleLabel(point.teamRoleApplication, t);
+  const roleInvitationTooltip = teamRoleInvitationName
     ? t("mapPopup.invitedToFillNamedRole", {
-        roleName: point.teamRoleInvitationName,
+        roleName: teamRoleInvitationName,
       })
     : t("teams:teamCard.status.invitedToFillRole");
-  const roleApplicationTooltip = point.teamRoleApplicationName
+  const roleApplicationTooltip = teamRoleApplicationName
     ? t("mapPopup.appliedForNamedRole", {
-        roleName: point.teamRoleApplicationName,
+        roleName: teamRoleApplicationName,
       })
     : t("teams:teamCard.status.appliedForRole");
   const roleNameItem = (roleName) => {
@@ -1765,7 +1751,7 @@ const TeamMetaLine = ({
           <Mail size={10} className="text-orange-500" aria-hidden="true" />
         </TeamMetaItem>
       )}
-      {showRoleRequestNames && roleNameItem(point.teamRoleInvitationName)}
+      {showRoleRequestNames && roleNameItem(teamRoleInvitationName)}
       {point.hasTeamApplication && (
         <TeamMetaItem
           tooltip={t("teams:teamCard.status.appliedToTeam")}
@@ -1794,7 +1780,7 @@ const TeamMetaLine = ({
           <SendHorizontal size={10} className={point.isCombinedTeamApplication ? "text-violet-500" : "text-orange-500"} aria-hidden="true" />
         </TeamMetaItem>
       )}
-      {showRoleRequestNames && roleNameItem(point.teamRoleApplicationName)}
+      {showRoleRequestNames && roleNameItem(teamRoleApplicationName)}
       {point.openRoleCount > 0 && (
         <TeamMetaItem
           tooltip={t("mapPopup.openRoles", { count: point.openRoleCount })}
@@ -2073,7 +2059,7 @@ const MapPopupCard = ({
         <PopupAvatar point={point} backgroundColor={DEFAULT_MAP_ENTITY_COLOR} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-[15px] font-medium leading-[1.1] text-[var(--color-primary-focus)]">
-            {point.name}
+            {getPointName(point, t)}
           </h3>
           <UserSubline point={point} showMatchScore={showMatchScore} />
           <TeamMetaLine
@@ -2789,7 +2775,7 @@ const SearchMapView = ({
 
   const openPoint = (point) => {
     if (point.type === "team") {
-      teamModal?.openTeamModal(point.rawId, point.name, {
+      teamModal?.openTeamModal(point.rawId, getPointName(point, t), {
         initialTeamData: point.item,
         isFromSearch: true,
         showMatchHighlights,
@@ -3007,7 +2993,7 @@ const SearchMapView = ({
                           />
                           <div className="min-w-0 flex-1">
                             <h5 className="truncate text-[15px] font-medium leading-[1.1] text-[var(--color-primary-focus)]">
-                              {point.name}
+                              {getPointName(point, t)}
                             </h5>
                             <div
                               onMouseEnter={() => setActiveStatusTooltipPointId(point.id)}
@@ -3099,7 +3085,7 @@ const SearchMapView = ({
           <div
             ref={popupRef}
             role="dialog"
-            aria-label={t("mapPopup.resultAria", { name: activePoint.name })}
+            aria-label={t("mapPopup.resultAria", { name: getPointName(activePoint, t) })}
             data-placement={popupPlacement}
             className="fixed z-[9999] rounded-xl border border-base-200 bg-base-100 p-3 shadow-soft"
             style={{

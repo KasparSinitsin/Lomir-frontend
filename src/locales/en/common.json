@@ -942,6 +942,78 @@
       "filter": "Remove <icon/> Filter: <name/>"
     }
   },
+  "searchPage": {
+    "title": {
+      "line1": "Find teams, people",
+      "line2": "or open roles"
+    },
+    "types": {
+      "all": "All",
+      "teams": "Teams",
+      "people": "People",
+      "roles": "Open Roles"
+    },
+    "resultCount": "{count, plural, one {# result} other {# results}}",
+    "noResults": "No teams, users or Roles found matching this search query. Try a different search term.",
+    "clearInput": "Clear search input",
+    "placeholder": {
+      "default": "Try: hiking AND photography, or hiking NOT photography",
+      "defaultCompact": "Try: hiking AND photo",
+      "match": "Matching results to your profile — type to narrow",
+      "roleMatch": "Finding people matching the \"{role}\" role — type to narrow",
+      "narrowCompact": "Type to narrow results..."
+    },
+    "pillFallback": {
+      "tag": "Tag {id}",
+      "badge": "Badge {id}"
+    },
+    "sort": {
+      "nameAsc": "Name (A-Z)",
+      "nameAscShort": "A-Z",
+      "nameAscTooltip": "Sort alphabetically from A to Z",
+      "nameDesc": "Name (Z-A)",
+      "nameDescShort": "Z-A",
+      "nameDescTooltip": "Sort alphabetically from Z to A",
+      "recentAscTooltip": "Show the least recently active results first",
+      "recentDescTooltip": "Show the most recently active results first",
+      "newestAscTooltip": "Show the oldest results first",
+      "newestDescShort": "New",
+      "newestDescTooltip": "Show the newest results first",
+      "matchShort": "Match",
+      "matchTooltip": "Sort results by how well they match your profile",
+      "nearest": "Nearest",
+      "nearestTooltip": "Keep nearby results ahead of remote-friendly results",
+      "remoteFirstShort": "Remote 1st",
+      "remoteFirstTooltip": "Show remote-friendly results first",
+      "distance": "Distance",
+      "distanceTooltip": "Filter results by distance from your location",
+      "spotsAscShort": "Full",
+      "spotsAscTooltip": "Show teams with the fewest open spots first\nTeams only",
+      "spotsDescShort": "Spots",
+      "spotsDescTooltip": "Show teams with the most open spots first\nTeams only",
+      "leastRoles": "Least Roles",
+      "mostRoles": "Most Roles",
+      "rolesOnly": "Roles only"
+    },
+    "menu": {
+      "show": "Show Filtering & Sorting Options",
+      "hide": "Hide Filtering & Sorting Options",
+      "sortGroup": "Sort options",
+      "filterGroup": "Filter options",
+      "searchFilters": "Search filters",
+      "demoGroup": "Demo data filter",
+      "showFiltersTooltip": "Show filter controls",
+      "hideFiltersTooltip": "Click to hide filters",
+      "hideFiltersAria": "Hide filter controls",
+      "showFilters": "Show Filters ...",
+      "showFiltersShort": "Filters ...",
+      "hideFilters": "Hide Filters:",
+      "includeMyTeams": "Include My Teams",
+      "demoData": "Demo Data",
+      "includeDemo": "Include test/demo profiles, roles and teams",
+      "excludeDemo": "Show only real users, roles and teams"
+    }
+  },
   "team": {
     "unknownName": "Unknown Team"
   },

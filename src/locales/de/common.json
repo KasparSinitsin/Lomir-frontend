@@ -942,6 +942,78 @@
       "filter": "<icon/> Filter entfernen: <name/>"
     }
   },
+  "searchPage": {
+    "title": {
+      "line1": "Finde Teams, Personen",
+      "line2": "oder offene Rollen"
+    },
+    "types": {
+      "all": "Alle",
+      "teams": "Teams",
+      "people": "Personen",
+      "roles": "Offene Rollen"
+    },
+    "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}",
+    "noResults": "Keine Teams, Personen oder Rollen zu dieser Suche gefunden. Versuch es mit einem anderen Suchbegriff.",
+    "clearInput": "Sucheingabe leeren",
+    "placeholder": {
+      "default": "Probiere: hiking AND photography oder hiking NOT photography",
+      "defaultCompact": "Probiere: hiking AND photo",
+      "match": "Ergebnisse passend zu deinem Profil – tippe, um einzugrenzen",
+      "roleMatch": "Personen passend zur Rolle „{role}“ – tippe, um einzugrenzen",
+      "narrowCompact": "Tippe, um einzugrenzen …"
+    },
+    "pillFallback": {
+      "tag": "Tag {id}",
+      "badge": "Badge {id}"
+    },
+    "sort": {
+      "nameAsc": "Name (A–Z)",
+      "nameAscShort": "A–Z",
+      "nameAscTooltip": "Alphabetisch von A bis Z sortieren",
+      "nameDesc": "Name (Z–A)",
+      "nameDescShort": "Z–A",
+      "nameDescTooltip": "Alphabetisch von Z bis A sortieren",
+      "recentAscTooltip": "Am längsten inaktive Ergebnisse zuerst anzeigen",
+      "recentDescTooltip": "Zuletzt aktive Ergebnisse zuerst anzeigen",
+      "newestAscTooltip": "Älteste Ergebnisse zuerst anzeigen",
+      "newestDescShort": "Neu",
+      "newestDescTooltip": "Neueste Ergebnisse zuerst anzeigen",
+      "matchShort": "Match",
+      "matchTooltip": "Ergebnisse danach sortieren, wie gut sie zu deinem Profil passen",
+      "nearest": "Nächste",
+      "nearestTooltip": "Ergebnisse in deiner Nähe vor Remote-Ergebnissen anzeigen",
+      "remoteFirstShort": "Remote",
+      "remoteFirstTooltip": "Remote-Ergebnisse zuerst anzeigen",
+      "distance": "Entfernung",
+      "distanceTooltip": "Ergebnisse nach Entfernung von deinem Standort filtern",
+      "spotsAscShort": "Voll",
+      "spotsAscTooltip": "Teams mit den wenigsten freien Plätzen zuerst anzeigen\nNur Teams",
+      "spotsDescShort": "Plätze",
+      "spotsDescTooltip": "Teams mit den meisten freien Plätzen zuerst anzeigen\nNur Teams",
+      "leastRoles": "Wenigste Rollen",
+      "mostRoles": "Meiste Rollen",
+      "rolesOnly": "Nur Rollen"
+    },
+    "menu": {
+      "show": "Filter- und Sortieroptionen einblenden",
+      "hide": "Filter- und Sortieroptionen ausblenden",
+      "sortGroup": "Sortieroptionen",
+      "filterGroup": "Filteroptionen",
+      "searchFilters": "Suchfilter",
+      "demoGroup": "Filter für Demo-Daten",
+      "showFiltersTooltip": "Filter einblenden",
+      "hideFiltersTooltip": "Klicken, um die Filter auszublenden",
+      "hideFiltersAria": "Filter ausblenden",
+      "showFilters": "Filter einblenden …",
+      "showFiltersShort": "Filter …",
+      "hideFilters": "Filter ausblenden:",
+      "includeMyTeams": "Meine Teams einbeziehen",
+      "demoData": "Demo-Daten",
+      "includeDemo": "Test- und Demo-Profile, -Rollen und -Teams einbeziehen",
+      "excludeDemo": "Nur echte Personen, Rollen und Teams anzeigen"
+    }
+  },
   "team": {
     "unknownName": "Unbekanntes Team"
   },
