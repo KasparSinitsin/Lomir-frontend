@@ -16,6 +16,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
 import { splitEventSentence } from "../../utils/eventSentences";
+import { getTeamErrorCode, getTeamErrorText } from "../../utils/teamErrorText";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
@@ -66,6 +67,15 @@ const TeamApplicationsModal = ({
   const showToast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Applications the backend reported as already handled or withdrawn. Hidden
+  // at once, so the error explains a row that is gone rather than one that
+  // stays clickable until the list is refetched.
+  const [unavailableApplicationIds, setUnavailableApplicationIds] = useState(
+    () => new Set(),
+  );
+  const visibleApplications = applications.filter(
+    (application) => !unavailableApplicationIds.has(String(application.id)),
+  );
   const showSuccess = (message) => showToast(message, "success");
   const [responses, setResponses] = useState({});
   const [responseExpanded, setResponseExpanded] = useState({});
@@ -202,13 +212,17 @@ const TeamApplicationsModal = ({
         return newResponses;
       });
     } catch (err) {
-      // `err.message` is the backend's prose, re-thrown by `teamService`;
-      // coding it is T4. Only the fallback is ours.
+      if (getTeamErrorCode(err) === "APPLICATION_UNAVAILABLE") {
+        setUnavailableApplicationIds((prev) => new Set(prev).add(String(applicationId)));
+      }
       setError(
-        err.message ||
-          (action === "approve"
+        getTeamErrorText(
+          err,
+          t,
+          action === "approve"
             ? t("teams:applicationsList.errors.approveFailed")
-            : t("teams:applicationsList.errors.declineFailed")),
+            : t("teams:applicationsList.errors.declineFailed"),
+        ),
       );
     } finally {
       setLoading(false);
@@ -279,7 +293,7 @@ const TeamApplicationsModal = ({
           );
         }
       } catch (err) {
-        setError(err.response?.data?.message || t("teams:applicationsList.errors.reopenFailed"));
+        setError(getTeamErrorText(err, t, t("teams:applicationsList.errors.reopenFailed")));
       } finally {
         setStatusUpdatingRoleId(null);
       }
@@ -395,7 +409,7 @@ const TeamApplicationsModal = ({
           )}
         </span>
       }
-      itemCount={applications.length}
+      itemCount={visibleApplications.length}
       itemName="application"
       footerText={t("teams:applicationsList.footer")}
       error={error}
@@ -445,7 +459,7 @@ const TeamApplicationsModal = ({
         </>
       }
     >
-      {applications.map((application) => {
+      {visibleApplications.map((application) => {
         const applicantId = getRequestUserId(application, "applicant");
         const roleId = getRequestRoleId(application);
         const roleOverride = roleId ? roleStatusOverrides[roleId] : null;

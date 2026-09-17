@@ -927,10 +927,9 @@ const TeamDetailsModal = ({
       }, 1500);
     } catch (error) {
       console.error("Error accepting invitation:", error);
-      setNotification({
-        type: "error",
-        message: error.message || t("teams:teamDetails.inviteAcceptFailed"),
-      });
+      // Re-thrown: the invitation modal shows it. Swallowing it here made that
+      // modal report success over this error.
+      throw error;
     }
   };
 
@@ -955,10 +954,7 @@ const TeamDetailsModal = ({
       }, 1500);
     } catch (error) {
       console.error("Error declining invitation:", error);
-      setNotification({
-        type: "error",
-        message: t("teams:teamDetails.inviteDeclineFailed"),
-      });
+      throw error;
     }
   };
 

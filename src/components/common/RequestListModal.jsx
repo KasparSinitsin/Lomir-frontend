@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { User, X, Mail } from "lucide-react";
 import Modal from "./Modal";
@@ -54,6 +54,11 @@ const RequestListModal = ({
     </div>
   );
 
+  const errorRef = useRef(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [error]);
+
   const footer =
     itemCount > 0 ? (
       <div className="flex flex-wrap justify-between items-center gap-y-1 text-sm text-base-content/70">
@@ -83,9 +88,12 @@ const RequestListModal = ({
         closeOnEscape={true}
         showCloseButton={true}
       >
-        {/* Error shown inline — visible at the point of action */}
+        {/* Error shown above the list, scrolled into view when it appears:
+            the action that caused it is usually further down. */}
         {error && (
-          <Alert type="error" message={error} onClose={onErrorClose} className="mb-4 w-full shadow-sm" />
+          <div ref={errorRef}>
+            <Alert type="error" message={error} onClose={onErrorClose} className="mb-4 w-full shadow-sm" />
+          </div>
         )}
 
         {/* Content: Empty State or List */}

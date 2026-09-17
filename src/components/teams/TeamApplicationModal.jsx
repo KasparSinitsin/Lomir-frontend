@@ -30,6 +30,7 @@ import {
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import { idsMatch } from "../../utils/teamRequestUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 
 const VacantRoleDetailsModal = lazy(() => import("./VacantRoleDetailsModal"));
 
@@ -279,8 +280,15 @@ const TeamApplicationModal = ({
         handleClose();
       }, 1500);
     } catch (err) {
-      // `err.message` is the backend's prose; coding it is T4.
-      setError(err.message || t("teams:applicationButton.submitFailed"));
+      setError(
+        getTeamErrorText(
+          err,
+          t,
+          isInternal
+            ? t("teams:vacantRoleDetails.submitFailed")
+            : t("teams:applicationButton.submitFailed"),
+        ),
+      );
     }
   };
 

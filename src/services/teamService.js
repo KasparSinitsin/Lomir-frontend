@@ -1,5 +1,14 @@
 import api, { call, isQuietError } from "./api";
 
+// Re-throws with the backend's message, keeping `response` on the new error:
+// the failure code travels in `response.data` and is worded by the component
+// (`utils/teamErrorText.js`). Passing only the message on would lose it.
+const withResponse = (error) => {
+  const wrapped = new Error(error.response?.data?.message || error.message);
+  wrapped.response = error.response;
+  return wrapped;
+};
+
 export const teamService = {
   // Create a new team — keeps explicit try/catch for the extra response-data
   // log on failure (the axios interceptor logs error.response.data too, but
@@ -83,8 +92,8 @@ export const teamService = {
     }
   },
 
-  // Keeps explicit try/catch — re-throws a wrapped Error with a friendlier
-  // message extracted from the server response.
+  // Keeps explicit try/catch — re-throws a wrapped Error with the server's
+  // message, keeping `response` for the failure code.
   handleTeamApplication: async (
     applicationId,
     action,
@@ -99,11 +108,7 @@ export const teamService = {
       return apiResponse.data;
     } catch (error) {
       console.error(`Error handling application ${applicationId}:`, error);
-      throw new Error(
-        error.response?.data?.message ||
-          error.message ||
-          `Failed to ${action} application`,
-      );
+      throw withResponse(error);
     }
   },
 
@@ -374,8 +379,8 @@ export const teamService = {
       api.get("/api/teams/invitations/received"),
     ),
 
-  // Keeps explicit try/catch — re-throws a wrapped Error with a friendlier
-  // message extracted from the server response.
+  // Keeps explicit try/catch — re-throws a wrapped Error with the server's
+  // message, keeping `response` for the failure code.
   respondToInvitation: async (
     invitationId,
     action,
@@ -393,11 +398,7 @@ export const teamService = {
       return response.data;
     } catch (error) {
       console.error(`Error responding to invitation ${invitationId}:`, error);
-      throw new Error(
-        error.response?.data?.message ||
-          error.message ||
-          `Failed to ${action} invitation`,
-      );
+      throw withResponse(error);
     }
   },
 

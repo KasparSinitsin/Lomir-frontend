@@ -373,6 +373,7 @@ const MyTeams = () => {
         refetchViewerPending();
       } catch (error) {
         console.error("Error canceling application:", error);
+        throw error;
       }
     },
     [refetchViewerPending],
@@ -404,6 +405,7 @@ const MyTeams = () => {
         invalidateUserTeams();
       } catch (error) {
         console.error("Error accepting invitation:", error);
+        throw error;
       }
     },
     [refetchViewerPending, invalidateUserTeams],
@@ -422,6 +424,7 @@ const MyTeams = () => {
         refetchViewerPending();
       } catch (error) {
         console.error("Error declining invitation:", error);
+        throw error;
       }
     },
     [refetchViewerPending],

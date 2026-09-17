@@ -33,6 +33,7 @@ import InlineUserLink from "../users/InlineUserLink";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import TeamAvatar from "./TeamAvatar";
 import { isSyntheticTeam } from "../../utils/userHelpers";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   extractRoleMatchData,
@@ -327,7 +328,7 @@ const TeamInvitationDetailsModal = ({
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || t("teams:invitationDetails.acceptFailed"));
+      setError(getTeamErrorText(err, t, t("teams:invitationDetails.acceptFailed")));
     } finally {
       setActionLoading(null);
     }
@@ -342,7 +343,7 @@ const TeamInvitationDetailsModal = ({
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || t("teams:invitationDetails.switchFailed"));
+      setError(getTeamErrorText(err, t, t("teams:invitationDetails.switchFailed")));
     } finally {
       setActionLoading(null);
     }
@@ -357,7 +358,7 @@ const TeamInvitationDetailsModal = ({
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || t("teams:invitationDetails.acceptFailed"));
+      setError(getTeamErrorText(err, t, t("teams:invitationDetails.acceptFailed")));
     } finally {
       setActionLoading(null);
     }
@@ -372,7 +373,7 @@ const TeamInvitationDetailsModal = ({
       setResponseMessage("");
       onClose();
     } catch (err) {
-      setError(err.message || t("teams:invitationDetails.declineFailed"));
+      setError(getTeamErrorText(err, t, t("teams:invitationDetails.declineFailed")));
     } finally {
       setActionLoading(null);
     }

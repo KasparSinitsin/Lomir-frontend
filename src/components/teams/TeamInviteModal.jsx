@@ -47,6 +47,7 @@ import {
 } from "../../utils/teamRequestUtils";
 import { formatDateMedium } from "../../utils/dateHelpers";
 import { formatListLocation } from "../../utils/locationUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -888,10 +889,7 @@ const TeamInviteModal = ({
       }, 1500);
     } catch (err) {
       console.error("Error sending invitation:", err);
-      // The backend's prose; coding it is T4. Only the fallback is ours.
-      setError(
-        err.response?.data?.message || t("teams:inviteForm.errors.sendFailed")
-      );
+      setError(getTeamErrorText(err, t, t("teams:inviteForm.errors.sendFailed")));
     } finally {
       setSending(false);
     }
