@@ -848,7 +848,7 @@
     "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}"
   },
   "privacy": {
-    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
+    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Ehemaliger Lomir-Nutzer“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
     "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
     "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
     "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
