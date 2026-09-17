@@ -528,6 +528,9 @@
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …"
   },
+  "legalPage": {
+    "lastUpdated": "Stand: {date}"
+  },
   "location": {
     "city": "Stadt / Ort (optional)",
     "cityPlaceholder": "z. B. Berlin",
