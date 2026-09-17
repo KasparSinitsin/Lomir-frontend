@@ -50,7 +50,19 @@ const TeamEditForm = ({
   onDelete,
   loading = false,
   onAvatarDeleted,
+  // The team's current member count; the maximum may not go below it.
+  memberCount = null,
 }) => {
+  const minimumMaxMembers = Math.max(2, Number.isFinite(memberCount) ? memberCount : 0);
+  const firstAllowedPreset =
+    PRESET_OPTIONS.find((option) => option >= minimumMaxMembers) ?? null;
+  const maxMembersNumber = Number(formData.maxMembers);
+  const isMaxMembersBelowMinimum =
+    formData.maxMembersMode !== "unlimited" &&
+    formData.maxMembers !== "" &&
+    formData.maxMembers !== null &&
+    Number.isFinite(maxMembersNumber) &&
+    maxMembersNumber < minimumMaxMembers;
   // Declares the lazy `teams` namespace this file resolves `teams:` keys
   // against. i18next inits with ns: ["common"] and useSuspense: false, so an
   // undeclared namespace renders the raw key. "common" stays first, so
@@ -418,9 +430,10 @@ const TeamEditForm = ({
                 onClick={() => {
                   setFormData((prev) => {
                     const current = Number(prev.maxMembers);
-                    const nextMax = PRESET_OPTIONS.includes(current)
-                      ? current
-                      : PRESET_OPTIONS[0];
+                    const nextMax =
+                      PRESET_OPTIONS.includes(current) && current >= minimumMaxMembers
+                        ? current
+                        : firstAllowedPreset;
                     return {
                       ...prev,
                       maxMembersMode: "preset",
@@ -428,7 +441,8 @@ const TeamEditForm = ({
                     };
                   });
                 }}
-                disabled={loading}
+                // No preset fits a team this large; "custom" and "unlimited" still do.
+                disabled={loading || firstAllowedPreset === null}
               >
                 {t("teams:teamForm.preset")}
               </button>
@@ -444,7 +458,9 @@ const TeamEditForm = ({
                   setFormData((prev) => {
                     const current = Number(prev.maxMembers);
                     const nextMax =
-                      !Number.isNaN(current) && current >= 2 ? current : 25;
+                      !Number.isNaN(current) && current >= minimumMaxMembers
+                        ? current
+                        : Math.max(25, minimumMaxMembers);
                     return {
                       ...prev,
                       maxMembersMode: "custom",
@@ -487,13 +503,13 @@ const TeamEditForm = ({
                   value={
                     PRESET_OPTIONS.includes(Number(formData.maxMembers))
                       ? Number(formData.maxMembers)
-                      : PRESET_OPTIONS[0]
+                      : (firstAllowedPreset ?? PRESET_OPTIONS[0])
                   }
                   onChange={handleChange}
                   disabled={loading}
                 >
                   {PRESET_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
+                    <option key={n} value={n} disabled={n < minimumMaxMembers}>
                       {t("teams:teamForm.memberOption", { count: n })}
                     </option>
                   ))}
@@ -504,11 +520,22 @@ const TeamEditForm = ({
                 <input
                   name="maxMembers"
                   type="number"
-                  min={2}
-                  className="input input-bordered w-full"
+                  min={minimumMaxMembers}
+                  step={1}
+                  className={`input input-bordered w-full ${
+                    isMaxMembersBelowMinimum || formErrors.maxMembers ? "input-error" : ""
+                  }`}
                   value={formData.maxMembers ?? ""}
                   onChange={handleChange}
-                  placeholder={t("teams:teamForm.minPlaceholder")}
+                  // Typing is free (to type 12 you pass through 1); leaving the
+                  // field raises a value below the minimum to the minimum. The
+                  // arrows already stop there through `min`.
+                  onBlur={() => {
+                    if (!Number.isFinite(maxMembersNumber) || maxMembersNumber < minimumMaxMembers) {
+                      setFormData((prev) => ({ ...prev, maxMembers: minimumMaxMembers }));
+                    }
+                  }}
+                  placeholder={t("teams:teamForm.minPlaceholder", { count: minimumMaxMembers })}
                   disabled={loading}
                 />
               )}
@@ -526,15 +553,26 @@ const TeamEditForm = ({
                 </div>
               )}
 
-              {formErrors.maxMembers && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.maxMembers}
-                  </span>
-                </label>
-              )}
             </div>
           </div>
+
+          {/* Below the whole row, not inside the input column: that column is
+              narrow on wide screens and cut the sentence off. The hint turns
+              red while the value is below the minimum. */}
+          {formErrors.maxMembers ? (
+            <p className="text-xs text-error mt-2 px-1">{formErrors.maxMembers}</p>
+          ) : (
+            minimumMaxMembers > 2 &&
+            formData.maxMembersMode !== "unlimited" && (
+              <p
+                className={`text-xs mt-2 px-1 ${
+                  isMaxMembersBelowMinimum ? "text-error" : "text-base-content/60"
+                }`}
+              >
+                {t("teams:teamForm.maxMembersMinimumHint", { count: minimumMaxMembers })}
+              </p>
+            )
+          )}
         </div>
       </section>
 

@@ -565,6 +565,15 @@ body {
   background-image: none !important;
 }
 
+/* The !important colours above also override daisyUI's disabled look, so a
+   disabled primary button looked active. Mute it the way disabled selects,
+   dropdowns and uploaders already are: opacity-50, not-allowed cursor. */
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Custom Input Focus */
 .input:focus {
   box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);

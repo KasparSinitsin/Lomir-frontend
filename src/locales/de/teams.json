@@ -223,7 +223,8 @@
   },
   "applicationButton": {
     "defaultLabel": "Für dieses Team bewerben",
-    "submitFailed": "Bewerbung konnte nicht gesendet werden"
+    "submitFailed": "Bewerbung konnte nicht gesendet werden",
+    "teamFull": "Dieses Team hat die maximale Mitgliederzahl erreicht."
   },
   "applicationForm": {
     "title": "Bei diesem Team bewerben",
@@ -264,7 +265,7 @@
     "preset": "Vorgabe",
     "custom": "Eigene",
     "unlimited": "Unbegrenzt",
-    "minPlaceholder": "mind. 2",
+    "minPlaceholder": "mind. {count}",
     "noMemberLimit": "Keine Mitgliederbegrenzung",
     "removeTeamPicture": "Teambild entfernen",
     "avatarRemoveFailed": "Teambild konnte nicht entfernt werden. Bitte versuche es erneut.",
@@ -294,7 +295,8 @@
     "saving": "Wird gespeichert...",
     "creating": "Wird erstellt...",
     "createTeam": "Team erstellen",
-    "focusAreasPrompt": "Worauf konzentriert sich dieses Team? (Optional)"
+    "focusAreasPrompt": "Worauf konzentriert sich dieses Team? (Optional)",
+    "maxMembersMinimumHint": "Mindestens {count}: So viele Mitglieder hat das Team bereits."
   },
   "applicationDetails": {
     "titleTeam": "Team-Bewerbung",
@@ -497,6 +499,7 @@
     "closeRoleTooltip": "Diese Rolle schließen — keine weiteren Bewerbungen annehmen",
     "reopenRoleTooltip": "Diese Rolle wieder öffnen, um Bewerbungen anzunehmen",
     "findMatchesTooltip": "Passende Personen außerhalb dieses Teams finden",
+    "findMatchesTeamFull": "Dieses Team hat die maximale Mitgliederzahl erreicht. Niemand von außerhalb kann beitreten.",
     "findMatches": "Matches finden",
     "loadingDetails": "Vollständige Rollendetails werden geladen...",
     "viewProfileOf": "Klicken, um das Profil von {name} zu sehen",
@@ -570,6 +573,7 @@
     "roleInvitationWithdrawn": "Diese Rollen-Einladung wurde bereits zurückgezogen. Die Team-Einladung ist weiterhin offen.",
     "inviteeHasPendingApplication": "Diese Person hat sich bereits bei diesem Team beworben. Du kannst stattdessen auf ihre Bewerbung antworten.",
     "applicationAlreadyPending": "Du hast diese Bewerbung bereits gesendet. Sie wartet noch auf eine Antwort.",
-    "applicationUnavailable": "Diese Bewerbung ist nicht mehr verfügbar. Sie wurde eventuell schon bearbeitet oder zurückgezogen."
+    "applicationUnavailable": "Diese Bewerbung ist nicht mehr verfügbar. Sie wurde eventuell schon bearbeitet oder zurückgezogen.",
+    "maxMembersBelowMemberCount": "Das Team hat bereits {count, plural, one {# Mitglied} other {# Mitglieder}}. Die Höchstzahl kann nicht darunter liegen."
   }
 }

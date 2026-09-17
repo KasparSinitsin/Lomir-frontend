@@ -32,6 +32,12 @@ export const getTeamErrorText = (error, t, fallback) => {
       return t("teams:teamErrors.teamNotFound");
     case "TEAM_FULL":
       return t("teams:teamErrors.teamFull");
+    case "MAX_MEMBERS_BELOW_MEMBER_COUNT": {
+      const memberCount = error?.response?.data?.values?.memberCount;
+      return Number.isFinite(memberCount)
+        ? t("teams:teamErrors.maxMembersBelowMemberCount", { count: memberCount })
+        : fallback;
+    }
     case "ROLE_NOT_FOUND":
       return t("teams:teamErrors.roleNotFound");
     case "ROLE_NOT_OPEN":
