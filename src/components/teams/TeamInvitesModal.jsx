@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../contexts/ToastContext";
 import {
   User,
@@ -21,6 +22,7 @@ import { useTeamModal } from "../../contexts/TeamModalContext";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import { getDisplayName } from "../../utils/userHelpers";
+import { splitEventSentence } from "../../utils/eventSentences";
 import {
   buildCurrentFilledRoleForCard,
   buildInvitationRoleForCard,
@@ -59,6 +61,10 @@ const TeamInvitesModal = ({
   highlightInvitationId = null,
   highlightUserId = null,
 }) => {
+  // `common` stays first, so unprefixed keys are unaffected; `teams` is named
+  // so it loads with the modal.
+  const { t } = useTranslation(["common", "teams"]);
+
   // ============ State ============
   const showToast = useToast();
   const [loading, setLoading] = useState(false);
@@ -95,7 +101,7 @@ const TeamInvitesModal = ({
     if (!isOpen || (!highlightInvitationId && !highlightUserId)) return;
 
     let frameId = null;
-    const t = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -105,7 +111,7 @@ const TeamInvitesModal = ({
     }, 150);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timeoutId);
       if (frameId != null) window.cancelAnimationFrame(frameId);
     };
   }, [highlightInvitationId, highlightUserId, invitations.length, isOpen]);
@@ -143,13 +149,14 @@ const TeamInvitesModal = ({
 
       showSuccess(
         pendingCancelType === "role"
-          ? "Role invitation canceled successfully!"
-          : "Team invitation canceled successfully!",
+          ? t("teams:invitationsList.toast.roleCanceled")
+          : t("teams:invitationsList.toast.teamCanceled"),
       );
       setPendingCancelInvitationId(null);
       setPendingCancelType("team");
     } catch (err) {
-      setError(err.message || "Failed to cancel invitation");
+      // `err.message` is the backend's prose; coding it is T4.
+      setError(err.message || t("teams:invitationsList.errors.cancelFailed"));
     } finally {
       setLoading(false);
     }
@@ -169,10 +176,15 @@ const TeamInvitesModal = ({
   const pendingCancelInvitation = invitations.find(
     (invitation) => String(invitation.id) === String(pendingCancelInvitationId),
   );
+  // `getDisplayName` answers the English marker "Unknown" when there is no
+  // name; that selects the unnamed sentence rather than being shown.
+  const pendingInviteeDisplayName = pendingCancelInvitation?.invitee
+    ? getDisplayName(pendingCancelInvitation.invitee)
+    : null;
   const pendingInviteeName =
-    pendingCancelInvitation?.invitee
-      ? getDisplayName(pendingCancelInvitation.invitee)
-      : "this user";
+    pendingInviteeDisplayName && pendingInviteeDisplayName !== "Unknown"
+      ? pendingInviteeDisplayName
+      : null;
   const pendingCancelIsRole = pendingCancelType === "role";
   const pendingCancelHasRole =
     !pendingCancelIsRole &&
@@ -182,11 +194,13 @@ const TeamInvitesModal = ({
         pendingCancelInvitation?.role_id,
     );
   const pendingCancelTitle = pendingCancelIsRole
-    ? "Cancel Role Invitation"
-    : "Cancel Team Invitation";
-  const pendingCancelButtonLabel = pendingCancelIsRole
-    ? "Cancel Role Invitation"
-    : "Cancel Team Invitation";
+    ? t("teams:invitationsList.cancelDialog.titleRole")
+    : t("teams:invitationsList.cancelDialog.titleTeam");
+  const pendingCancelButtonLabel = pendingCancelTitle;
+  const titleParts = splitEventSentence({
+    text: t("teams:invitationsList.title"),
+    slots: { team: true },
+  });
 
   return (
     <RequestListModal
@@ -195,24 +209,28 @@ const TeamInvitesModal = ({
       title={
         <span className="leading-[100%]">
           <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
-          <Tooltip content="View team" wrapperClassName="inline">
-            <span
-              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
-              onClick={() => teamId && openTeamModal(teamId, teamName)}
-            >{teamName}</span>
-          </Tooltip>
-          <span>'s Invitations</span>
+          {titleParts.map((part, index) =>
+            "text" in part ? (
+              <span key={index}>{part.text}</span>
+            ) : (
+              <Tooltip key={index} content={t("teams:applicationsList.viewTeam")} wrapperClassName="inline">
+                <span
+                  className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+                  onClick={() => teamId && openTeamModal(teamId, teamName)}
+                >{teamName}</span>
+              </Tooltip>
+            ),
+          )}
         </span>
       }
       itemCount={invitations.length}
       itemName="invitation"
       bylineIcon={<SendHorizontal size={14} className="text-violet-500 shrink-0" />}
-      footerText="You can cancel invitations that haven't been responded to."
+      footerText={t("teams:invitationsList.footer")}
       error={error}
       onErrorClose={() => setError(null)}
       emptyIcon={User}
-      emptyTitle="No pending invitations"
-      emptyMessage="Invitations you send to users will appear here."
+      emptyMessage={t("teams:invitationsList.emptyMessage")}
       extraModals={
         <Modal
           isOpen={Boolean(pendingCancelInvitationId)}
@@ -231,7 +249,7 @@ const TeamInvitesModal = ({
                 onClick={closeCancelInvitationModal}
                 disabled={loading}
               >
-                Keep
+                {t("teams:applicationDetails.keep")}
               </Button>
               <Button
                 variant="error"
@@ -239,18 +257,24 @@ const TeamInvitesModal = ({
                 disabled={loading}
                 icon={<Trash2 size={16} />}
               >
-                {loading ? "Canceling..." : pendingCancelButtonLabel}
+                {loading ? t("teams:applicationDetails.canceling") : pendingCancelButtonLabel}
               </Button>
             </div>
           }
         >
           <p className="text-sm text-base-content/80">
             {pendingCancelIsRole
-              ? `Cancel the role invitation for ${pendingInviteeName}?`
-              : `Cancel the team invitation for ${pendingInviteeName}? They will no longer be able to respond to it.`}
+              ? t("teams:invitationsList.cancelDialog.bodyRole", {
+                  named: pendingInviteeName ? "yes" : "no",
+                  name: pendingInviteeName ?? "",
+                })
+              : t("teams:invitationsList.cancelDialog.bodyTeam", {
+                  named: pendingInviteeName ? "yes" : "no",
+                  name: pendingInviteeName ?? "",
+                })}
             {pendingCancelHasRole && (
               <span className="block mt-2 text-warning text-xs">
-                This will also cancel the associated role invitation.
+                {t("teams:invitationsList.cancelDialog.alsoRole")}
               </span>
             )}
           </p>
@@ -285,6 +309,10 @@ const TeamInvitesModal = ({
             ? selfRoleMatchMap[String(roleId)] ?? null
             : null;
         const hasRoleInvitation = roleId != null;
+        // No name for a private profile: its stand-in label is not a name.
+        const inviteeName = isPrivateProfileUser(invitation.invitee)
+          ? null
+          : getRequestUserLabel(invitation, "invitee", null);
         const isInternalInvitation = Boolean(
           invitation?.isInternal ?? invitation?.is_internal ?? false,
         );
@@ -359,18 +387,22 @@ const TeamInvitesModal = ({
               }
               forceNarrow={anyNarrow}
               message={displayedMessage || undefined}
-              messageLabel={`Invitation message sent to ${getRequestUserLabel(invitation, "invitee", "recipient")}:`}
+              messageLabel={
+                inviteeName
+                  ? t("teams:invitationsList.messageLabelNamed", { name: inviteeName })
+                  : t("teams:invitationsList.messageLabel")
+              }
               messageIcon={<SendHorizontal size={12} className="text-info mr-1" />}
               onUserClick={handleInviteeClick}
               showLocation={true}
               sublineExtra={
                 isInternalInvitation ? (
                   <Tooltip
-                    content="Already a member of this team"
+                    content={t("teams:applicationsList.alreadyMember")}
                     wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
                     <User size={10} className="flex-shrink-0 text-success" />
-                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                    <span className="leading-[1.05] whitespace-nowrap">{t("teams:applicationDetails.teamMember")}</span>
                   </Tooltip>
                 ) : null
               }
@@ -399,14 +431,14 @@ const TeamInvitesModal = ({
                   />
                 ) : invitation.inviter_username ? (
                   <span className="min-w-0 flex-[1_1_12rem] overflow-hidden truncate text-xs text-base-content/50">
-                    Invited by {invitation.inviter_username}
+                    {t("userLink.invitedByName", { name: invitation.inviter_username })}
                   </span>
                 ) : null
               }
               actions={
                 <div className="ml-auto flex flex-wrap justify-end gap-2">
                   {hasRoleInvitation && (
-                    <Tooltip content="Cancel role invitation only">
+                    <Tooltip content={t("teams:invitationsList.actions.cancelRoleOnlyTooltip")}>
                       <Button
                         variant="errorOutline"
                         size="sm"
@@ -414,7 +446,9 @@ const TeamInvitesModal = ({
                         disabled={loading}
                         icon={<XCircle size={14} />}
                       >
-                        {loading ? "Canceling..." : "Cancel Role Invite"}
+                        {loading
+                          ? t("teams:applicationDetails.canceling")
+                          : t("teams:invitationsList.actions.cancelRole")}
                       </Button>
                     </Tooltip>
                   )}
@@ -422,8 +456,8 @@ const TeamInvitesModal = ({
                     <Tooltip
                       content={
                         hasRoleInvitation
-                          ? "Cancel team & role invitation"
-                          : "Cancel team invitation"
+                          ? t("teams:invitationsList.actions.cancelTeamAndRoleTooltip")
+                          : t("teams:invitationsList.actions.cancelTeamTooltip")
                       }
                     >
                       <Button
@@ -434,10 +468,10 @@ const TeamInvitesModal = ({
                         icon={<XCircle size={14} />}
                       >
                         {loading
-                          ? "Canceling..."
+                          ? t("teams:applicationDetails.canceling")
                           : hasRoleInvitation
-                            ? "Cancel Role + Team Invite"
-                            : "Cancel Invite"}
+                            ? t("teams:invitationsList.actions.cancelTeamAndRole")
+                            : t("teams:invitationsList.actions.cancelInvite")}
                       </Button>
                     </Tooltip>
                   )}

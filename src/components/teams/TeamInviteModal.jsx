@@ -46,6 +46,7 @@ import {
   numericIdsMatch,
 } from "../../utils/teamRequestUtils";
 import { formatDateMedium } from "../../utils/dateHelpers";
+import { formatListLocation } from "../../utils/locationUtils";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -229,7 +230,9 @@ const TeamInviteModal = ({
   prefillTeamName = null,
   prefillRoleName = null,
 }) => {
-  const { t } = useTranslation();
+  // `common` stays first, so unprefixed keys are unaffected; `teams` is named
+  // so it loads with the modal.
+  const { t } = useTranslation(["common", "teams"]);
   const normalizedPrefillTeamId = normalizeId(prefillTeamId);
   const normalizedPrefillRoleId = normalizeId(prefillRoleId);
   const [teams, setTeams] = useState([]);
@@ -334,14 +337,15 @@ const TeamInviteModal = ({
         setTeamStatusData(statusData);
       } catch (err) {
         console.error("Error fetching teams:", err);
-        setError("Failed to load your teams. Please try again.");
+        setError(t("teams:inviteForm.errors.loadTeams"));
       } finally {
         setLoading(false);
       }
     };
 
     fetchTeamsAndStatus();
-  }, [isOpen, inviteeId, normalizedPrefillTeamId, prefillTeamName]);
+    // `t` only words the load error; a language switch refetches, harmlessly.
+  }, [isOpen, inviteeId, normalizedPrefillTeamId, prefillTeamName, t]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -512,12 +516,12 @@ const TeamInviteModal = ({
       return fullName;
     }
 
-    return inviteeName || inviteeUsername || "Unknown User";
+    return inviteeName || inviteeUsername || t("requestList.unknownUser");
   };
 
   // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
   const getInviteeAbbreviatedName = () => {
-    return (inviteeFirstName || "").split(" ")[0] || inviteeName || inviteeUsername || "Unknown User";
+    return (inviteeFirstName || "").split(" ")[0] || inviteeName || inviteeUsername || t("requestList.unknownUser");
   };
 
   // Get username
@@ -592,6 +596,7 @@ const TeamInviteModal = ({
       .toUpperCase();
   };
 
+  // "Vacant Role" is the stored default role name, so initials stay on it.
   const getRoleInitials = (roleName) => {
     const name = roleName || "Vacant Role";
     const words = name.trim().split(/\s+/);
@@ -605,7 +610,7 @@ const TeamInviteModal = ({
 
   const getRoleLocation = (role) => {
     const isRemote = role.isRemote ?? role.is_remote;
-    if (isRemote) return "Remote";
+    if (isRemote) return t("location.section.remote");
 
     const parts = [role.city, role.country].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : null;
@@ -615,7 +620,7 @@ const TeamInviteModal = ({
     const isRemote = team.isRemote ?? team.is_remote;
     const locationParts = [team.city, team.country].filter(Boolean);
     const locationText = isRemote
-      ? "Remote"
+      ? t("location.section.remote")
       : locationParts.length > 0
         ? locationParts.join(", ")
         : null;
@@ -623,7 +628,8 @@ const TeamInviteModal = ({
     return { isRemote, locationText };
   };
 
-  // Get the status badge for a team
+  // Get the status badge for a team. Every decision reads `type`; `label` is
+  // display only.
   const getTeamStatusBadge = (teamId, team) => {
     const isSelected = idsMatch(selectedTeamId, teamId);
     const status = teamStatusData[teamId] || {};
@@ -635,7 +641,7 @@ const TeamInviteModal = ({
     if (hasPendingInvite) {
       return {
         type: "pending-invite",
-        label: "Invited",
+        label: t("teams:inviteForm.badge.invited"),
         icon: SendHorizontal,
         badgeClass: "badge-role-admin",
         clickable: true,
@@ -645,7 +651,7 @@ const TeamInviteModal = ({
     if (hasPendingApplication) {
       return {
         type: "pending-application",
-        label: "Applied",
+        label: t("teams:inviteForm.badge.applied"),
         icon: Mail,
         badgeClass: "badge-role-owner",
         clickable: true,
@@ -656,7 +662,7 @@ const TeamInviteModal = ({
       if (isSelected) {
         return {
           type: "existing-member-selected",
-          label: "Invite to Role",
+          label: t("teams:inviteForm.badge.inviteToRole"),
           icon: Check,
           clickable: true,
           customStyle: {
@@ -668,7 +674,7 @@ const TeamInviteModal = ({
       }
       return {
         type: "existing-member",
-        label: "Member",
+        label: t("roles.member"),
         icon: Users,
         clickable: true,
         customStyle: {
@@ -683,7 +689,7 @@ const TeamInviteModal = ({
       if (isSelected) {
         return {
           type: "selected",
-          label: "Invite to Team",
+          label: t("teams:inviteForm.badge.inviteToTeam"),
           icon: Check,
           customStyle: {
             backgroundColor: "var(--color-primary-focus)",
@@ -694,7 +700,7 @@ const TeamInviteModal = ({
       } else {
         return {
           type: "available",
-          label: "Invite",
+          label: t("teams:inviteForm.badge.invite"),
           icon: UserPlus,
           badgeClass: "badge-role-member",
           clickable: true,
@@ -759,17 +765,15 @@ const TeamInviteModal = ({
       vacantRoles.length > 0 ||
       selectedTeamRequiresRole ||
       isRoleSectionExpanded);
-  const roleAvailabilityLabel =
-    vacantRoles.length === 1
-      ? "1 open role available"
-      : `${vacantRoles.length} open roles available`;
+  const roleAvailabilityLabel = t("teams:applicationForm.rolesAvailable", {
+    count: vacantRoles.length,
+  });
   const otherAvailableTeamCount = selectedTeam
     ? orderedTeams.filter((team) => !idsMatch(team.id, selectedTeam.id)).length
     : orderedTeams.length;
-  const otherAvailableTeamLabel =
-    otherAvailableTeamCount === 1
-      ? "1 other team available"
-      : `${otherAvailableTeamCount} other teams available`;
+  const otherAvailableTeamLabel = t("teams:inviteForm.otherTeamsAvailable", {
+    count: otherAvailableTeamCount,
+  });
   const selectedRole =
     vacantRoles.find((role) => idsMatch(role.id, selectedRoleId)) ?? null;
   const isRoleSelectionRequired =
@@ -807,8 +811,8 @@ const TeamInviteModal = ({
       const last = inviteeLastName || "";
       const full = `${first} ${last}`.trim();
       const displayName = inviteeIsPrivateProfile
-        ? "Private Profile"
-        : full || inviteeName || inviteeUsername || "Unknown User";
+        ? t("user.privateProfile")
+        : full || inviteeName || inviteeUsername || t("requestList.unknownUser");
       const dateEl = dateRef.current;
       const reservedWidth =
         dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
@@ -821,7 +825,7 @@ const TeamInviteModal = ({
     if (dateRef.current) resizeObserver.observe(dateRef.current);
     update();
     return () => resizeObserver.disconnect();
-  }, [inviteeFirstName, inviteeLastName, inviteeName, inviteeUsername, inviteeIsPrivateProfile]);
+  }, [inviteeFirstName, inviteeLastName, inviteeName, inviteeUsername, inviteeIsPrivateProfile, t]);
 
   const prefillContextNote = useMemo(() => {
     if (!idsMatch(selectedTeamId, normalizedPrefillTeamId)) return null;
@@ -829,15 +833,18 @@ const TeamInviteModal = ({
     const teamLabel = selectedTeam?.name || prefillTeamName || null;
 
     if (prefillRoleName && teamLabel) {
-      return `Prefilled from match: ${prefillRoleName} in ${teamLabel}.`;
+      return t("teams:inviteForm.prefill.roleInTeam", {
+        role: prefillRoleName,
+        team: teamLabel,
+      });
     }
 
     if (prefillRoleName) {
-      return `Prefilled from match: ${prefillRoleName}.`;
+      return t("teams:inviteForm.prefill.role", { role: prefillRoleName });
     }
 
     if (teamLabel) {
-      return `Prefilled team: ${teamLabel}.`;
+      return t("teams:inviteForm.prefill.team", { team: teamLabel });
     }
 
     return null;
@@ -847,20 +854,19 @@ const TeamInviteModal = ({
     normalizedPrefillTeamId,
     selectedTeam,
     selectedTeamId,
+    t,
   ]);
 
   // ============ Handlers ============
 
   const handleSendInvitation = async () => {
     if (!selectedTeamId) {
-      setError("Please select a team");
+      setError(t("teams:inviteForm.errors.selectTeam"));
       return;
     }
 
     if (selectedTeamRequiresRole && !selectedRoleId) {
-      setError(
-        "Select a role to invite this team member for a specific position.",
-      );
+      setError(t("teams:inviteForm.roleRequired"));
       return;
     }
 
@@ -875,16 +881,16 @@ const TeamInviteModal = ({
         selectedRoleId,
       );
 
-      setSuccess(`Invitation sent to ${getInviteeDisplayName()}!`);
+      setSuccess(t("teams:inviteForm.sent", { name: getInviteeDisplayName() }));
 
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (err) {
       console.error("Error sending invitation:", err);
+      // The backend's prose; coding it is T4. Only the fallback is ours.
       setError(
-        err.response?.data?.message ||
-          "Failed to send invitation. Please try again."
+        err.response?.data?.message || t("teams:inviteForm.errors.sendFailed")
       );
     } finally {
       setSending(false);
@@ -1191,7 +1197,7 @@ const TeamInviteModal = ({
       <UserPlus className="text-primary mt-0.5" size={24} />
       <div>
         <h2 className="text-xl font-medium text-primary leading-[110%]">
-          Invite {getInviteeAbbreviatedName()} to a Team
+          {t("teams:inviteForm.title", { name: getInviteeAbbreviatedName() })}
         </h2>
         {/* <p className="text-sm text-base-content/70">
           Invite {getInviteeDisplayName()} to join your team
@@ -1206,7 +1212,12 @@ const TeamInviteModal = ({
     !success &&
     (!selectedTeamRequiresRole || selectedRoleId !== null);
   const showInviteeDemoProfile = isSyntheticUser(inviteeUser);
-  const locationText = [inviteeCity, inviteeCountry].filter(Boolean).join(", ");
+  // Same as the request lists: country code on the line, the country's name
+  // (in the active language) in the tooltip.
+  const { short: locationText, full: locationTooltip } = formatListLocation({
+    city: inviteeCity,
+    country: inviteeCountry,
+  });
   const joinedDateText = (() => {
     if (!inviteeJoinedAt) return null;
     try {
@@ -1367,7 +1378,7 @@ const TeamInviteModal = ({
                 <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
                   <Users size={10} className="text-base-content/60 shrink-0" />
                   <span className="text-base-content/60 leading-[1.05] truncate">
-                    Member
+                    {t("roles.member")}
                   </span>
                 </div>
               )}
@@ -1392,7 +1403,7 @@ const TeamInviteModal = ({
   const footer = (
     <div className="flex justify-end gap-3">
       <Button variant="errorOutline" onClick={onClose} disabled={sending}>
-        Cancel
+        {t("teams:applicationForm.cancel")}
       </Button>
       <Button
         variant="successOutline"
@@ -1400,7 +1411,7 @@ const TeamInviteModal = ({
         disabled={!canSendInvitation}
         icon={<Send size={16} />}
       >
-        {sending ? "Sending..." : "Send Invitation"}
+        {sending ? t("teams:applicationDetails.sending") : t("teams:inviteForm.send")}
       </Button>
     </div>
   );
@@ -1437,7 +1448,7 @@ const TeamInviteModal = ({
           {/* Invitee info */}
           <div className="relative flex items-start justify-between gap-4 mb-5">
             <div className="flex min-w-0 flex-1 items-start space-x-4">
-              <Tooltip content={inviteeIsPrivateProfile ? undefined : "View profile"} position="bottom" wrapperClassName="block">
+              <Tooltip content={inviteeIsPrivateProfile ? undefined : t("requestList.viewProfile")} position="bottom" wrapperClassName="block">
                 <UserAvatar
                   user={displayInviteeUser}
                   sizeClass="w-12 h-12"
@@ -1446,7 +1457,7 @@ const TeamInviteModal = ({
                   onClick={() => {
                     if (!inviteeIsPrivateProfile) handleUserClick(inviteeId);
                   }}
-                  title={inviteeIsPrivateProfile ? undefined : "View profile"}
+                  title={inviteeIsPrivateProfile ? undefined : t("requestList.viewProfile")}
                   privateProfile={false}
                   showDemoOverlay={showInviteeDemoProfile}
                   demoOverlayTextClassName="text-[8px]"
@@ -1461,7 +1472,7 @@ const TeamInviteModal = ({
                   {inviteeIsPrivateProfile ? (
                     <span>{getInviteeDisplayName()}</span>
                   ) : (
-                    <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                    <Tooltip content={t("requestList.viewProfile")} position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
                       <span onClick={() => handleUserClick(inviteeId)}>{getInviteeDisplayName()}</span>
                     </Tooltip>
                   )}
@@ -1479,7 +1490,7 @@ const TeamInviteModal = ({
                     inviteeIsPrivateProfile ? (
                       <p className="text-base-content/70">@{getUsername()}</p>
                     ) : (
-                      <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                      <Tooltip content={t("requestList.viewProfile")} position="bottom" wrapperClassName="inline-flex">
                         <p
                           className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
                           onClick={() => handleUserClick(inviteeId)}
@@ -1497,7 +1508,7 @@ const TeamInviteModal = ({
                   )}
                   {locationText && (
                     <Tooltip
-                      content={locationText}
+                      content={locationTooltip || locationText}
                       wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
                     >
                       <MapPin size={10} className="shrink-0 text-base-content/60" />
@@ -1544,7 +1555,7 @@ const TeamInviteModal = ({
             >
               <span className="flex min-w-0 items-center">
                 <Users size={12} className="text-primary mr-1" />
-                <span className="truncate">Select a team to invite them to:</span>
+                <span className="truncate">{t("teams:inviteForm.selectTeam")}</span>
               </span>
               <span className="ml-2 flex min-w-0 items-center gap-1 text-base-content/40">
                 {!isTeamSectionExpanded && selectedTeam && (
@@ -1568,10 +1579,10 @@ const TeamInviteModal = ({
               <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
                 <AlertCircle className="mx-auto mb-2 text-warning" size={28} />
                 <p className="text-sm text-base-content/70">
-                  You don't have any teams where you can invite members.
+                  {t("teams:inviteForm.noTeams")}
                 </p>
                 <p className="form-helper-text">
-                  Create a team or become an admin to send invitations.
+                  {t("teams:inviteForm.noTeamsHint")}
                 </p>
               </div>
             ) : isTeamSectionExpanded ? (
@@ -1598,14 +1609,14 @@ const TeamInviteModal = ({
                 aria-disabled={isRoleSelectionRequired && isRoleSectionExpanded}
                 title={
                   isRoleSelectionRequired && isRoleSectionExpanded
-                    ? "Select a role before collapsing this section"
+                    ? t("teams:inviteForm.collapseBlocked")
                     : undefined
                 }
               >
                 <span className="flex min-w-0 items-center">
                   <UserSearch size={12} className="text-orange-500 mr-1" />
                   <span className="truncate">
-                    Select a role you want to fill in this team:
+                    {t("teams:inviteForm.selectRole")}
                   </span>
                 </span>
                 <span className="ml-2 flex items-center gap-1 text-base-content/40">
@@ -1646,11 +1657,16 @@ const TeamInviteModal = ({
                       <button
                         type="button"
                         className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
-                        aria-label={`Open details for ${
-                          selectedRole.roleName ??
-                          selectedRole.role_name ??
-                          "this role"
-                        }`}
+                        aria-label={t("teams:inviteForm.openRoleDetails", {
+                          hasRole:
+                            selectedRole.roleName ?? selectedRole.role_name
+                              ? "yes"
+                              : "no",
+                          role:
+                            selectedRole.roleName ??
+                            selectedRole.role_name ??
+                            "",
+                        })}
                         onClick={(event) =>
                           handleRoleDetailsClick(selectedRole, event)
                         }
@@ -1686,12 +1702,12 @@ const TeamInviteModal = ({
                             >
                               {selectedRole.roleName ??
                                 selectedRole.role_name ??
-                                "Vacant Role"}
+                                t("roleStatus.vacantRoleFallback")}
                             </button>
                             <div className="shrink-0 ml-1">
                               <RoleBadgePill
                                 icon={Check}
-                                label="Selected"
+                                label={t("teams:applicationForm.selected")}
                                 badgeColorClass="bg-amber-800 text-white"
                                 interactive
                                 onClick={(event) => {
@@ -1743,22 +1759,25 @@ const TeamInviteModal = ({
                 <div className="text-center py-5 bg-base-200/30 rounded-lg border border-base-300">
                   <AlertCircle className="mx-auto mb-2 text-warning" size={24} />
                   <p className="text-sm text-base-content/70">
-                    This team has no open vacant roles right now.
+                    {t("teams:inviteForm.noOpenRoles")}
                   </p>
                   <p className="form-helper-text">
                     {selectedTeamRequiresRole
-                      ? "This user is already a member of the team, so an open role is required before you can send an invitation."
+                      ? t("teams:inviteForm.memberNeedsRole")
                       : idsMatch(selectedTeamId, normalizedPrefillTeamId) &&
                           prefillRoleName
-                        ? `${prefillRoleName} isn't currently available. You can still send a general team invitation.`
-                        : "You can still send a general team invitation without choosing a role."}
+                        ? t("teams:inviteForm.prefillRoleUnavailable", {
+                            role: prefillRoleName,
+                          })
+                        : t("teams:inviteForm.generalInviteHint")}
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
                   {vacantRoles.map((role) => {
+                    const storedRoleName = role.roleName ?? role.role_name ?? null;
                     const roleName =
-                      role.roleName ?? role.role_name ?? "Vacant Role";
+                      storedRoleName ?? t("roleStatus.vacantRoleFallback");
                     const isSelected = idsMatch(selectedRoleId, role.id);
                     const locationText = getRoleLocation(role);
                     const isRemote = role.isRemote ?? role.is_remote;
@@ -1786,7 +1805,10 @@ const TeamInviteModal = ({
                         <button
                           type="button"
                           className="avatar placeholder cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
-                          aria-label={`Open details for ${roleName}`}
+                          aria-label={t("teams:inviteForm.openRoleDetails", {
+                            hasRole: "yes",
+                            role: roleName,
+                          })}
                           onClick={(event) =>
                             handleRoleDetailsClick(role, event)
                           }
@@ -1794,7 +1816,7 @@ const TeamInviteModal = ({
                         >
                           <div className="bg-amber-500 text-white w-14 h-14 rounded-full relative flex items-center justify-center overflow-hidden">
                             <span className="text-xl">
-                              {getRoleInitials(roleName)}
+                              {getRoleInitials(storedRoleName)}
                             </span>
                             {showDemoRole && (
                               <DemoAvatarOverlay
@@ -1821,7 +1843,11 @@ const TeamInviteModal = ({
                               <div className="shrink-0 ml-1">
                                 <RoleBadgePill
                                   icon={isSelected ? Check : UserSearch}
-                                  label={isSelected ? "Selected" : "Select"}
+                                  label={
+                                    isSelected
+                                      ? t("teams:applicationForm.selected")
+                                      : t("teams:applicationForm.select")
+                                  }
                                   badgeColorClass={
                                     isSelected
                                       ? "bg-amber-800 text-white"
@@ -1870,8 +1896,7 @@ const TeamInviteModal = ({
                 selectedRoleId === null &&
                 selectedTeamRequiresRole && (
                   <p className="text-xs text-base-content/40 mt-1.5">
-                    Select a role to invite this team member for a specific
-                    position.
+                    {t("teams:inviteForm.roleRequired")}
                   </p>
                 )}
 
@@ -1881,8 +1906,7 @@ const TeamInviteModal = ({
                 selectedRoleId === null &&
                 !selectedTeamRequiresRole && (
                   <p className="text-xs text-base-content/40 mt-1.5">
-                    No role selected. Your invitation will be sent as a general
-                    team invitation.
+                    {t("teams:inviteForm.noRoleSelected")}
                   </p>
                 )}
             </div>
@@ -1899,7 +1923,7 @@ const TeamInviteModal = ({
               >
                 <span className="flex min-w-0 items-center">
                   <Send size={12} className="text-info mr-1" />
-                  <span className="truncate">Add a message (optional){isMessageSectionExpanded ? ":" : ""}</span>
+                  <span className="truncate">{t("teams:inviteForm.addMessage")}{isMessageSectionExpanded ? ":" : ""}</span>
                 </span>
                 <span className="ml-2 flex min-w-0 items-center gap-1 text-base-content/40">
                   {!isMessageSectionExpanded && message && (
@@ -1919,12 +1943,17 @@ const TeamInviteModal = ({
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder={`Hi ${getInviteeDisplayName()}, I'd like to invite you to join our team...`}
+                    placeholder={t("teams:inviteForm.messagePlaceholder", {
+                      name: getInviteeDisplayName(),
+                    })}
                     className="textarea textarea-bordered w-full h-24 resize-none text-sm pb-6"
                     maxLength={500}
                   />
                   <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
-                    {message.length}/500 characters
+                    {t("teams:applicationForm.charCount", {
+                      count: message.length,
+                      max: 500,
+                    })}
                   </span>
                 </div>
               )}

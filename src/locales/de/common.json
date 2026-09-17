@@ -1082,6 +1082,10 @@
     "sendChatMessage": "Chat-Nachricht senden",
     "title": "Profildetails"
   },
+  "userLink": {
+    "invitedBy": "Eingeladen von",
+    "invitedByName": "Eingeladen von {name}"
+  },
   "visibility": {
     "hidden": "Verborgen",
     "hiddenDescription": "Nur du kannst das sehen",

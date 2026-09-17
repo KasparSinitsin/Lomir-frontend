@@ -136,6 +136,10 @@ const PersonRequestCard = ({
   const hasLocation =
     !isPrivateUser &&
     (user?.city || user?.country || getPostalCode());
+  // Country code on the line, the country's name (active language) on hover.
+  const { short: locationShort, full: locationFull } = formatListLocation(user, {
+    isRemote: user?.is_remote || user?.isRemote,
+  });
   const [displayedName, setDisplayedName] = useState(fullName);
   const [isOverflow, setIsOverflow] = useState(false);
   const isOverflowRef = useRef(false);
@@ -230,12 +234,15 @@ const PersonRequestCard = ({
                   </div>
                 )}
                 {showLocation && hasLocation && (
-                  <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <Tooltip
+                    content={locationFull || locationShort || getPostalCode()}
+                    wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
+                  >
                     <MapPin size={10} className="text-base-content/60 shrink-0" />
                     <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
-                      {formatListLocation(user, { isRemote: user?.is_remote || user?.isRemote }).short || getPostalCode()}
+                      {locationShort || getPostalCode()}
                     </span>
-                  </div>
+                  </Tooltip>
                 )}
                 {sublineExtra}
                 {showDemoProfile && (

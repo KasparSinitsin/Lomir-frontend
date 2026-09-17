@@ -404,6 +404,7 @@
     "alreadyMember": "You are already a member of this team",
     "teamMember": "Team Member",
     "inviterMessage": "Invitation message from {name}:",
+    "inviterMessageUnnamed": "Invitation message:",
     "responseLabel": "Your response message (optional):",
     "responsePrompt": "Add a personal response message (optional)",
     "responsePlaceholder": "Add a personal message to your decision. Decline messages will be sent as DM to the inviter only. Acceptance messages will be sent to the team chat.",
@@ -420,6 +421,72 @@
     "joining": "Joining...",
     "decline": "Decline",
     "declining": "Declining..."
+  },
+  "inviteForm": {
+    "title": "Invite {name} to a Team",
+    "selectTeam": "Select a team to invite them to:",
+    "otherTeamsAvailable": "{count, plural, one {# other team available} other {# other teams available}}",
+    "noTeams": "You don't have any teams where you can invite members.",
+    "noTeamsHint": "Create a team or become an admin to send invitations.",
+    "badge": {
+      "invited": "Invited",
+      "applied": "Applied",
+      "invite": "Invite",
+      "inviteToTeam": "Invite to Team",
+      "inviteToRole": "Invite to Role"
+    },
+    "selectRole": "Select a role you want to fill in this team:",
+    "collapseBlocked": "Select a role before collapsing this section",
+    "openRoleDetails": "{hasRole, select, yes {Open details for {role}} other {Open details for this role}}",
+    "prefill": {
+      "roleInTeam": "Prefilled from match: {role} in {team}.",
+      "role": "Prefilled from match: {role}.",
+      "team": "Prefilled team: {team}."
+    },
+    "noOpenRoles": "This team has no open vacant roles right now.",
+    "memberNeedsRole": "This user is already a member of the team, so an open role is required before you can send an invitation.",
+    "prefillRoleUnavailable": "{role} isn't currently available. You can still send a general team invitation.",
+    "generalInviteHint": "You can still send a general team invitation without choosing a role.",
+    "roleRequired": "Select a role to invite this team member for a specific position.",
+    "noRoleSelected": "No role selected. Your invitation will be sent as a general team invitation.",
+    "addMessage": "Add a message (optional)",
+    "messagePlaceholder": "Hi {name}, I'd like to invite you to join our team...",
+    "send": "Send Invitation",
+    "sent": "Invitation sent to {name}!",
+    "errors": {
+      "loadTeams": "Failed to load your teams. Please try again.",
+      "selectTeam": "Please select a team",
+      "sendFailed": "Failed to send invitation. Please try again."
+    }
+  },
+  "invitationsList": {
+    "title": "<team/>'s Invitations",
+    "footer": "You can cancel invitations that haven't been responded to.",
+    "emptyMessage": "Invitations you send to users will appear here.",
+    "messageLabel": "Invitation message:",
+    "messageLabelNamed": "Invitation message sent to {name}:",
+    "toast": {
+      "roleCanceled": "Role invitation canceled successfully!",
+      "teamCanceled": "Team invitation canceled successfully!"
+    },
+    "errors": {
+      "cancelFailed": "Failed to cancel invitation"
+    },
+    "cancelDialog": {
+      "titleRole": "Cancel Role Invitation",
+      "titleTeam": "Cancel Team Invitation",
+      "bodyRole": "{named, select, yes {Cancel the role invitation for {name}?} other {Cancel the role invitation for this user?}}",
+      "bodyTeam": "{named, select, yes {Cancel the team invitation for {name}? They will no longer be able to respond to it.} other {Cancel the team invitation for this user? They will no longer be able to respond to it.}}",
+      "alsoRole": "This will also cancel the associated role invitation."
+    },
+    "actions": {
+      "cancelRole": "Cancel Role Invite",
+      "cancelRoleOnlyTooltip": "Cancel role invitation only",
+      "cancelTeamAndRole": "Cancel Role + Team Invite",
+      "cancelTeamAndRoleTooltip": "Cancel team & role invitation",
+      "cancelInvite": "Cancel Invite",
+      "cancelTeamTooltip": "Cancel team invitation"
+    }
   },
   "vacantRoleDetails": {
     "viewApplicationOf": "Click to view {name}'s full application for the team",

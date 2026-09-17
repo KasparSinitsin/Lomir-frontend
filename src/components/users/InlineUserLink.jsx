@@ -232,9 +232,11 @@ export const AwardedByLink = ({ user, ...props }) => (
 );
 
 // "Invited by [avatar] Name"
-export const InvitedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Invited by" {...props} />
-);
+// The one labelled variant with a caller, so the one that is translated.
+export const InvitedByLink = ({ user, ...props }) => {
+  const { t } = useTranslation();
+  return <InlineUserLink user={user} label={t("userLink.invitedBy")} {...props} />;
+};
 
 // "Sent by [avatar] Name"
 export const SentByLink = ({ user, ...props }) => (
