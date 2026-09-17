@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, CheckCheck, UserCheck, X as Decline, User, Users, Mail, MessageSquare, AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import RequestListModal from "../common/RequestListModal";
 import { useToast } from "../../contexts/ToastContext";
@@ -14,6 +15,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTeamModal } from "../../contexts/TeamModalContext";
 import { buildRoleApplicationFilledMessage } from "../../utils/roleEventMessages";
+import { splitEventSentence } from "../../utils/eventSentences";
 import usePolledRequestRoles from "../../hooks/usePolledRequestRoles";
 import useSelfRoleMatchMap from "../../hooks/useSelfRoleMatchMap";
 import {
@@ -52,6 +54,10 @@ const TeamApplicationsModal = ({
   highlightUserId = null,
   applicationsLoaded = false,
 }) => {
+  // `common` stays first, so unprefixed keys (`user.*`, `requestList.*`) are
+  // unaffected; `teams` is named so it loads with the modal.
+  const { t } = useTranslation(["common", "teams"]);
+
   // ============ Auth ============
   const { user: currentUser } = useAuth();
   const { openTeamModal } = useTeamModal();
@@ -160,25 +166,32 @@ const TeamApplicationsModal = ({
         }
       }
 
+      // Role names are data; a missing one selects another whole sentence
+      // rather than putting a translated fragment in its place.
+      const roleName =
+        application?.role?.roleName ?? application?.role?.role_name ?? null;
       if (action === "approve" && roleInvitationCreated) {
-        const roleName =
-          application?.role?.roleName ??
-          application?.role?.role_name ??
-          "the role";
-        const currentRoleName =
-          actionData.deferredByCurrentRoleName ?? "their current role";
+        const currentRoleName = actionData.deferredByCurrentRoleName ?? null;
         showSuccess(
-          `Application approved! ${roleName} is now a role offer the member can accept once they leave ${currentRoleName}.`,
+          t("teams:applicationsList.toast.approvedAsRoleOffer", {
+            hasRole: roleName ? "yes" : "no",
+            role: roleName ?? "",
+            hasCurrentRole: currentRoleName ? "yes" : "no",
+            currentRole: currentRoleName ?? "",
+          }),
         );
       } else if (action === "approve" && fillRole && roleFilled) {
-        const roleName =
-          application?.role?.roleName ??
-          application?.role?.role_name ??
-          "the role";
-        showSuccess(`Application approved! ${roleName} has been marked as filled.`);
+        showSuccess(
+          t("teams:applicationsList.toast.approvedAndFilled", {
+            hasRole: roleName ? "yes" : "no",
+            role: roleName ?? "",
+          }),
+        );
       } else {
         showSuccess(
-          `Application ${action === "approve" ? "approved" : "declined"} successfully!`
+          action === "approve"
+            ? t("teams:applicationsList.toast.approved")
+            : t("teams:applicationsList.toast.declined"),
         );
       }
 
@@ -189,7 +202,14 @@ const TeamApplicationsModal = ({
         return newResponses;
       });
     } catch (err) {
-      setError(err.message || `Failed to ${action} application`);
+      // `err.message` is the backend's prose, re-thrown by `teamService`;
+      // coding it is T4. Only the fallback is ours.
+      setError(
+        err.message ||
+          (action === "approve"
+            ? t("teams:applicationsList.errors.approveFailed")
+            : t("teams:applicationsList.errors.declineFailed")),
+      );
     } finally {
       setLoading(false);
     }
@@ -248,7 +268,7 @@ const TeamApplicationsModal = ({
           return next;
         });
 
-        showSuccess("Role reopened successfully!");
+        showSuccess(t("teams:applicationsList.toast.roleReopened"));
 
         try {
           await onRoleStatusChanged?.(roleId, "open");
@@ -259,7 +279,7 @@ const TeamApplicationsModal = ({
           );
         }
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to reopen role");
+        setError(err.response?.data?.message || t("teams:applicationsList.errors.reopenFailed"));
       } finally {
         setStatusUpdatingRoleId(null);
       }
@@ -291,7 +311,7 @@ const TeamApplicationsModal = ({
     if (!isOpen || (!highlightApplicationId && !highlightUserId)) return;
 
     let frameId = null;
-    const t = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       frameId = window.requestAnimationFrame(() => {
         highlightedRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -301,7 +321,7 @@ const TeamApplicationsModal = ({
     }, 150);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timeoutId);
       if (frameId != null) window.cancelAnimationFrame(frameId);
     };
   }, [applications.length, highlightApplicationId, highlightUserId, isOpen]);
@@ -333,10 +353,7 @@ const TeamApplicationsModal = ({
 
     if (!targetStillPending) {
       staleNotifiedRef.current = true;
-      showToast(
-        "The application you were notified about has already been handled.",
-        "info",
-      );
+      showToast(t("teams:applicationsList.toast.alreadyHandled"), "info");
       if (applications.length === 0) onClose();
     }
   }, [
@@ -347,10 +364,15 @@ const TeamApplicationsModal = ({
     applications,
     showToast,
     onClose,
+    t,
   ]);
 
   // ============ Render ============
   const anyNarrow = Object.values(narrowMap).some(Boolean);
+  const titleParts = splitEventSentence({
+    text: t("teams:applicationsList.title"),
+    slots: { team: true },
+  });
 
   return (
     <RequestListModal
@@ -359,23 +381,27 @@ const TeamApplicationsModal = ({
       title={
         <span className="leading-[100%]">
           <Users size={20} className="inline-block align-middle mr-1.5 shrink-0 text-primary" />
-          <Tooltip content="View team" wrapperClassName="inline">
-            <span
-              className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
-              onClick={() => teamId && openTeamModal(teamId, teamName)}
-            >{teamName}</span>
-          </Tooltip>
-          <span>'s Applications</span>
+          {titleParts.map((part, index) =>
+            "text" in part ? (
+              <span key={index}>{part.text}</span>
+            ) : (
+              <Tooltip key={index} content={t("teams:applicationsList.viewTeam")} wrapperClassName="inline">
+                <span
+                  className="font-semibold text-success cursor-pointer hover:text-success/70 transition-colors"
+                  onClick={() => teamId && openTeamModal(teamId, teamName)}
+                >{teamName}</span>
+              </Tooltip>
+            ),
+          )}
         </span>
       }
       itemCount={applications.length}
       itemName="application"
-      footerText="Review each application carefully before making decisions."
+      footerText={t("teams:applicationsList.footer")}
       error={error}
       onErrorClose={() => setError(null)}
       emptyIcon={User}
-      emptyTitle="No pending applications"
-      emptyMessage="When users apply to join your team, they'll appear here."
+      emptyMessage={t("teams:applicationsList.emptyMessage")}
       extraModals={
         <>
           <UserDetailsModal
@@ -398,23 +424,22 @@ const TeamApplicationsModal = ({
             title={
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
-                <span>Discard unsaved changes?</span>
+                <span>{t("teams:applicationsList.closeGuard.title")}</span>
               </div>
             }
             footer={
               <div className="flex justify-end gap-3">
                 <Button variant="ghost" onClick={() => setShowCloseGuard(false)}>
-                  Go back
+                  {t("teams:applicationsList.closeGuard.back")}
                 </Button>
                 <Button variant="warning" onClick={handleCloseGuardConfirm}>
-                  Discard & close
+                  {t("teams:applicationsList.closeGuard.discard")}
                 </Button>
               </div>
             }
           >
             <p className="text-base-content/80">
-              You've marked a role as filled but haven't accepted the applicant yet.
-              If you close now, this change will be discarded.
+              {t("teams:applicationsList.closeGuard.body")}
             </p>
           </Modal>
         </>
@@ -487,10 +512,16 @@ const TeamApplicationsModal = ({
           (!isServerClosed || isCurrentUserOwner);
 
         const unavailableTooltip = isInternalRoleApplication
-          ? (isServerFilled ? "This role is already filled" : "This role is closed")
+          ? (isServerFilled
+              ? t("teams:applicationsList.unavailable.filled")
+              : t("teams:applicationsList.unavailable.closed"))
           : (isServerFilled
-              ? "This role is already filled — you can still add this person to the team"
-              : "This role is closed — you can still add this person to the team");
+              ? t("teams:applicationsList.unavailable.filledCanAdd")
+              : t("teams:applicationsList.unavailable.closedCanAdd"));
+        // No name for a private profile: its stand-in label is not a name.
+        const applicantName = isPrivateProfileUser(application.applicant)
+          ? null
+          : getRequestUserLabel(application, "applicant", null);
 
         return (
           <div
@@ -511,19 +542,23 @@ const TeamApplicationsModal = ({
                 return { ...prev, [String(application.id)]: narrow };
               })}
               forceNarrow={anyNarrow}
-              message={application.message || "No message provided."}
-              messageLabel={`${getRequestUserLabel(application, "applicant")}'s application message:`}
+              message={application.message || t("teams:applicationDetails.noMessage")}
+              messageLabel={
+                applicantName
+                  ? t("teams:applicationsList.messageLabelNamed", { name: applicantName })
+                  : t("teams:applicationsList.messageLabel")
+              }
               messageIcon={<Mail size={12} className="text-pink-500 mr-1" />}
               onUserClick={handleUserClick}
               showLocation={true}
               sublineExtra={
                 isInternalRoleApplication ? (
                   <Tooltip
-                    content="Already a member of this team"
+                    content={t("teams:applicationsList.alreadyMember")}
                     wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
                     <User size={10} className="flex-shrink-0 text-success" />
-                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                    <span className="leading-[1.05] whitespace-nowrap">{t("teams:applicationDetails.teamMember")}</span>
                   </Tooltip>
                 ) : null
               }
@@ -562,7 +597,7 @@ const TeamApplicationsModal = ({
                     application.applicant.tags.length > 0 && (
                       <div className="mb-4">
                         <h5 className="font-medium text-sm text-base-content/80 mb-2">
-                          Focus Areas:
+                          {t("teams:applicationsList.focusAreas")}
                         </h5>
                         <div className="flex flex-wrap gap-1">
                           {application.applicant.tags.slice(0, 6).map((tag) => (
@@ -575,7 +610,9 @@ const TeamApplicationsModal = ({
                           ))}
                           {application.applicant.tags.length > 6 && (
                             <span className="badge badge-ghost badge-sm text-xs">
-                              +{application.applicant.tags.length - 6} more
+                              {t("teams:applicationsList.moreTags", {
+                                count: application.applicant.tags.length - 6,
+                              })}
                             </span>
                           )}
                         </div>
@@ -601,8 +638,8 @@ const TeamApplicationsModal = ({
                           : <Pencil size={12} className="text-primary mr-1" />
                         }
                         {responseExpanded[application.id]
-                          ? "Your response message (optional):"
-                          : "Add a personal response message (optional)"
+                          ? t("teams:applicationsList.response.label")
+                          : t("teams:applicationsList.response.add")
                         }
                         <span className="ml-auto pl-3 text-base-content/40">
                           {responseExpanded[application.id] ? (
@@ -620,7 +657,7 @@ const TeamApplicationsModal = ({
                             handleResponseChange(application.id, e.target.value)
                           }
                           className="textarea textarea-bordered textarea-sm w-full h-20 resize-none text-sm"
-                          placeholder="Add a personal message to your decision..."
+                          placeholder={t("teams:applicationsList.response.placeholder")}
                           disabled={loading}
                         />
                       )}
@@ -632,7 +669,7 @@ const TeamApplicationsModal = ({
                 isSelfApplication ? (
                   <div className="flex items-center gap-2 text-sm text-info bg-info/10 rounded-lg px-3 py-2">
                     <AlertTriangle size={16} className="flex-shrink-0" />
-                    <span>Another owner or admin must review your application.</span>
+                    <span>{t("teams:applicationsList.selfApplication")}</span>
                   </div>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-2">
@@ -647,11 +684,11 @@ const TeamApplicationsModal = ({
                               className="border border-base-content/30 text-base-content/40"
                               icon={<UserCheck size={16} />}
                             >
-                              Fill Role + Add to Team
+                              {t("teams:applicationsList.actions.fillRoleAndAdd")}
                             </Button>
                           </Tooltip>
                         ) : (
-                          <Tooltip content="Accept application, add to team and fill the role">
+                          <Tooltip content={t("teams:applicationsList.actions.fillRoleAndAddTooltip")}>
                             <Button
                               variant="successOutline"
                               size="sm"
@@ -666,11 +703,11 @@ const TeamApplicationsModal = ({
                               disabled={loading}
                               icon={<CheckCheck size={16} />}
                             >
-                              Fill Role + Add to Team
+                              {t("teams:applicationsList.actions.fillRoleAndAdd")}
                             </Button>
                           </Tooltip>
                         )}
-                        <Tooltip content="Accept application and add to team without filling the role">
+                        <Tooltip content={t("teams:applicationsList.actions.addWithoutRoleTooltip")}>
                           <Button
                             variant="successOutline"
                             size="sm"
@@ -685,7 +722,7 @@ const TeamApplicationsModal = ({
                             disabled={loading}
                             icon={<Check size={16} />}
                           >
-                            Add to Team
+                            {t("teams:applicationsList.actions.addToTeam")}
                           </Button>
                         </Tooltip>
                       </>
@@ -699,11 +736,11 @@ const TeamApplicationsModal = ({
                             className="border border-base-content/30 text-base-content/40"
                             icon={<UserCheck size={16} />}
                           >
-                            Fill Role
+                            {t("teams:applicationsList.actions.fillRole")}
                           </Button>
                         </Tooltip>
                       ) : (
-                        <Tooltip content="Accept application and assign this team member to the role">
+                        <Tooltip content={t("teams:applicationsList.actions.fillRoleInternalTooltip")}>
                           <Button
                             variant="successOutline"
                             size="sm"
@@ -718,12 +755,12 @@ const TeamApplicationsModal = ({
                             disabled={loading}
                             icon={<Check size={16} />}
                           >
-                            Fill Role
+                            {t("teams:applicationsList.actions.fillRole")}
                           </Button>
                         </Tooltip>
                       )
                     ) : (
-                      <Tooltip content="Accept application and add to team">
+                      <Tooltip content={t("teams:applicationsList.actions.addToTeamTooltip")}>
                         <Button
                           variant="successOutline"
                           size="sm"
@@ -738,11 +775,11 @@ const TeamApplicationsModal = ({
                           disabled={loading}
                           icon={<Check size={16} />}
                         >
-                          Add to Team
+                          {t("teams:applicationsList.actions.addToTeam")}
                         </Button>
                       </Tooltip>
                     )}
-                    <Tooltip content="Decline this application">
+                    <Tooltip content={t("teams:applicationsList.actions.declineTooltip")}>
                       <Button
                         variant="errorOutline"
                         size="sm"
@@ -756,7 +793,7 @@ const TeamApplicationsModal = ({
                         disabled={loading}
                         icon={<Decline size={16} />}
                       >
-                        Decline
+                        {t("teams:applicationsList.actions.decline")}
                       </Button>
                     </Tooltip>
                   </div>

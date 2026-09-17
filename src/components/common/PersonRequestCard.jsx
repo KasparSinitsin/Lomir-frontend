@@ -40,7 +40,7 @@ const PersonRequestCard = ({
   user,
   date,
   message,
-  messageLabel = "Message:",
+  messageLabel,
   messageIcon,
   onUserClick,
   actions,
@@ -82,21 +82,22 @@ const PersonRequestCard = ({
 
   // Get display name
   const getDisplayName = () => {
-    if (isPrivateUser) return "Private Profile";
+    if (isPrivateUser) return t("user.privateProfile");
 
+    // `getDisplayName` returns the English constant "Unknown" as a marker.
     const displayName = getUserDisplayName(user);
-    return displayName === "Unknown" ? "Unknown User" : displayName;
+    return displayName === "Unknown" ? t("requestList.unknownUser") : displayName;
   };
 
   // Format date
   const formatDate = () => {
-    if (!date) return "Unknown date";
+    if (!date) return t("requestList.unknownDate");
 
     try {
       return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
-      return "Unknown date";
+      return t("requestList.unknownDate");
     }
   };
 
@@ -128,7 +129,10 @@ const PersonRequestCard = ({
   const probeRef = useRef(null);
   const dateRef = useRef(null);
   const fullName = getDisplayName();
-  const abbrevName = displayUser ? formatDisplayName(displayUser) : fullName;
+  // A private profile's stand-in name is translated text, not a person's name,
+  // so it is never abbreviated.
+  const abbrevName =
+    displayUser && !isPrivateUser ? formatDisplayName(displayUser) : fullName;
   const hasLocation =
     !isPrivateUser &&
     (user?.city || user?.country || getPostalCode());
@@ -176,7 +180,7 @@ const PersonRequestCard = ({
         <div className="flex min-w-0 flex-1 items-start space-x-4">
           {/* Avatar */}
           <Tooltip
-            content={effectiveClickable ? "View profile" : undefined}
+            content={effectiveClickable ? t("requestList.viewProfile") : undefined}
             wrapperClassName={`avatar ${clickableStyles}`}
           >
             <UserAvatar
@@ -195,7 +199,7 @@ const PersonRequestCard = ({
           <div className="flex-1 min-w-0">
             <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
               {effectiveClickable ? (
-                <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                <Tooltip content={t("requestList.viewProfile")} wrapperClassName="cursor-pointer hover:text-primary transition-colors">
                   <span onClick={handleUserClick}>{displayedName}</span>
                 </Tooltip>
               ) : (
@@ -209,7 +213,7 @@ const PersonRequestCard = ({
                 {showUsername && (
                   effectiveClickable ? (
                     <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
-                      <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
+                      <Tooltip content={t("requestList.viewProfile")} wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
                         <span onClick={handleUserClick}>@{user.username}</span>
                       </Tooltip>
                     </div>
@@ -271,7 +275,7 @@ const PersonRequestCard = ({
           {message && (
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               {messageIcon}
-              {messageLabel}
+              {messageLabel ?? t("requestList.message")}
             </p>
           )}
           <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">

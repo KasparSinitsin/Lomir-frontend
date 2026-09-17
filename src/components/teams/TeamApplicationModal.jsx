@@ -55,7 +55,9 @@ const TeamApplicationModal = ({
   loading = false,
   isInternal = false,
 }) => {
-  const { t } = useTranslation();
+  // `common` stays first, so the unprefixed keys are unaffected; `teams` is
+  // named so it loads with the modal.
+  const { t } = useTranslation(["common", "teams"]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -196,7 +198,7 @@ const TeamApplicationModal = ({
 
   const getTeamLocation = () => {
     const isRemote = displayTeam?.isRemote ?? displayTeam?.is_remote;
-    if (isRemote) return "Remote";
+    if (isRemote) return t("location.section.remote");
 
     const parts = [displayTeam?.city, displayTeam?.country].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : null;
@@ -217,7 +219,8 @@ const TeamApplicationModal = ({
       .toUpperCase();
   };
 
-  // Get role initials (matching VacantRoleCard pattern)
+  // Get role initials (matching VacantRoleCard pattern). "Vacant Role" is the
+  // stored default role name, so the initials stay on it in every language.
   const getRoleInitials = (roleName) => {
     const name = roleName || "Vacant Role";
     const words = name.trim().split(/\s+/);
@@ -230,7 +233,7 @@ const TeamApplicationModal = ({
   // Get role location text
   const getRoleLocation = (role) => {
     const isRemote = role.isRemote ?? role.is_remote;
-    if (isRemote) return "Remote";
+    if (isRemote) return t("location.section.remote");
     const parts = [role.city, role.country].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : null;
   };
@@ -255,7 +258,7 @@ const TeamApplicationModal = ({
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      setError("Please write a message to the team owner");
+      setError(t("teams:applicationForm.messageRequired"));
       return;
     }
 
@@ -269,14 +272,15 @@ const TeamApplicationModal = ({
 
       setSuccess(
         isInternal
-          ? "Role application sent to the team owner and admins!"
-          : "Application sent successfully!"
+          ? t("teams:applicationForm.sentInternal")
+          : t("teams:applicationForm.sent")
       );
       setTimeout(() => {
         handleClose();
       }, 1500);
     } catch (err) {
-      setError(err.message || "Failed to process application");
+      // `err.message` is the backend's prose; coding it is T4.
+      setError(err.message || t("teams:applicationButton.submitFailed"));
     }
   };
 
@@ -301,7 +305,7 @@ const TeamApplicationModal = ({
       )}
       <div>
         <h2 className="text-xl font-medium text-primary leading-[110%]">
-          {isInternal ? "Apply to fill this role within your team" : "Apply to join this Team"}
+          {isInternal ? t("teams:applicationForm.titleInternal") : t("teams:applicationForm.title")}
         </h2>
       </div>
     </div>
@@ -315,7 +319,7 @@ const TeamApplicationModal = ({
         disabled={loading}
         className="w-full justify-center whitespace-normal text-center sm:w-auto"
       >
-        Cancel
+        {t("teams:applicationForm.cancel")}
       </Button>
 
       <Button
@@ -325,7 +329,11 @@ const TeamApplicationModal = ({
         icon={<Send size={16} />}
         className="h-auto min-h-12 w-full justify-center whitespace-normal text-center leading-tight sm:w-auto sm:min-h-0"
       >
-        {loading ? "Sending..." : isInternal ? "Apply to fill this role within your team" : "Send Application"}
+        {loading
+          ? t("teams:applicationDetails.sending")
+          : isInternal
+            ? t("teams:applicationForm.titleInternal")
+            : t("teams:applicationForm.submit")}
       </Button>
     </div>
   );
@@ -340,10 +348,9 @@ const TeamApplicationModal = ({
   })();
   const shouldShowRolePicker =
     loadingRoles || vacantRoles.length > 0 || isRoleSectionExpanded;
-  const roleAvailabilityLabel =
-    vacantRoles.length === 1
-      ? "1 open role available"
-      : `${vacantRoles.length} open roles available`;
+  const roleAvailabilityLabel = t("teams:applicationForm.rolesAvailable", {
+    count: vacantRoles.length,
+  });
   const selectedRole =
     vacantRoles.find((role) => idsMatch(role.id, selectedRoleId)) ?? null;
 
@@ -381,14 +388,14 @@ const TeamApplicationModal = ({
             <div
               className="flex items-start space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={handleTeamClick}
-              title="View team details"
+              title={t("teams:applicationForm.viewTeamDetails")}
             >
               <div className="avatar">
                 <div className="w-14 h-14 rounded-full relative overflow-hidden">
                   {getTeamAvatar() ? (
                     <img
                       src={getTeamAvatar()}
-                      alt={displayTeam?.name || "Team"}
+                      alt={displayTeam?.name || t("team.unknownName")}
                       className="object-cover w-full h-full rounded-full"
                       onError={(e) => {
                         e.target.style.display = "none";
@@ -420,7 +427,7 @@ const TeamApplicationModal = ({
 
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-base-content hover:text-primary transition-colors leading-[120%] mb-[0.2em]">
-                  {displayTeam?.name || "Unknown Team"}
+                  {displayTeam?.name || t("team.unknownName")}
                 </h4>
                 <CardMetaRow className="text-sm">
                   <CardMetaItem icon={Users}>
@@ -470,7 +477,7 @@ const TeamApplicationModal = ({
                 <span className="flex min-w-0 items-center">
                   <UserSearch size={12} className="text-orange-500 mr-1" />
                   <span className="truncate">
-                    Select a role you want to fill in this team:
+                    {t("teams:applicationForm.selectRole")}
                   </span>
                 </span>
                 <span className="ml-2 flex items-center gap-1 text-base-content/40">
@@ -523,12 +530,12 @@ const TeamApplicationModal = ({
                         <h3 className="min-w-0 flex-1 truncate font-medium text-sm leading-[120%]">
                           {selectedRole.roleName ??
                             selectedRole.role_name ??
-                            "Vacant Role"}
+                            t("roleStatus.vacantRoleFallback")}
                         </h3>
                         <div className="shrink-0 ml-1">
                           <RoleBadgePill
                             icon={Check}
-                            label="Selected"
+                            label={t("teams:applicationForm.selected")}
                             badgeColorClass="bg-amber-800 text-white"
                             interactive
                             onClick={(event) => {
@@ -578,8 +585,9 @@ const TeamApplicationModal = ({
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
                   {vacantRoles.map((role) => {
+                    const storedRoleName = role.roleName ?? role.role_name ?? null;
                     const roleName =
-                      role.roleName ?? role.role_name ?? "Vacant Role";
+                      storedRoleName ?? t("roleStatus.vacantRoleFallback");
                     const isSelected = idsMatch(selectedRoleId, role.id);
                     const locationText = getRoleLocation(role);
                     const isRemote = role.isRemote ?? role.is_remote;
@@ -605,7 +613,7 @@ const TeamApplicationModal = ({
                           <div className="w-14 h-14 rounded-full relative overflow-hidden">
                             <div className="avatar-fallback bg-amber-500 text-white flex items-center justify-center w-full h-full rounded-full absolute inset-0">
                               <span className="text-xl">
-                                {getRoleInitials(roleName)}
+                                {getRoleInitials(storedRoleName)}
                               </span>
                             </div>
                             {showDemoRole && (
@@ -626,7 +634,11 @@ const TeamApplicationModal = ({
                               <div className="shrink-0 ml-1">
                                 <RoleBadgePill
                                   icon={isSelected ? Check : UserSearch}
-                                  label={isSelected ? "Selected" : "Select"}
+                                  label={
+                                    isSelected
+                                      ? t("teams:applicationForm.selected")
+                                      : t("teams:applicationForm.select")
+                                  }
                                   badgeColorClass={
                                     isSelected
                                       ? "bg-amber-800 text-white"
@@ -683,12 +695,12 @@ const TeamApplicationModal = ({
 
               {isRoleSectionExpanded && !loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && !isInternal && (
                 <p className="text-xs text-base-content/40 mt-1.5">
-                  No role selected — your application will be sent as a general team application.
+                  {t("teams:applicationForm.noRoleSelected")}
                 </p>
               )}
               {isRoleSectionExpanded && !loadingRoles && selectedRoleId === null && vacantRoles.length > 0 && isInternal && (
                 <p className="text-xs text-warning/70 mt-1.5">
-                  Please select a role to apply for.
+                  {t("teams:applicationForm.selectRoleRequired")}
                 </p>
               )}
             </div>
@@ -698,7 +710,9 @@ const TeamApplicationModal = ({
           <div>
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <Send size={12} className="text-info mr-1" />
-              {isInternal ? "Your message to the owner and admins:" : "Your message to the team:"}
+              {isInternal
+                ? t("teams:applicationForm.messageLabelInternal")
+                : t("teams:applicationForm.messageLabel")}
             </p>
 
             <div className="relative">
@@ -706,15 +720,15 @@ const TeamApplicationModal = ({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={isInternal
-                  ? "Tell the owner and admins why you'd like to fill this role and what relevant experience you bring..."
-                  : "Tell the team why you'd like to join, what skills you bring, and what you hope to contribute..."}
+                  ? t("teams:applicationForm.placeholderInternal")
+                  : t("teams:applicationForm.placeholder")}
                 className="textarea textarea-bordered w-full h-32 resize-none text-sm pb-6"
                 disabled={loading}
                 maxLength={500}
               />
 
               <span className="absolute bottom-2 left-3 text-sm text-base-content/40 pointer-events-none">
-                {message.length}/500 characters
+                {t("teams:applicationForm.charCount", { count: message.length, max: 500 })}
               </span>
             </div>
           </div>
