@@ -1012,6 +1012,15 @@
       "demoData": "Demo Data",
       "includeDemo": "Include test/demo profiles, roles and teams",
       "excludeDemo": "Show only real users, roles and teams"
+    },
+    "errors": {
+      "queryEmpty": "Search query is empty.",
+      "unclosedQuote": "Unclosed quote in search query.",
+      "startsWithOperator": "Query cannot start with \"{operator}\".",
+      "endsWithOperator": "Query cannot end with \"{operator}\".",
+      "notWithoutTerm": "NOT must be followed by a search term.",
+      "operatorWithoutTerms": "{operator} must be between two search terms.",
+      "failed": "Something went wrong with the search. Please try again."
     }
   },
   "team": {
