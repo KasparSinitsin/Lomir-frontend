@@ -227,6 +227,27 @@
     "defaultLabel": "Apply to Join Team",
     "submitFailed": "Failed to submit application"
   },
+  "applicationForm": {
+    "title": "Apply to join this Team",
+    "titleInternal": "Apply to fill this role within your team",
+    "viewTeamDetails": "View team details",
+    "selectRole": "Select a role you want to fill in this team:",
+    "rolesAvailable": "{count, plural, one {# open role available} other {# open roles available}}",
+    "selected": "Selected",
+    "select": "Select",
+    "noRoleSelected": "No role selected — your application will be sent as a general team application.",
+    "selectRoleRequired": "Please select a role to apply for.",
+    "messageLabel": "Your message to the team:",
+    "messageLabelInternal": "Your message to the owner and admins:",
+    "placeholder": "Tell the team why you'd like to join, what skills you bring, and what you hope to contribute...",
+    "placeholderInternal": "Tell the owner and admins why you'd like to fill this role and what relevant experience you bring...",
+    "charCount": "{count}/{max} characters",
+    "messageRequired": "Please write a message to the team owner",
+    "sent": "Application sent successfully!",
+    "sentInternal": "Role application sent to the team owner and admins!",
+    "cancel": "Cancel",
+    "submit": "Send Application"
+  },
   "teamForm": {
     "sections": {
       "avatar": "Team Avatar",
@@ -301,6 +322,59 @@
     "cancelFailed": "Failed to cancel application",
     "reminderFailed": "Failed to send reminder",
     "unknownDate": "Unknown date"
+  },
+  "applicationsList": {
+    "title": "<team/>'s Applications",
+    "viewTeam": "View team",
+    "footer": "Review each application carefully before making decisions.",
+    "emptyMessage": "When users apply to join your team, they'll appear here.",
+    "closeGuard": {
+      "title": "Discard unsaved changes?",
+      "body": "You've marked a role as filled but haven't accepted the applicant yet. If you close now, this change will be discarded.",
+      "back": "Go back",
+      "discard": "Discard & close"
+    },
+    "toast": {
+      "approvedAsRoleOffer": "{hasRole, select, yes {{hasCurrentRole, select, yes {Application approved! {role} is now a role offer the member can accept once they leave {currentRole}.} other {Application approved! {role} is now a role offer the member can accept once they leave their current role.}}} other {{hasCurrentRole, select, yes {Application approved! The role is now a role offer the member can accept once they leave {currentRole}.} other {Application approved! The role is now a role offer the member can accept once they leave their current role.}}}}",
+      "approvedAndFilled": "{hasRole, select, yes {Application approved! {role} has been marked as filled.} other {Application approved! The role has been marked as filled.}}",
+      "approved": "Application approved successfully!",
+      "declined": "Application declined successfully!",
+      "roleReopened": "Role reopened successfully!",
+      "alreadyHandled": "The application you were notified about has already been handled."
+    },
+    "errors": {
+      "approveFailed": "Failed to approve application",
+      "declineFailed": "Failed to decline application",
+      "reopenFailed": "Failed to reopen role"
+    },
+    "unavailable": {
+      "filled": "This role is already filled",
+      "closed": "This role is closed",
+      "filledCanAdd": "This role is already filled — you can still add this person to the team",
+      "closedCanAdd": "This role is closed — you can still add this person to the team"
+    },
+    "messageLabel": "Application message:",
+    "messageLabelNamed": "{name}'s application message:",
+    "alreadyMember": "Already a member of this team",
+    "focusAreas": "Focus Areas:",
+    "moreTags": "+{count} more",
+    "response": {
+      "label": "Your response message (optional):",
+      "add": "Add a personal response message (optional)",
+      "placeholder": "Add a personal message to your decision..."
+    },
+    "selfApplication": "Another owner or admin must review your application.",
+    "actions": {
+      "fillRoleAndAdd": "Fill Role + Add to Team",
+      "fillRoleAndAddTooltip": "Accept application, add to team and fill the role",
+      "addToTeam": "Add to Team",
+      "addWithoutRoleTooltip": "Accept application and add to team without filling the role",
+      "addToTeamTooltip": "Accept application and add to team",
+      "fillRole": "Fill Role",
+      "fillRoleInternalTooltip": "Accept application and assign this team member to the role",
+      "decline": "Decline",
+      "declineTooltip": "Decline this application"
+    }
   },
   "invitationDetails": {
     "titleTeam": "Team Invitation",

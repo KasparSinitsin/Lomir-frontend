@@ -842,6 +842,16 @@
     "readByAll": "Von allen gelesen",
     "readBySomeone": "Von jemandem gelesen"
   },
+  "requestList": {
+    "pendingCount": "{count, plural, one {# offene {kind, select, application {Bewerbung} invitation {Einladung} other {Anfrage}}} other {# offene {kind, select, application {Bewerbungen} invitation {Einladungen} other {Anfragen}}}}",
+    "emptyTitle": "{kind, select, application {Keine offenen Bewerbungen} invitation {Keine offenen Einladungen} other {Keine offenen Anfragen}}",
+    "emptyMessage": "{kind, select, application {Bewerbungen erscheinen hier.} invitation {Einladungen erscheinen hier.} other {Anfragen erscheinen hier.}}",
+    "close": "Schließen",
+    "message": "Nachricht:",
+    "unknownUser": "Unbekannte Person",
+    "unknownDate": "Unbekanntes Datum",
+    "viewProfile": "Profil ansehen"
+  },
   "resultView": {
     "card": {
       "aria": "Kachelansicht",

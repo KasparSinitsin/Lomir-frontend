@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { User, X, Mail } from "lucide-react";
 import Modal from "./Modal";
 import Alert from "./Alert";
@@ -13,6 +14,9 @@ const RequestListModal = ({
   title,
   subtitle,
   itemCount = 0,
+  // A code, not a word: "application" or "invitation". The count, the empty
+  // state and their plurals are whole messages chosen by it, because
+  // `${itemName}s` only ever pluralised English.
   itemName = "item",
 
   // Footer
@@ -36,9 +40,7 @@ const RequestListModal = ({
   // Extra modals (rendered outside main modal)
   extraModals,
 }) => {
-  // ============ Computed Values ============
-
-  const pluralItemName = itemCount === 1 ? itemName : `${itemName}s`;
+  const { t } = useTranslation();
 
   const customHeader = (
     <div>
@@ -47,7 +49,7 @@ const RequestListModal = ({
       </h2>
       <p className="text-sm text-base-content/70 mt-1 flex items-center gap-1.5">
         {bylineIcon ?? <Mail size={14} className="text-pink-500 shrink-0" />}
-        {itemCount} pending {pluralItemName}
+        {t("requestList.pendingCount", { count: itemCount, kind: itemName })}
       </p>
     </div>
   );
@@ -57,7 +59,7 @@ const RequestListModal = ({
       <div className="flex flex-wrap justify-between items-center gap-y-1 text-sm text-base-content/70">
         <span className="leading-[1.2]">{footerText}</span>
         <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={16} />} className="ml-auto w-full sm:w-auto">
-          Close
+          {t("requestList.close")}
         </Button>
       </div>
     ) : null;
@@ -94,10 +96,10 @@ const RequestListModal = ({
               className="mx-auto text-base-content/30 mb-4"
             />
             <h3 className="text-lg font-medium text-base-content/70 mb-2">
-              {emptyTitle || `No pending ${pluralItemName}`}
+              {emptyTitle || t("requestList.emptyTitle", { kind: itemName })}
             </h3>
             <p className="text-base-content/50">
-              {emptyMessage || `${pluralItemName} will appear here.`}
+              {emptyMessage || t("requestList.emptyMessage", { kind: itemName })}
             </p>
           </div>
         ) : (

@@ -842,6 +842,16 @@
     "readByAll": "Read by all",
     "readBySomeone": "Read by someone"
   },
+  "requestList": {
+    "pendingCount": "{count, plural, one {# pending {kind, select, application {application} invitation {invitation} other {item}}} other {# pending {kind, select, application {applications} invitation {invitations} other {items}}}}",
+    "emptyTitle": "{kind, select, application {No pending applications} invitation {No pending invitations} other {No pending items}}",
+    "emptyMessage": "{kind, select, application {Applications will appear here.} invitation {Invitations will appear here.} other {Items will appear here.}}",
+    "close": "Close",
+    "message": "Message:",
+    "unknownUser": "Unknown User",
+    "unknownDate": "Unknown date",
+    "viewProfile": "View profile"
+  },
   "resultView": {
     "card": {
       "aria": "Card view",

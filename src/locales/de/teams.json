@@ -227,6 +227,27 @@
     "defaultLabel": "Für dieses Team bewerben",
     "submitFailed": "Bewerbung konnte nicht gesendet werden"
   },
+  "applicationForm": {
+    "title": "Bei diesem Team bewerben",
+    "titleInternal": "Für diese Rolle in deinem Team bewerben",
+    "viewTeamDetails": "Teamdetails ansehen",
+    "selectRole": "Wähle eine Rolle, die du in diesem Team übernehmen möchtest:",
+    "rolesAvailable": "{count, plural, one {# offene Rolle verfügbar} other {# offene Rollen verfügbar}}",
+    "selected": "Ausgewählt",
+    "select": "Auswählen",
+    "noRoleSelected": "Keine Rolle ausgewählt – deine Bewerbung wird als allgemeine Team-Bewerbung gesendet.",
+    "selectRoleRequired": "Bitte wähle die Rolle aus, für die du dich bewerben möchtest.",
+    "messageLabel": "Deine Nachricht an das Team:",
+    "messageLabelInternal": "Deine Nachricht an Eigentümer und Admins:",
+    "placeholder": "Erzähl dem Team, warum du mitmachen möchtest, welche Fähigkeiten du mitbringst und was du beitragen willst …",
+    "placeholderInternal": "Erzähl Eigentümern und Admins, warum du diese Rolle übernehmen möchtest und welche passende Erfahrung du mitbringst …",
+    "charCount": "{count}/{max} Zeichen",
+    "messageRequired": "Bitte schreib eine Nachricht an das Team",
+    "sent": "Bewerbung gesendet!",
+    "sentInternal": "Rollenbewerbung an Eigentümer und Admins gesendet!",
+    "cancel": "Abbrechen",
+    "submit": "Bewerbung senden"
+  },
   "teamForm": {
     "sections": {
       "avatar": "Teambild",
@@ -301,6 +322,59 @@
     "cancelFailed": "Bewerbung konnte nicht zurückgezogen werden",
     "reminderFailed": "Erinnerung konnte nicht gesendet werden",
     "unknownDate": "Unbekanntes Datum"
+  },
+  "applicationsList": {
+    "title": "Bewerbungen für <team/>",
+    "viewTeam": "Team ansehen",
+    "footer": "Prüfe jede Bewerbung sorgfältig, bevor du entscheidest.",
+    "emptyMessage": "Wenn sich jemand bei deinem Team bewirbt, erscheint die Bewerbung hier.",
+    "closeGuard": {
+      "title": "Ungespeicherte Änderungen verwerfen?",
+      "body": "Du hast eine Rolle als besetzt markiert, die Bewerbung aber noch nicht angenommen. Wenn du jetzt schließt, geht diese Änderung verloren.",
+      "back": "Zurück",
+      "discard": "Verwerfen und schließen"
+    },
+    "toast": {
+      "approvedAsRoleOffer": "{hasRole, select, yes {{hasCurrentRole, select, yes {Bewerbung angenommen! „{role}“ ist jetzt ein Rollenangebot, das die Person annehmen kann, sobald sie „{currentRole}“ abgibt.} other {Bewerbung angenommen! „{role}“ ist jetzt ein Rollenangebot, das die Person annehmen kann, sobald sie ihre aktuelle Rolle abgibt.}}} other {{hasCurrentRole, select, yes {Bewerbung angenommen! Die Rolle ist jetzt ein Rollenangebot, das die Person annehmen kann, sobald sie „{currentRole}“ abgibt.} other {Bewerbung angenommen! Die Rolle ist jetzt ein Rollenangebot, das die Person annehmen kann, sobald sie ihre aktuelle Rolle abgibt.}}}}",
+      "approvedAndFilled": "{hasRole, select, yes {Bewerbung angenommen! „{role}“ wurde als besetzt markiert.} other {Bewerbung angenommen! Die Rolle wurde als besetzt markiert.}}",
+      "approved": "Bewerbung angenommen!",
+      "declined": "Bewerbung abgelehnt.",
+      "roleReopened": "Die Rolle ist wieder offen.",
+      "alreadyHandled": "Die Bewerbung, zu der du benachrichtigt wurdest, wurde bereits bearbeitet."
+    },
+    "errors": {
+      "approveFailed": "Bewerbung konnte nicht angenommen werden",
+      "declineFailed": "Bewerbung konnte nicht abgelehnt werden",
+      "reopenFailed": "Rolle konnte nicht wieder geöffnet werden"
+    },
+    "unavailable": {
+      "filled": "Diese Rolle ist bereits besetzt",
+      "closed": "Diese Rolle ist geschlossen",
+      "filledCanAdd": "Diese Rolle ist bereits besetzt – du kannst die Person trotzdem ins Team aufnehmen",
+      "closedCanAdd": "Diese Rolle ist geschlossen – du kannst die Person trotzdem ins Team aufnehmen"
+    },
+    "messageLabel": "Bewerbungsnachricht:",
+    "messageLabelNamed": "Bewerbungsnachricht von {name}:",
+    "alreadyMember": "Bereits Mitglied dieses Teams",
+    "focusAreas": "Fokusbereiche:",
+    "moreTags": "+{count} weitere",
+    "response": {
+      "label": "Deine Antwort (optional):",
+      "add": "Persönliche Antwort hinzufügen (optional)",
+      "placeholder": "Schreib eine persönliche Nachricht zu deiner Entscheidung …"
+    },
+    "selfApplication": "Ein anderer Eigentümer oder Admin muss deine Bewerbung prüfen.",
+    "actions": {
+      "fillRoleAndAdd": "Rolle besetzen + ins Team aufnehmen",
+      "fillRoleAndAddTooltip": "Bewerbung annehmen, ins Team aufnehmen und die Rolle besetzen",
+      "addToTeam": "Ins Team aufnehmen",
+      "addWithoutRoleTooltip": "Bewerbung annehmen und ins Team aufnehmen, ohne die Rolle zu besetzen",
+      "addToTeamTooltip": "Bewerbung annehmen und ins Team aufnehmen",
+      "fillRole": "Rolle besetzen",
+      "fillRoleInternalTooltip": "Bewerbung annehmen und dieses Team-Mitglied der Rolle zuweisen",
+      "decline": "Ablehnen",
+      "declineTooltip": "Diese Bewerbung ablehnen"
+    }
   },
   "invitationDetails": {
     "titleTeam": "Team-Einladung",
