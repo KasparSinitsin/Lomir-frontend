@@ -35,7 +35,7 @@ const content = {
         title: "Projektstatus",
         paragraphs: [
           "Lomir wird aktuell als nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Die App ist mit Datenschutz als Standard konzipiert: Neue Profile bleiben privat, bis Nutzer sie aktiv öffentlich machen.",
-          "Die App kann sich im im Verlauf des Projekts weiterentwickeln. Falls sich wesentliche Funktionen ändern, sollten die rechtlichen und Datenschutzinformationen vor der öffentlichen Veröffentlichung überprüft und aktualisiert werden.",
+          "Die App kann sich im Verlauf des Projekts weiterentwickeln. Falls sich wesentliche Funktionen ändern, sollten die rechtlichen und Datenschutzinformationen vor der öffentlichen Veröffentlichung überprüft und aktualisiert werden.",
         ],
       },
       {
