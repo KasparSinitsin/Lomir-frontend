@@ -26,23 +26,41 @@ const formatLegalDate = (isoDate) =>
     timeZone: "UTC",
   }).format(new Date(`${isoDate}T00:00:00Z`));
 
+const LegalParagraph = ({ children }) => (
+  <p className="text-sm leading-relaxed text-base-content/75">{children}</p>
+);
+
+const LegalList = ({ items }) => (
+  <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-base-content/75">
+    {items.map((item, index) => (
+      <li key={index}>{item}</li>
+    ))}
+  </ul>
+);
+
+/**
+ * A section is either paragraphs and, after them, one list - or, where a list
+ * sits between paragraphs, an ordered `blocks` array of { paragraph } and
+ * { list } in the order they are read. Both languages must use the same shape;
+ * `npm run legal:check` enforces that.
+ */
 const LegalSection = ({ section }) => (
   <section className="space-y-3 border-t border-base-300/70 pt-5 first:border-t-0 first:pt-0">
     <h2 className="text-xl font-medium text-base-content">{section.title}</h2>
 
+    {section.blocks?.map((block, index) =>
+      block.list ? (
+        <LegalList key={index} items={block.list} />
+      ) : (
+        <LegalParagraph key={index}>{block.paragraph}</LegalParagraph>
+      ),
+    )}
+
     {section.paragraphs?.map((paragraph, index) => (
-      <p key={index} className="text-sm leading-relaxed text-base-content/75">
-        {paragraph}
-      </p>
+      <LegalParagraph key={index}>{paragraph}</LegalParagraph>
     ))}
 
-    {section.items && (
-      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-base-content/75">
-        {section.items.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-    )}
+    {section.items && <LegalList items={section.items} />}
   </section>
 );
 

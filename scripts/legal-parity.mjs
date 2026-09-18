@@ -14,7 +14,8 @@
  * ---------------------------------------
  * - the pages themselves, and that each has a title and an intro
  * - the number of sections
- * - per section: paragraphs or items, and how many
+ * - per section: paragraphs, items or ordered blocks, and how many - and for
+ *   blocks, that paragraph and list follow in the same order
  * - per title, intro, paragraph and item:
  *   - the embedded elements in order ({mailLink}, {contactLink}, <br />, ...),
  *     so a link or a line of the address cannot be lost in translation
@@ -209,6 +210,36 @@ for (const page of enPages.filter((key) => dePages.includes(key))) {
     }
 
     compareText(`${where}.title`, sections.map((section) => get(section, "title")));
+
+    const blockLists = sections.map((section) => get(section, "blocks")?.elements);
+    if (blockLists[0]) {
+      if (blockLists[0].length !== blockLists[1].length) {
+        errors.push(`${where}.blocks: ${blockLists[0].length} in en, ${blockLists[1].length} in de`);
+      } else {
+        blockLists[0].forEach((block, index) => {
+          const pair = [block, blockLists[1][index]];
+          const kinds = pair.map((node) => properties(node).map(([key]) => key).join(", "));
+          if (kinds[0] !== kinds[1]) {
+            errors.push(`${where}.blocks[${index}]: ${kinds[0]} in en, ${kinds[1]} in de`);
+            return;
+          }
+          if (kinds[0] === "list") {
+            const lists = pair.map((node) => get(node, "list").elements);
+            if (lists[0].length !== lists[1].length) {
+              errors.push(`${where}.blocks[${index}].list: ${lists[0].length} in en, ${lists[1].length} in de`);
+              return;
+            }
+            lists[0].forEach((entry, i) => {
+              entryCount += 1;
+              compareText(`${where}.blocks[${index}].list[${i}] (en:${line(entry)}, de:${line(lists[1][i])})`, [entry, lists[1][i]]);
+            });
+          } else {
+            entryCount += 1;
+            compareText(`${where}.blocks[${index}].paragraph (en:${line(block)}, de:${line(pair[1])})`, pair.map((node) => get(node, "paragraph")));
+          }
+        });
+      }
+    }
 
     for (const list of ["paragraphs", "items"]) {
       const entries = sections.map((section) => get(section, list)?.elements);
