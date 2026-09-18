@@ -10,8 +10,8 @@ import { mailLink } from "./shared";
  * LEGAL_UPDATED in ./shared.jsx.
  *
  * ⚠️ DRAFT - not yet signed off by Julia and must not reach users before.
- * `terms` is Julia's own translation (2026-09-17); the other pages are still
- * the assistant's literal draft.
+ * `about` and `terms` are Julia's own translations (2026-09-17); `privacy`
+ * and `legalNotice` are still the assistant's literal draft.
  */
 
 const contactLink = (
@@ -30,13 +30,13 @@ const content = {
   about: {
     title: "Über Lomir",
     intro:
-      "Lomir ist eine kostenlose Team-Matching-App für Menschen, die Mitwirkende finden, Teams bilden und Nachrichten austauschen möchten – rund um gemeinsame Interessen, Fokusbereiche, Badges, Rollen und Standort-Präferenzen.",
+      "Lomir ist eine kostenlose Team-Matching-App für Menschen, die Mitstreiter finden, Teams bilden und Nachrichten rund um gemeinsame Interessen, Schwerpunkte, Badges, Rollen und Standortpräferenzen austauschen möchten.",
     sections: [
       {
         title: "Projektstatus",
         paragraphs: [
-          "Lomir wird aktuell als nicht kommerzielles Portfolio- und Lernprojekt betrieben. Die App ist mit datenschutzfreundlichen Voreinstellungen konfiguriert: Neue Profile bleiben privat, bis Nutzer sie aktiv öffentlich machen.",
-          "Die App kann sich im Zuge der Projektentwicklung weiterentwickeln. Wenn sich wesentliche Funktionen ändern, sollten die rechtlichen und datenschutzbezogenen Informationen vor einer öffentlichen Einführung überprüft und aktualisiert werden.",
+          "Lomir wird aktuell als nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Die App ist mit Datenschutz als Standard konzipiert: Neue Profile bleiben privat, bis Nutzer sie aktiv öffentlich machen.",
+          "Die App kann sich im im Verlauf des Projekts weiterentwickeln. Falls sich wesentliche Funktionen ändern, sollten die rechtlichen und Datenschutzinformationen vor der öffentlichen Veröffentlichung überprüft und aktualisiert werden.",
         ],
       },
       {
