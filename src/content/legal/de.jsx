@@ -9,9 +9,8 @@ import { mailLink } from "./shared";
  * Change German first, then English, in the same commit, and update
  * LEGAL_UPDATED in ./shared.jsx.
  *
- * ⚠️ DRAFT - not yet signed off by Julia and must not reach users before.
- * `about`, `privacy` and `terms` are Julia's own translations (2026-09-17 /
- * 2026-09-18); `legalNotice` is still the assistant's literal draft.
+ * All four pages are Julia's own translations (2026-09-17 / 2026-09-18).
+ * ⚠️ They must not reach users before she has signed the pages off.
  */
 
 const contactLink = (
@@ -405,7 +404,7 @@ const content = {
   legalNotice: {
     title: "Impressum",
     intro:
-      "Angaben zum Anbieter gemäß § 18 Abs. 1 des Medienstaatsvertrags (MStV) und, soweit anwendbar, § 5 des Digitale-Dienste-Gesetzes (DDG).",
+      "Angaben gemäß § 18 Abs. 1 des Medienstaatsvertrags (MStV) und, soweit anwendbar, § 5 des Digitale-Dienste-Gesetzes (DDG).",
     sections: [
       {
         title: "Anbieter",
@@ -428,37 +427,37 @@ const content = {
       {
         title: "Journalistisch-redaktionelle Inhalte",
         paragraphs: [
-          "Lomir bietet derzeit keine journalistisch-redaktionellen Inhalte im Sinne von § 18 Abs. 2 des Medienstaatsvertrags (MStV) an. Eine gesonderte verantwortliche Person nach § 18 Abs. 2 MStV wird daher nicht benannt. Sollten solche Inhalte künftig angeboten werden, wird dieses Impressum entsprechend aktualisiert.",
+          "Lomir bietet derzeit keine journalistisch-redaktionellen Inhalte im Sinne von § 18 Abs. 2 MStV an. Daher wird keine verantwortliche Person nach § 18 Abs. 2 MStV benannt. Sollten in Zukunft solche Inhalte angeboten werden, wird dieses Impressum entsprechend aktualisiert.",
         ],
       },
       {
         title: "Art des Projekts",
         paragraphs: [
-          "Lomir wird derzeit als kostenloses, nicht kommerzielles Portfolio- und Lernprojekt betrieben. Ändert sich der rechtliche oder kommerzielle Status der App, sollte dieses Impressum überprüft und aktualisiert werden.",
+          "Lomir wird derzeit als kostenloses, nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Falls sich der rechtliche oder kommerzielle Status der App ändert, sollte dieses Impressum überprüft und aktualisiert werden.",
         ],
       },
       {
         title: "Verbraucherstreitbeilegung",
         paragraphs: [
-          "Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+          "Wir sind weder bereit noch verpflichtet, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
         ],
       },
       {
         title: "Haftung für Inhalte",
         paragraphs: [
-          "Wir bemühen uns in angemessenem Umfang, unsere eigenen Inhalte richtig und aktuell zu halten. Nutzergenerierte Inhalte werden von Nutzern erstellt. Wenn dir rechtswidrige Inhalte oder Rechtsverletzungen auffallen, kontaktiere uns bitte, damit wir sie prüfen können.",
+          "Wir bemühen uns, unsere eigenen Inhalte korrekt und aktuell zu halten. Nutzererstellte Inhalte werden von den Nutzern selbst erstellt. Falls dir rechtswidrige Inhalte oder Rechtsverletzungen auffallen, kontaktiere uns bitte, damit wir diese prüfen können.",
         ],
       },
       {
         title: "Externe Links",
         paragraphs: [
-          "Lomir kann Links zu externen Websites oder Diensten enthalten. Wir haben keinen Einfluss auf deren Inhalte und sind nicht für Websites Dritter verantwortlich. Externe Links werden beim Hinzufügen geprüft; wenn uns rechtswidrige Inhalte bekannt werden, entfernen wir den betreffenden Link, soweit möglich.",
+          "Lomir kann Links zu externen Websites oder Diensten enthalten. Wir haben keine Kontrolle über deren Inhalte und übernehmen keine Verantwortung für die Inhalte Dritter. Externe Links werden bei der Hinzufügung geprüft. Falls uns rechtswidrige Inhalte bekannt werden, entfernen wir den entsprechenden Link, soweit möglich.",
         ],
       },
       {
         title: "Urheberrecht",
         paragraphs: [
-          "Für Lomir erstellte Inhalte und Assets sind durch das geltende Urheberrecht geschützt. Von Nutzern übermittelte Inhalte bleiben in der Verantwortung des jeweiligen Nutzers. Jede Nutzung außerhalb der Grenzen des geltenden Rechts bedarf der Erlaubnis des jeweiligen Rechteinhabers.",
+          "Inhalte und Assets, die für Lomir erstellt wurden, unterliegen dem geltenden Urheberrecht. Von Nutzern eingereichte Inhalte bleiben in der Verantwortung des jeweiligen Nutzers. Jede Nutzung, die über die Grenzen des geltenden Rechts hinausgeht, erfordert die Erlaubnis des jeweiligen Rechteinhabers.",
         ],
       },
     ],

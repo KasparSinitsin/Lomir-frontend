@@ -423,7 +423,7 @@ const content = {
       {
         title: "Journalistic-Editorial Content",
         paragraphs: [
-          "Lomir does not currently provide journalistic-editorial content within the meaning of Section 18(2) of the German Interstate Media Treaty (MStV). A separate responsible person under Section 18(2) MStV is therefore not designated. If such content is offered in the future, this notice will be updated accordingly.",
+          "Lomir does not currently provide journalistic-editorial content within the meaning of Section 18(2) of the German Interstate Media Treaty (MStV). A responsible person under Section 18(2) MStV is therefore not designated. If such content is offered in the future, this notice will be updated accordingly.",
         ],
       },
       {
@@ -435,25 +435,25 @@ const content = {
       {
         title: "Consumer Dispute Resolution",
         paragraphs: [
-          "We are not willing or obliged to participate in dispute resolution proceedings before a consumer arbitration board.",
+          "We are neither willing nor obliged to participate in a dispute resolution procedure before a consumer arbitration board.",
         ],
       },
       {
         title: "Liability for Content",
         paragraphs: [
-          "We make reasonable efforts to keep our own content accurate and up to date. User-generated content is created by users. If you notice unlawful content or rights violations, please contact us so we can review it.",
+          "We endeavour to keep our own content accurate and up to date. User-generated content is created by the users themselves. If you notice unlawful content or rights violations, please contact us so we can review it.",
         ],
       },
       {
         title: "External Links",
         paragraphs: [
-          "Lomir may contain links to external websites or services. We have no control over their content and are not responsible for third-party websites. External links are reviewed when added; if we become aware of unlawful content, we will remove the relevant link where possible.",
+          "Lomir may contain links to external websites or services. We have no control over their content and take no responsibility for third-party content. External links are reviewed when added. If we become aware of unlawful content, we remove the relevant link where possible.",
         ],
       },
       {
         title: "Copyright",
         paragraphs: [
-          "Content and assets created for Lomir are protected by applicable copyright law. Content submitted by users remains the responsibility of the respective user. Any use outside the limits of applicable law requires permission from the relevant rights holder.",
+          "Content and assets created for Lomir are subject to applicable copyright law. Content submitted by users remains the responsibility of the respective user. Any use outside the limits of applicable law requires permission from the relevant rights holder.",
         ],
       },
     ],
