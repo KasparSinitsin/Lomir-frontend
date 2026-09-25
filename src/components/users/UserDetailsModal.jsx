@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Modal from "../common/Modal";
 import UserBioSection from "./UserBioSection";
 import LocationSection from "../common/LocationSection";
@@ -330,6 +330,30 @@ const UserDetailsModal = ({
 
   const showEdit = !isEditing && isAuthenticated && ownProfile;
   const showChatInvite = !isEditing && isAuthenticated && !ownProfile;
+
+  /**
+   * Whether there is any team this person could be invited into.
+   *
+   * The endpoint answers exactly that question - teams where the current user
+   * is owner or admin, not archived, and not already full (unless the invitee
+   * is a member). An empty answer therefore has three possible causes, and the
+   * tooltip below deliberately names none of them: saying "you have no rights"
+   * would be wrong for someone whose teams are simply full.
+   *
+   * ⚠️ Without this the button was always enabled and opened a modal with an
+   * empty list - the click was the only way to find out.
+   */
+  const canInviteQuery = useQuery({
+    queryKey: ["teams", "can-invite", currentUser?.id ?? null, userId ?? null],
+    queryFn: () => teamService.getTeamsWhereUserCanInvite(userId),
+    enabled: Boolean(showChatInvite && isOpen && userId && currentUser?.id),
+    staleTime: 60_000,
+  });
+  // Only once the answer is in: while it loads the button stays as it was,
+  // because disabling and re-enabling it under the cursor is worse than a
+  // click that opens an empty list.
+  const inviteUnavailable =
+    canInviteQuery.isSuccess && unwrapRows(canInviteQuery.data).length === 0;
   const isNumericUserId = /^\d+$/.test(String(userId ?? "").trim());
   const visibleUserBadges = Array.isArray(user?.badges) ? user.badges : [];
   const hiddenAwardIds = user?.hidden_award_ids ?? user?.hiddenAwardIds ?? [];
@@ -900,11 +924,19 @@ const UserDetailsModal = ({
               <span className="hidden sm:inline">{t("userDetails.actions.chat")}</span>
             </Button>
           </Tooltip>
-          <Tooltip content={t("userDetails.actions.inviteTooltip")} position="bottom">
+          <Tooltip
+            content={
+              inviteUnavailable
+                ? t("userDetails.actions.inviteUnavailableTooltip")
+                : t("userDetails.actions.inviteTooltip")
+            }
+            position="bottom"
+          >
             <Button
               variant="ghost"
               size="sm"
               onClick={handleInviteToTeam}
+              disabled={inviteUnavailable}
               className="flex items-center gap-1"
               aria-label={t("userDetails.actions.inviteAria")}
             >

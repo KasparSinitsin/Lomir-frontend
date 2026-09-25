@@ -1084,7 +1084,8 @@
       "editTooltip": "Open your profile editor in a new tab and close these details.",
       "invite": "Invite",
       "inviteAria": "Invite to team",
-      "inviteTooltip": "Invite this person to one of your teams."
+      "inviteTooltip": "Invite this person to one of your teams.",
+      "inviteUnavailableTooltip": "You cannot invite this person to a team right now."
     },
     "blockDialog": {
       "body": "{name} won’t be able to message you or see your profile anywhere on Lomir, and you won’t see theirs. You can undo this from Settings → Privacy.",
