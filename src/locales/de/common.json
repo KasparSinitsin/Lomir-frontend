@@ -375,7 +375,7 @@
       "title": "Schreib uns eine Nachricht",
       "titleAgain": "Noch eine E-Mail schreiben?",
       "subtitle": "Wir antworten dir per E-Mail.",
-      "subtitleGuest": "Wir antworten dir per E-Mail. Mit einem Konto schreibst du dem Lomir-Team direkt in der App.",
+      "subtitleGuest": "Wir antworten dir per E-Mail. Mit einem Account schreibst du dem Lomir-Team direkt in der App.",
       "compose": "E-Mail verfassen"
     },
     "errors": {
@@ -399,27 +399,27 @@
     },
     "inApp": {
       "title": "Schreib dem Lomir-Team",
-      "subtitle": "Erreiche uns mit deinem Lomir-Konto direkt in der App.",
-      "body": "Das Konto des Lomir-Teams ist da für Fragen zum Konto, Datenschutzanliegen, Rückmeldungen und alles, was ein bisschen menschlichen Kontext braucht.",
+      "subtitle": "Erreiche uns mit deinem Lomir-Account direkt in der App.",
+      "body": "Der Account des Lomir-Teams ist da für Fragen zum Account, Datenschutzanliegen, Rückmeldungen und alles, was ein bisschen menschlichen Kontext braucht.",
       "button": "Chat-Nachricht senden"
     },
-    "intro": "Fragen, Rückmeldungen, Hilfe zum Konto, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
+    "intro": "Fragen, Rückmeldungen, Hilfe zum Account, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
     "introSecondLine": "Wir leiten deine Nachricht an die richtige Stelle weiter.",
     "loginHint": "Schon bei Lomir dabei? <0>Melde dich an</0>, um uns über den App-Chat zu erreichen.",
     "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir deinen Namen und deine E-Mail-Adresse, um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
     "report": {
       "topicHelp": "Nutze dieses Thema, um illegale Inhalte, Missbrauch, Belästigung, Spam, Datenschutzprobleme oder Sicherheitsbedenken zu melden.",
-      "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder das Konto finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
+      "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder den Account finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
     },
     "status": {
-      "reportReceived": "Deine Meldung ist bei uns eingegangen. Vorgangsnummer: {reference}.",
+      "reportReceived": "Deine Meldung ist bei uns eingegangen. Vorgangs-ID: {reference}.",
       "sent": "Danke, deine Nachricht ist beim Lomir-Team eingegangen.",
       "error": "Beim Senden deiner Nachricht ist etwas schiefgegangen. Bitte versuche es erneut."
     },
     "title": "Lomir kontaktieren",
     "topics": {
       "general": "Allgemeine Frage",
-      "account": "Hilfe zum Konto",
+      "account": "Hilfe zum Account",
       "privacy": "Datenschutzanliegen",
       "report": "Inhalte oder Missbrauch melden",
       "feedback": "Rückmeldung"
@@ -527,6 +527,9 @@
     "noResults": "Keine Sprachen gefunden",
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …"
+  },
+  "legalPage": {
+    "lastUpdated": "Stand: {date}"
   },
   "location": {
     "city": "Stadt / Ort (optional)",
@@ -845,7 +848,7 @@
     "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}"
   },
   "privacy": {
-    "accountDeletion": "Das Löschen des Kontos ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Former Lomir User“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
+    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Ehemaliger Lomir-Nutzer“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
     "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
     "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
     "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",

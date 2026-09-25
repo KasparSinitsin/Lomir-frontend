@@ -144,7 +144,7 @@
       "step2": "Schritt 2 von 2: Prüfen, was sich ändert",
       "successorLabel": "Nachfolge:",
       "successorOption": "{name} ({role})",
-      "summaryBadges": "{count, plural, one {# Badge-Auszeichnung, die du vergeben hast, zeigt künftig „Former Lomir User“} other {# Badge-Auszeichnungen, die du vergeben hast, zeigen künftig „Former Lomir User“}}",
+      "summaryBadges": "{count, plural, one {# Badge-Auszeichnung, die du vergeben hast, zeigt künftig „Ehemaliger Lomir-Nutzer“} other {# Badge-Auszeichnungen, die du vergeben hast, zeigen künftig „Ehemaliger Lomir-Nutzer“}}",
       "summaryHeading": "Übersicht",
       "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
       "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",

@@ -9,6 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "i18n:check": "node scripts/i18n-check.mjs",
+    "legal:check": "node scripts/legal-parity.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
