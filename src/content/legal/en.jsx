@@ -331,7 +331,7 @@ const content = {
       {
         title: "6. User Content",
         paragraphs: [
-          "You retain the rights to the content you upload to Lomir. By uploading content, you grant Lomir a limited, non-exclusive right to store, display, transmit, and process that content as necessary to operate the app.",
+          "You retain the rights to the content and files you upload to Lomir or create there. By uploading or creating content, you grant Lomir a limited, non-exclusive right to store, display, transmit, and process that content as necessary to operate the app.",
           "You are responsible for the content you provide. Do not enter sensitive personal data, confidential information, or data about other people unless you have a legal basis and, where required, their permission.",
         ],
       },
