@@ -328,7 +328,11 @@
       "findTeams": "Find Teams"
     },
     "openConversation": "Open conversation",
-    "deselectConversation": "Deselect conversation"
+    "deselectConversation": "Deselect conversation",
+    "archivedBanner": {
+      "body": "This team has been archived and is scheduled for deletion. The chat stays available for {remaining} so remaining teammates can say goodbye. Leave anytime; once you leave or the chat is deleted, its messages and files are no longer accessible.",
+      "leaveNow": "Leave team chat now"
+    }
   },
   "chatUploader": {
     "addAttachmentAria": "Add attachment",
@@ -453,7 +457,8 @@
     "justNowShort": "< minute ago",
     "timeOfDay": "{time}",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "archiveRemainingUpTo": "up to {count, plural, one {# day} other {# days}}"
   },
   "demo": {
     "profileLabel": "Demo Profile",

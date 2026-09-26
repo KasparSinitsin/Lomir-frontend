@@ -60,7 +60,7 @@ const isTransientEmptyDirectConversation = (conversation) =>
   !(conversation.lastMessage ?? conversation.last_message);
 
 const Chat = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -201,7 +201,12 @@ const Chat = () => {
     };
     update();
     return () => clearTimeout(timeoutId);
-  }, [isActiveTeamArchived, activeTeamArchivedAt]);
+    // `i18n.language` is a dependency because `formatArchiveTimeRemaining`
+    // returns a finished, worded string that is then held in state and only
+    // refreshed by the timer - once a day while more than a day remains. Without
+    // this, switching language leaves "13 Tage" sitting in an English paragraph
+    // for up to 24 hours.
+  }, [isActiveTeamArchived, activeTeamArchivedAt, i18n.language]);
 
   const teamMembers = useMemo(() => {
     const members =
