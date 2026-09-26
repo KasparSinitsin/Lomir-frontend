@@ -325,7 +325,11 @@
       "findTeams": "Teams finden"
     },
     "openConversation": "Unterhaltung öffnen",
-    "deselectConversation": "Auswahl aufheben"
+    "deselectConversation": "Auswahl aufheben",
+    "archivedBanner": {
+      "body": "Dieses Team wurde archiviert und wird gelöscht. Der Chat bleibt noch {remaining} verfügbar, damit ihr euch verabschieden könnt. Du kannst jederzeit gehen; sobald du den Chat verlässt oder er gelöscht wird, sind seine Nachrichten und Dateien nicht mehr zugänglich.",
+      "leaveNow": "Team-Chat jetzt verlassen"
+    }
   },
   "chatUploader": {
     "addAttachmentAria": "Anhang hinzufügen",
@@ -450,7 +454,8 @@
     "justNowShort": "vor < 1 Min.",
     "timeOfDay": "{time} Uhr",
     "today": "Heute",
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "archiveRemainingUpTo": "bis zu {count, plural, one {# Tag} other {# Tage}}"
   },
   "demo": {
     "profileLabel": "Demo-Profil",
