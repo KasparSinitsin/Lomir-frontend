@@ -885,7 +885,13 @@ const BadgeAwardModal = ({
               const badgePastel =
                 CATEGORY_SECTION_PASTELS[selectedBadge?.category] || "#F3F4F6";
               return (
-                <div className="flex gap-2">
+                // Stacked below `sm`, one row from there - the same shape the
+                // team/project inputs below already use. Three equal buttons
+                // with an icon and a label do not fit a phone in one row:
+                // "Teamarbeit" is ten characters and cannot break, where
+                // "Teamwork" is eight, so the row survived in English and was
+                // clipped in German.
+                <div className="flex flex-col sm:flex-row gap-2">
                   {CONTEXT_OPTIONS.map((option) => {
                     const isSelected = contextType === option.value;
                     const IconComponent = option.icon;
@@ -898,7 +904,7 @@ const BadgeAwardModal = ({
                           !isDisabled && setContextType(option.value)
                         }
                         disabled={isDisabled}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
                           isSelected
                             ? "shadow-sm"
                             : isDisabled
@@ -920,8 +926,10 @@ const BadgeAwardModal = ({
                             : contextDescription(option.value)
                         }
                       >
-                        <IconComponent size={14} />
-                        <span>{contextLabel(option.value)}</span>
+                        <IconComponent size={14} className="shrink-0" />
+                        <span className="truncate">
+                          {contextLabel(option.value)}
+                        </span>
                       </button>
                     );
                   })}
