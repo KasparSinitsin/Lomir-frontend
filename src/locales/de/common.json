@@ -289,7 +289,10 @@
       "uploadImageFailed": "Bild konnte nicht hochgeladen werden. Bitte versuche es erneut.",
       "uploadImageRejected": "Bild konnte nicht hochgeladen werden",
       "renderFailed": "Der Chat konnte nicht dargestellt werden. Bitte lade die Seite neu.",
-      "noConversationAccess": "Du hast keinen Zugriff mehr auf diese Unterhaltung."
+      "noConversationAccess": "Du hast keinen Zugriff mehr auf diese Unterhaltung.",
+      "teamDeleted": "Dieses Team wurde gelöscht.",
+      "removedFromTeam": "Du wurdest aus diesem Team entfernt.",
+      "leftTeamChat": "Du hast diesen Team-Chat verlassen."
     },
     "formerTeamMember": "{name} (ehemaliges Teammitglied)",
     "formerTeamMemberTooltip": "Ehemaliges Teammitglied",
