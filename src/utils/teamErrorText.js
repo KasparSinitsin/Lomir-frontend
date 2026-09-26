@@ -1,6 +1,6 @@
 /**
  * Words a failure from the team endpoints (invitations, applications, vacant
- * roles) in the reader's language.
+ * roles, role changes) in the reader's language.
  *
  * The backend names what went wrong with a `code` — see
  * `Lomir-backend/src/config/teamErrors.js` — and only for the failures a user
@@ -64,6 +64,12 @@ export const getTeamErrorText = (error, t, fallback) => {
       return t("teams:teamErrors.applicationAlreadyPending");
     case "APPLICATION_UNAVAILABLE":
       return t("teams:teamErrors.applicationUnavailable");
+    case "MEMBER_UNAVAILABLE":
+      return t("teams:teamErrors.memberUnavailable");
+    case "ROLE_CHANGE_NOT_ALLOWED":
+      return t("teams:teamErrors.roleChangeNotAllowed");
+    case "OWNERSHIP_TRANSFER_NOT_ALLOWED":
+      return t("teams:teamErrors.ownershipTransferNotAllowed");
     default:
       return fallback;
   }

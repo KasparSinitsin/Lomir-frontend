@@ -14,6 +14,7 @@ import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { formatListLocation } from "../../utils/locationUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
@@ -256,9 +257,15 @@ const TeamMembersSection = ({
                         } catch (error) {
                           setNotification({
                             type: "error",
-                            message:
-                              error.response?.data?.message ||
+                            // BE #333 codes the three failures a user can
+                            // reach here. Everything else the endpoint
+                            // answers is English prose for a guard no UI
+                            // offers, so it never reaches the screen.
+                            message: getTeamErrorText(
+                              error,
+                              t,
                               t("membersSection.roleUpdateFailed"),
+                            ),
                           });
                         }
                         }}
@@ -322,9 +329,14 @@ const TeamMembersSection = ({
 
                           setNotification({
                             type: "error",
-                            message:
-                              error.response?.data?.message ||
+                            // The removal endpoint carries no codes yet, so
+                            // this always words the fallback - which is the
+                            // point: its prose is untranslated English.
+                            message: getTeamErrorText(
+                              error,
+                              t,
                               t("membersSection.removeFailed"),
+                            ),
                           });
                         }
                         }}

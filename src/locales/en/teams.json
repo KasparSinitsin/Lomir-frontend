@@ -574,6 +574,9 @@
     "inviteeHasPendingApplication": "This person has already applied to this team. You can answer their application instead.",
     "applicationAlreadyPending": "You have already sent this application. It is still waiting for a response.",
     "applicationUnavailable": "This application is no longer available. It may have been handled or withdrawn.",
-    "maxMembersBelowMemberCount": "This team already has {count, plural, one {# member} other {# members}}. The maximum cannot be lower."
+    "maxMembersBelowMemberCount": "This team already has {count, plural, one {# member} other {# members}}. The maximum cannot be lower.",
+    "memberUnavailable": "This person is no longer a member of this team.",
+    "roleChangeNotAllowed": "You can no longer change roles in this team. Your own role may have changed, or the team was archived.",
+    "ownershipTransferNotAllowed": "Only the team owner can transfer ownership. It may have been transferred already."
   }
 }
