@@ -574,6 +574,9 @@
     "inviteeHasPendingApplication": "Diese Person hat sich bereits bei diesem Team beworben. Du kannst stattdessen auf ihre Bewerbung antworten.",
     "applicationAlreadyPending": "Du hast diese Bewerbung bereits gesendet. Sie wartet noch auf eine Antwort.",
     "applicationUnavailable": "Diese Bewerbung ist nicht mehr verfügbar. Sie wurde eventuell schon bearbeitet oder zurückgezogen.",
-    "maxMembersBelowMemberCount": "Das Team hat bereits {count, plural, one {# Mitglied} other {# Mitglieder}}. Die Höchstzahl kann nicht darunter liegen."
+    "maxMembersBelowMemberCount": "Das Team hat bereits {count, plural, one {# Mitglied} other {# Mitglieder}}. Die Höchstzahl kann nicht darunter liegen.",
+    "memberUnavailable": "Diese Person ist kein Mitglied dieses Teams mehr.",
+    "roleChangeNotAllowed": "Du kannst in diesem Team keine Rollen mehr ändern. Deine eigene Rolle hat sich eventuell geändert oder das Team wurde archiviert.",
+    "ownershipTransferNotAllowed": "Nur der Team-Eigentümer kann das Team-Eigentum übertragen. Es wurde eventuell schon übertragen."
   }
 }
