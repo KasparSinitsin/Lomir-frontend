@@ -166,6 +166,7 @@
     "sendMessage": "Nachricht an das Team",
     "leaveAria": "Team verlassen",
     "leaveTooltip": "Team verlassen",
+    "leaveOwnerTransferTooltip": "Als Team-Eigentümer kannst du das Team nicht sofort verlassen. Übertrage das Team-Eigentum an ein anderes Teammitglied, bevor du gehst.",
     "notFound": "Team nicht gefunden oder du hast keinen Zugriff darauf.",
     "unknownError": "Unbekannter Fehler",
     "leftTeam": "Du hast das Team verlassen.",
@@ -205,7 +206,6 @@
     "appliedToTeamOn": "Du hast dich für dieses Team beworben\nam {date}",
     "createdOn": "Gegründet am {date}",
     "deleteBody": "Dieses Team löschen? Wenn du das einzige Mitglied bist, werden Team und Chat sofort gelöscht. Wenn weitere Mitglieder bleiben, wird das Team zuerst archiviert und endgültig gelöscht, sobald sie es verlassen haben oder die Archivfrist abgelaufen ist - derzeit standardmäßig 14 Tage.",
-    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Team-Eigentum, bevor du gehst.",
     "serverError": "Serverfehler: {detail}"
   },
   "vacantRoleCard": {
