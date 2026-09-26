@@ -166,6 +166,7 @@
     "sendMessage": "Nachricht an das Team",
     "leaveAria": "Team verlassen",
     "leaveTooltip": "Team verlassen",
+    "leaveOwnerTransferTooltip": "Als Team-Eigentümer kannst du das Team nicht sofort verlassen. Übertrage das Team-Eigentum an ein anderes Teammitglied, bevor du gehst.",
     "notFound": "Team nicht gefunden oder du hast keinen Zugriff darauf.",
     "unknownError": "Unbekannter Fehler",
     "leftTeam": "Du hast das Team verlassen.",
@@ -205,7 +206,6 @@
     "appliedToTeamOn": "Du hast dich für dieses Team beworben\nam {date}",
     "createdOn": "Gegründet am {date}",
     "deleteBody": "Dieses Team löschen? Wenn du das einzige Mitglied bist, werden Team und Chat sofort gelöscht. Wenn weitere Mitglieder bleiben, wird das Team zuerst archiviert und endgültig gelöscht, sobald sie es verlassen haben oder die Archivfrist abgelaufen ist - derzeit standardmäßig 14 Tage.",
-    "leaveOwnerNote": "Hinweis: Als Eigentümer kannst du das Team nur verlassen, wenn es einen weiteren Eigentümer gibt. Übertrage das Team-Eigentum, bevor du gehst.",
     "serverError": "Serverfehler: {detail}"
   },
   "vacantRoleCard": {
@@ -237,13 +237,13 @@
     "noRoleSelected": "Keine Rolle ausgewählt – deine Bewerbung wird als allgemeine Team-Bewerbung gesendet.",
     "selectRoleRequired": "Bitte wähle die Rolle aus, für die du dich bewerben möchtest.",
     "messageLabel": "Deine Nachricht an das Team:",
-    "messageLabelInternal": "Deine Nachricht an Eigentümer und Admins:",
+    "messageLabelInternal": "Deine Nachricht an Team-Eigentümer und Admins:",
     "placeholder": "Erzähl dem Team, warum du mitmachen möchtest, welche Fähigkeiten du mitbringst und was du beitragen willst …",
-    "placeholderInternal": "Erzähl Eigentümern und Admins, warum du diese Rolle übernehmen möchtest und welche passende Erfahrung du mitbringst …",
+    "placeholderInternal": "Erzähl dem Team-Eigentümer und den Admins, warum du diese Rolle übernehmen möchtest und welche passende Erfahrung du mitbringst …",
     "charCount": "{count}/{max} Zeichen",
-    "messageRequired": "Bitte schreib eine Nachricht an das Team",
+    "messageRequired": "Bitte schreib eine Nachricht an den Team-Eigentümer",
     "sent": "Bewerbung gesendet!",
-    "sentInternal": "Rollenbewerbung an Eigentümer und Admins gesendet!",
+    "sentInternal": "Rollenbewerbung an Team-Eigentümer und Admins gesendet!",
     "cancel": "Abbrechen",
     "submit": "Bewerbung senden"
   },
@@ -363,7 +363,7 @@
       "add": "Persönliche Antwort hinzufügen (optional)",
       "placeholder": "Schreib eine persönliche Nachricht zu deiner Entscheidung …"
     },
-    "selfApplication": "Ein anderer Eigentümer oder Admin muss deine Bewerbung prüfen.",
+    "selfApplication": "Der Team-Eigentümer oder ein Admin muss deine Bewerbung prüfen.",
     "actions": {
       "fillRoleAndAdd": "Rolle besetzen + ins Team aufnehmen",
       "fillRoleAndAddTooltip": "Bewerbung annehmen, ins Team aufnehmen und die Rolle besetzen",

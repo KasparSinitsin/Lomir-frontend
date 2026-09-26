@@ -959,23 +959,44 @@ const TeamDetailsModal = ({
     }
   };
 
-  // Check if user can leave (is a member but not the sole owner)
-  const canLeaveTeam = useMemo(() => {
-    if (!user?.id || !team?.members) return false;
+  /**
+   * Whether the leave button is shown at all, and whether it is enabled.
+   *
+   * A team has exactly one owner: creation inserts one, and the transfer demotes
+   * the current owner in the same transaction. So the old `ownerCount > 1` test
+   * was never true for an owner, the button was never rendered for them, and the
+   * note explaining what to do sat inside a dialog they could not open.
+   *
+   * Julia's call, 2026-09-26: an owner *with other members* sees the button
+   * muted rather than hidden, with a tooltip saying to transfer ownership first.
+   *
+   * ⚠️ Revised by Julia 2026-09-26: an owner **alone** in the team sees no
+   * button at all. Leaving is not something they can mean - there is nobody to
+   * hand the team to, and the way out is deleting it, which the edit form
+   * offers. A muted button there only raises a question it then refuses to
+   * answer.
+   *
+   * ⚠️ `ownerMustTransfer` is a flag, not a key: both keys are spelled out
+   * literally at the call site so `npm run i18n:check` can see them. Resolving
+   * them through a variable reports them as unused (FE #636).
+   */
+  const leaveState = useMemo(() => {
+    const hidden = { show: false, enabled: false, ownerMustTransfer: false };
+    if (!user?.id || !team?.members) return hidden;
 
     const currentMember = team.members.find(
       (m) => idsMatch(getTeamMemberUserId(m), user.id),
     );
 
-    if (!currentMember) return false;
+    if (!currentMember) return hidden;
 
-    // If user is owner, check if they're the only owner
     if (currentMember.role === "owner") {
-      const ownerCount = team.members.filter((m) => m.role === "owner").length;
-      return ownerCount > 1; // Can only leave if there's another owner
+      if (team.members.length <= 1) return hidden;
+      return { show: true, enabled: false, ownerMustTransfer: true };
     }
 
-    return true; // Members and admins can always leave
+    // Members and admins can always leave.
+    return { show: true, enabled: true, ownerMustTransfer: false };
   }, [user?.id, team?.members]);
 
   const validateForm = () => {
@@ -1386,16 +1407,21 @@ const TeamDetailsModal = ({
               {t("teams:teamDetails.sendMessage")}
             </SendMessageButton>
 
-            {/* Leave Team Button */}
-            {canLeaveTeam && (
+            {/* Leave Team Button - muted for the owner, who must transfer first */}
+            {leaveState.show && (
               <Tooltip
-                content={t("teams:teamDetails.leaveTooltip")}
+                content={
+                  leaveState.ownerMustTransfer
+                    ? t("teams:teamDetails.leaveOwnerTransferTooltip")
+                    : t("teams:teamDetails.leaveTooltip")
+                }
                 position="top"
               >
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsLeaveDialogOpen(true)}
+                  disabled={!leaveState.enabled}
                   className="hover:bg-red-100 hover:text-red-700 p-2"
                   aria-label={t("teams:teamDetails.leaveAria")}
                 >
@@ -2176,11 +2202,6 @@ const TeamDetailsModal = ({
         <p className="text-sm text-base-content/80">
           {t("teams:teamDetails.leaveBody")}
         </p>
-        {isOwner && (
-          <p className="text-warning text-sm mt-2">
-            {t("teams:teamDetails.leaveOwnerNote")}
-          </p>
-        )}
       </ConfirmModal>
       <TagAwardsModal
         {...tagAwardsModalProps}
