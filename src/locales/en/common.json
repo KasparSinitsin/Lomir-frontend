@@ -289,7 +289,10 @@
       "uploadImageFailed": "Failed to upload image. Please try again.",
       "uploadImageRejected": "Failed to upload image",
       "renderFailed": "The chat could not be displayed. Please reload the page.",
-      "noConversationAccess": "You no longer have access to this conversation."
+      "noConversationAccess": "You no longer have access to this conversation.",
+      "teamDeleted": "This team has been deleted.",
+      "removedFromTeam": "You have been removed from this team.",
+      "leftTeamChat": "You have left this team chat."
     },
     "formerTeamMember": "{name} (former team member)",
     "formerTeamMemberTooltip": "Former team member",
