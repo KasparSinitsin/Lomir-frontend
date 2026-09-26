@@ -147,14 +147,14 @@ const useActiveChatConversation = ({
           ) {
             revokeTeamChatAccess(
               conversationId,
-              "You no longer have access to this team chat.",
+              t("chatPage.errors.noTeamChatAccess"),
             );
             setLoadingMessages(false);
             return;
           }
 
           if (error.response?.status === 403) {
-            setError("You no longer have access to this conversation.");
+            setError(t("chatPage.errors.noConversationAccess"));
             setLoadingMessages(false);
             navigate("/chat");
             return;
@@ -376,7 +376,7 @@ const useActiveChatConversation = ({
           ) {
             revokeTeamChatAccess(
               conversationId,
-              "You no longer have access to this team chat.",
+              t("chatPage.errors.noTeamChatAccess"),
             );
             setLoadingMessages(false);
             return;
@@ -443,6 +443,7 @@ const useActiveChatConversation = ({
     setLoadingMore,
     setMessages,
     setSearchParams,
+    t,
     user?.id,
   ]);
 
