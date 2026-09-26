@@ -237,9 +237,9 @@
     "noRoleSelected": "No role selected — your application will be sent as a general team application.",
     "selectRoleRequired": "Please select a role to apply for.",
     "messageLabel": "Your message to the team:",
-    "messageLabelInternal": "Your message to the owner and admins:",
+    "messageLabelInternal": "Your message to the team owner and admins:",
     "placeholder": "Tell the team why you'd like to join, what skills you bring, and what you hope to contribute...",
-    "placeholderInternal": "Tell the owner and admins why you'd like to fill this role and what relevant experience you bring...",
+    "placeholderInternal": "Tell the team owner and admins why you'd like to fill this role and what relevant experience you bring...",
     "charCount": "{count}/{max} characters",
     "messageRequired": "Please write a message to the team owner",
     "sent": "Application sent successfully!",
@@ -363,7 +363,7 @@
       "add": "Add a personal response message (optional)",
       "placeholder": "Add a personal message to your decision..."
     },
-    "selfApplication": "Another owner or admin must review your application.",
+    "selfApplication": "The team owner or an admin must review your application.",
     "actions": {
       "fillRoleAndAdd": "Fill Role + Add to Team",
       "fillRoleAndAddTooltip": "Accept application, add to team and fill the role",
