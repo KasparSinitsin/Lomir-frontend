@@ -41,6 +41,11 @@ import { tagService } from "../../services/tagService";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
 import { formatDateMedium } from "../../utils/dateHelpers";
+import {
+  getBadgeDescription,
+  getBadgeName,
+  getCategoryLabel,
+} from "../../utils/badgeLabels";
 
 /**
  * BadgeAwardModal Component
@@ -63,29 +68,29 @@ import { formatDateMedium } from "../../utils/dateHelpers";
  * @param {Function} onAwardComplete - Callback after successful award (to refresh badges)
  */
 
-// Context type options
+/**
+ * Context type options - value and icon only.
+ *
+ * ⚠️ The words used to live here as `label` and `description`, which is the
+ * object-literal trap (plan finding F8): a label built where the array is
+ * defined is built once, at module load, and keeps the language it was born
+ * with. They are resolved at render instead, by `contextLabel` below.
+ *
+ * The descriptions reuse `badges.award.personal|team|project`, the same keys
+ * `AwardCard` and `Profile` use to describe an award that already exists - so
+ * the wording a person reads while giving a badge matches what the recipient
+ * reads afterwards.
+ */
 const CONTEXT_OPTIONS = [
-  {
-    value: "personal",
-    label: "Personal",
-    icon: User,
-    description: "Personal contribution",
-  },
-  {
-    value: "team",
-    label: "Teamwork",
-    icon: Users,
-    description: "Team contribution",
-  },
-  {
-    value: "project",
-    label: "Project",
-    icon: FolderOpen,
-    description: "Project contribution",
-  },
+  { value: "personal", icon: User },
+  { value: "team", icon: Users },
+  { value: "project", icon: FolderOpen },
 ];
 
 const EMPTY_QUERY_ARRAY = [];
+
+// The comment limit, so the counter cannot drift from what the field enforces.
+const REASON_MAX_LENGTH = 300;
 
 const BadgeAwardModal = ({
   isOpen,
@@ -105,6 +110,15 @@ const BadgeAwardModal = ({
 }) => {
   const { t } = useTranslation();
   const [sending, setSending] = useState(false);
+  /**
+   * ⚠️ Both hold a CODE, never a finished sentence.
+   *
+   * `error` is one of the codes worded by `errorText` below; `success` carries
+   * the three values its sentence needs. A sentence built when the action runs
+   * keeps the language it was built in - and `LanguageContext` switches once
+   * after the user loads, so a sentence built early is wrong from the start,
+   * not only after a manual switch (STATUS.md decision 6, FE #625).
+   */
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -155,22 +169,48 @@ const BadgeAwardModal = ({
     enabled: Boolean(isOpen && awardeeId),
   });
 
+  /**
+   * The words for a context option, resolved at render.
+   *
+   * Written out as a switch with literal keys rather than
+   * `t("badges.award." + value)`: `npm run i18n:check` reads string literals out
+   * of `t(...)` and reports a composed key as unused (FE #636).
+   */
+  const contextLabel = (value) => {
+    if (value === "personal") return t("badges.award.modal.contextPersonal");
+    if (value === "team") return t("badges.award.modal.contextTeam");
+    return t("badges.award.modal.contextProject");
+  };
+
+  const contextDescription = (value) => {
+    if (value === "personal") return t("badges.award.personal");
+    if (value === "team") return t("badges.award.team");
+    return t("badges.award.project");
+  };
+
   // Get display name
   const getDisplayName = () => {
     const first = awardeeFirstName || "";
     const last = awardeeLastName || "";
     const full = `${first} ${last}`.trim();
-    return full || awardeeUsername || "User";
+    return full || awardeeUsername || t("badges.award.modal.unknownPerson");
   };
 
-  // Get first name for placeholders
-  const getFirstName = () => {
-    return awardeeFirstName || awardeeUsername || "this user";
-  };
-
-  // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
+  /**
+   * The first given name only: "Alice Stephanie Beurer" → "Alice".
+   *
+   * Every sentence that addresses the awardee uses this. A second helper
+   * returned *all* given names despite being called `getFirstName`, so the
+   * title said "Camila" while the sentences below it said
+   * "Camila Alejandra Simona". Julia's call, 2026-09-26: the short form
+   * everywhere.
+   */
   const getAbbreviatedName = () => {
-    return (awardeeFirstName || "").split(" ")[0] || awardeeUsername || "User";
+    return (
+      (awardeeFirstName || "").split(" ")[0] ||
+      awardeeUsername ||
+      t("badges.award.modal.unknownPerson")
+    );
   };
 
   const locationText = [awardeeCity, awardeeCountry].filter(Boolean).join(", ");
@@ -191,7 +231,7 @@ const BadgeAwardModal = ({
     if (!badgesError) return;
 
     console.error("Error fetching badges:", badgesError);
-    setError("Failed to load badges. Please try again.");
+    setError("loadFailed");
   }, [badgesError]);
 
   useEffect(() => {
@@ -301,7 +341,8 @@ const BadgeAwardModal = ({
       const first = awardeeFirstName || "";
       const last = awardeeLastName || "";
       const full = `${first} ${last}`.trim();
-      const displayName = full || awardeeUsername || "User";
+      const displayName =
+        full || awardeeUsername || t("badges.award.modal.unknownPerson");
       const dateEl = dateRef.current;
       const reservedWidth =
         dateIsNarrowRef.current && dateEl ? dateEl.offsetWidth + 16 : 0;
@@ -314,7 +355,7 @@ const BadgeAwardModal = ({
     if (dateRef.current) resizeObserver.observe(dateRef.current);
     update();
     return () => resizeObserver.disconnect();
-  }, [awardeeFirstName, awardeeLastName, awardeeUsername]);
+  }, [awardeeFirstName, awardeeLastName, awardeeUsername, t]);
 
   // Group badges by category
   const badgesByCategory = badges.reduce((acc, badge) => {
@@ -324,7 +365,9 @@ const BadgeAwardModal = ({
     return acc;
   }, {});
 
-  // Category order
+  // Category order. ⚠️ These are the stored `badge.category` values and are
+  // grouping keys, never display text - `getCategoryLabel` words them at
+  // render. Translating them here would silently empty every section.
   const categoryOrder = [
     "Collaboration Skills",
     "Technical Expertise",
@@ -368,22 +411,22 @@ const BadgeAwardModal = ({
   // Handle submit
   const handleSubmit = async () => {
     if (!selectedBadge) {
-      setError("Please select a badge");
+      setError("selectBadge");
       return;
     }
 
     if (!credits) {
-      setError("Please select credit points");
+      setError("selectCredits");
       return;
     }
 
     if (!contextType) {
-      setError("Please select a context");
+      setError("selectContext");
       return;
     }
 
     if (contextType === "team" && !selectedTeamId && !customTeamName.trim()) {
-      setError("Please select a Lomir team or enter a team name");
+      setError("selectTeam");
       return;
     }
 
@@ -407,9 +450,11 @@ const BadgeAwardModal = ({
           contextType === "project" ? projectName.trim() || null : null,
       });
 
-      setSuccess(
-        `${selectedBadge.name} badge awarded to ${getDisplayName()} (+${credits} ct.). It will stay private until they make it visible.`,
-      );
+      setSuccess({
+        badge: selectedBadge.name,
+        name: getDisplayName(),
+        credits,
+      });
 
       // Notify parent to refresh badge data
       if (onAwardComplete) {
@@ -426,13 +471,23 @@ const BadgeAwardModal = ({
       }, 1800);
     } catch (err) {
       console.error("Error awarding badge:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to award badge. Please try again.",
-      );
+      // Deliberately not `err.response?.data?.message`: this endpoint has no
+      // failure codes, so its message is untranslated English prose. Same rule
+      // as `utils/teamErrorText.js`.
+      setError("awardFailed");
     } finally {
       setSending(false);
     }
+  };
+
+  /** Words an error code. Literal keys, for the reason given at `contextLabel`. */
+  const errorText = (code) => {
+    if (code === "selectBadge") return t("badges.award.modal.errorSelectBadge");
+    if (code === "selectCredits") return t("badges.award.modal.errorSelectCredits");
+    if (code === "selectContext") return t("badges.award.modal.errorSelectContext");
+    if (code === "selectTeam") return t("badges.award.modal.errorSelectTeam");
+    if (code === "loadFailed") return t("badges.award.modal.errorLoadFailed");
+    return t("badges.award.modal.errorAwardFailed");
   };
 
   // ============ Render ============
@@ -442,7 +497,7 @@ const BadgeAwardModal = ({
       <Award className="text-primary mt-0.5" size={24} />
       <div>
         <h2 className="text-xl font-medium text-primary leading-[110%]">
-          Award a Badge to {getAbbreviatedName()}
+          {t("badges.award.modal.title", { name: getAbbreviatedName() })}
         </h2>
       </div>
     </div>
@@ -451,7 +506,7 @@ const BadgeAwardModal = ({
   const footer = (
     <div className="flex justify-end gap-3">
       <Button variant="errorOutline" onClick={onClose} disabled={sending}>
-        Cancel
+        {t("badges.award.modal.cancel")}
       </Button>
       <Button
         variant="successOutline"
@@ -466,7 +521,9 @@ const BadgeAwardModal = ({
         }
         icon={<Send size={16} />}
       >
-        {sending ? "Awarding..." : "Award Badge"}
+        {sending
+          ? t("badges.award.modal.submitting")
+          : t("badges.award.modal.submit")}
       </Button>
     </div>
   );
@@ -483,19 +540,23 @@ const BadgeAwardModal = ({
         {/* Success message */}
         {success && (
           <Alert type="success" className="text-center">
-            {success}
+            {t("badges.award.modal.success", {
+              badge: getBadgeName(success.badge, t),
+              name: success.name,
+              credits: success.credits,
+            })}
           </Alert>
         )}
 
         {/* Error message */}
-        {error && <Alert type="error">{error}</Alert>}
+        {error && <Alert type="error">{errorText(error)}</Alert>}
 
         {/* Awardee info */}
         {!success && (
           <div className="relative flex items-start justify-between gap-4 mb-5">
             <div className="flex min-w-0 flex-1 items-start space-x-4">
               {onUserClick ? (
-                <Tooltip content="View profile" position="bottom" wrapperClassName="block">
+                <Tooltip content={t("badges.card.viewProfile")} position="bottom" wrapperClassName="block">
                   <UserAvatar
                     user={{
                       avatar_url: awardeeAvatar,
@@ -509,7 +570,7 @@ const BadgeAwardModal = ({
                     initialsClassName="text-xl font-medium"
                     clickable
                     onClick={() => onUserClick(awardeeId)}
-                    title="View profile"
+                    title={t("badges.card.viewProfile")}
                     showDemoOverlay={awardeeIsDemo}
                     demoOverlayTextClassName="text-[8px]"
                   />
@@ -537,7 +598,7 @@ const BadgeAwardModal = ({
                   className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
                 >
                   {onUserClick ? (
-                    <Tooltip content="View profile" position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                    <Tooltip content={t("badges.card.viewProfile")} position="bottom" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
                       <span onClick={() => onUserClick(awardeeId)}>{getDisplayName()}</span>
                     </Tooltip>
                   ) : (
@@ -554,7 +615,7 @@ const BadgeAwardModal = ({
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 overflow-hidden text-xs" style={{ maxHeight: "2.1em" }}>
                   {onUserClick ? (
-                    <Tooltip content="View profile" position="bottom" wrapperClassName="inline-flex">
+                    <Tooltip content={t("badges.card.viewProfile")} position="bottom" wrapperClassName="inline-flex">
                       <p
                         className="text-base-content/70 cursor-pointer hover:text-primary transition-colors"
                         onClick={() => onUserClick(awardeeId)}
@@ -615,7 +676,7 @@ const BadgeAwardModal = ({
           <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Award size={12} className="text-primary mr-1" />
-              Select a badge:
+              {t("badges.award.modal.selectBadge")}
             </p>
 
             {loading ? (
@@ -626,7 +687,7 @@ const BadgeAwardModal = ({
               <div className="text-center py-6 bg-base-200/30 rounded-lg border border-base-300">
                 <Award className="mx-auto mb-2 text-warning" size={28} />
                 <p className="text-sm text-base-content/70">
-                  No badges available.
+                  {t("badges.award.modal.noBadges")}
                 </p>
               </div>
             ) : (
@@ -663,14 +724,14 @@ const BadgeAwardModal = ({
                             className="font-medium text-sm"
                             style={{ color }}
                           >
-                            {category}
+                            {getCategoryLabel(category, t)}
                           </span>
                           {hasSelectedBadge && !isExpanded && (
                             <span
                               className="text-xs px-2 py-0.5 rounded-full text-white"
                               style={{ backgroundColor: color }}
                             >
-                              {selectedBadge.name}
+                              {getBadgeName(selectedBadge.name, t)}
                             </span>
                           )}
                         </div>
@@ -719,10 +780,14 @@ const BadgeAwardModal = ({
                                     className="text-sm font-medium truncate"
                                     style={isSelected ? { color } : {}}
                                   >
-                                    {badge.name}
+                                    {getBadgeName(badge.name, t)}
                                   </p>
                                   <p className="text-xs text-base-content/60 line-clamp-1">
-                                    {badge.description}
+                                    {getBadgeDescription(
+                                      badge.name,
+                                      badge.description,
+                                      t,
+                                    )}
                                   </p>
                                 </div>
                                 {isSelected && (
@@ -764,7 +829,7 @@ const BadgeAwardModal = ({
           <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Star size={12} className="text-primary mr-1" />
-              Credit points for this award:
+              {t("badges.award.modal.creditsLabel")}
             </p>
             <div className="flex gap-3">
               {[1, 2, 3].map((value) => {
@@ -795,7 +860,10 @@ const BadgeAwardModal = ({
                     }
                   >
                     <span className="text-sm font-medium">
-                      {value} {value === 1 ? "credit" : "credits"}
+                      {/* R3: "ct." stays in the compact displays, and three
+                          buttons in a row is one. `creditsBare` is the key the
+                          rest of the app already uses for it. */}
+                      {t("badges.creditsBare", { credits: value })}
                     </span>
                   </button>
                 );
@@ -809,7 +877,7 @@ const BadgeAwardModal = ({
           <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-center">
               <Briefcase size={12} className="text-primary mr-1" />
-              What is this for?
+              {t("badges.award.modal.contextLabel")}
             </p>
             {(() => {
               const badgeColor =
@@ -848,12 +916,12 @@ const BadgeAwardModal = ({
                         }
                         title={
                           isDisabled
-                            ? "No shared teams with this user"
-                            : option.description
+                            ? t("badges.award.modal.noSharedTeams")
+                            : contextDescription(option.value)
                         }
                       >
                         <IconComponent size={14} />
-                        <span>{option.label}</span>
+                        <span>{contextLabel(option.value)}</span>
                       </button>
                     );
                   })}
@@ -867,7 +935,7 @@ const BadgeAwardModal = ({
                 {teamsLoading ? (
                   <div className="flex items-center gap-2 text-sm text-base-content/50 py-2">
                     <div className="loading loading-spinner loading-xs"></div>
-                    Loading teams...
+                    {t("badges.award.modal.loadingTeams")}
                   </div>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-2 items-stretch">
@@ -875,7 +943,7 @@ const BadgeAwardModal = ({
                     {sharedTeams.length > 0 && (
                       <div className="flex-1">
                         <label className="text-xs text-base-content/60 mb-1 block">
-                          Lomir team
+                          {t("badges.award.modal.lomirTeam")}
                         </label>
                         <select
                           value={selectedTeamId || ""}
@@ -889,7 +957,7 @@ const BadgeAwardModal = ({
                           className="select select-bordered select-sm w-full text-sm"
                           disabled={!!customTeamName.trim()}
                         >
-                          <option value="">Select a Lomir team...</option>
+                          <option value="">{t("badges.award.modal.selectTeam")}</option>
                           {sharedTeams.map((team) => (
                             <option key={team.id} value={team.id}>
                               {team.name}
@@ -904,14 +972,16 @@ const BadgeAwardModal = ({
                     {/* "or" divider */}
                     {sharedTeams.length > 0 && (
                       <div className="flex sm:flex-col items-center justify-center px-1 sm:pt-5">
-                        <span className="text-xs text-base-content/40">or</span>
+                        <span className="text-xs text-base-content/40">
+                          {t("badges.award.modal.orSeparator")}
+                        </span>
                       </div>
                     )}
 
                     {/* Custom team name input */}
                     <div className="flex-1">
                       <label className="text-xs text-base-content/60 mb-1 block">
-                        Other team name
+                        {t("badges.award.modal.otherTeamName")}
                       </label>
                       <input
                         type="text"
@@ -920,7 +990,7 @@ const BadgeAwardModal = ({
                           setCustomTeamName(e.target.value);
                           if (e.target.value.trim()) setSelectedTeamId(null);
                         }}
-                        placeholder="Enter team name..."
+                        placeholder={t("badges.award.modal.otherTeamPlaceholder")}
                         className="input input-bordered input-sm w-full text-sm"
                         disabled={!!selectedTeamId}
                       />
@@ -934,13 +1004,13 @@ const BadgeAwardModal = ({
             {contextType === "project" && (
               <div className="mt-4">
                 <label className="text-xs text-base-content/60 mb-1 block">
-                  Project name (optional)
+                  {t("badges.award.modal.projectName")}
                 </label>
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Enter project name..."
+                  placeholder={t("badges.award.modal.projectPlaceholder")}
                   className="input input-bordered input-sm w-full text-sm"
                 />
               </div>
@@ -953,8 +1023,9 @@ const BadgeAwardModal = ({
           <div className="bg-base-200/30 rounded-lg border border-base-300 p-4">
             <p className="text-xs text-base-content/60 mb-2 flex items-start">
               <Tag size={12} className="text-primary mr-1 flex-shrink-0 mt-0.5" />
-              Link your award to one of {getFirstName()}'s Focus Areas
-              (optional):
+              {t("badges.award.modal.focusAreasLabel", {
+                name: getAbbreviatedName(),
+              })}
             </p>
 
             {/* Selected tag display */}
@@ -997,7 +1068,7 @@ const BadgeAwardModal = ({
                 {tagsLoading ? (
                   <div className="flex items-center gap-2 text-sm text-base-content/50 py-1">
                     <div className="loading loading-spinner loading-xs"></div>
-                    Loading tags...
+                    {t("badges.award.modal.loadingTags")}
                   </div>
                 ) : awardeeTags.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -1013,7 +1084,9 @@ const BadgeAwardModal = ({
                   </div>
                 ) : (
                   <p className="text-xs text-base-content/40 mb-2">
-                    {getFirstName()} hasn't added focus areas yet.
+                    {t("badges.award.modal.noFocusAreas", {
+                      name: getAbbreviatedName(),
+                    })}
                   </p>
                 )}
 
@@ -1025,8 +1098,8 @@ const BadgeAwardModal = ({
                   >
                     <SearchIcon size={12} />
                     {awardeeTags.length > 0
-                      ? "Search for a different Focus Area..."
-                      : "Search for a Focus Area..."}
+                      ? t("badges.award.modal.searchAnotherFocusArea")
+                      : t("badges.award.modal.searchFocusArea")}
                   </button>
 
                   {showTagSearch && (
@@ -1035,7 +1108,7 @@ const BadgeAwardModal = ({
                         type="text"
                         value={tagSearchQuery}
                         onChange={(e) => setTagSearchQuery(e.target.value)}
-                        placeholder="Type to search tags..."
+                        placeholder={t("badges.award.modal.tagSearchPlaceholder")}
                         className="input input-bordered input-sm w-full text-sm"
                         autoFocus
                       />
@@ -1046,7 +1119,7 @@ const BadgeAwardModal = ({
                           {tagSearching ? (
                             <div className="flex items-center gap-2 text-sm text-base-content/50 p-3">
                               <div className="loading loading-spinner loading-xs"></div>
-                              Searching...
+                              {t("badges.award.modal.searching")}
                             </div>
                           ) : (
                             tagSearchResults.map((tag) => (
@@ -1071,7 +1144,7 @@ const BadgeAwardModal = ({
                         !tagSearching &&
                         tagSearchResults.length === 0 && (
                           <p className="text-xs text-base-content/40 mt-1 px-1">
-                            No tags found for "{tagSearchQuery}"
+                            {t("badges.award.modal.noTagsFound", { query: tagSearchQuery })}
                           </p>
                         )}
                     </div>
@@ -1087,18 +1160,24 @@ const BadgeAwardModal = ({
           <div>
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <MessageCircle size={12} className="text-info mr-1" />
-              Add a comment (optional):
+              {t("badges.award.modal.commentLabel")}
             </p>
             <div className="relative">
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder={`Why are you awarding ${getFirstName()} the ${selectedBadge.name} badge?`}
+                placeholder={t("badges.award.modal.commentPlaceholder", {
+                  name: getAbbreviatedName(),
+                  badge: getBadgeName(selectedBadge.name, t),
+                })}
                 className="textarea textarea-bordered w-full h-20 resize-none text-sm pb-6"
-                maxLength={300}
+                maxLength={REASON_MAX_LENGTH}
               />
               <span className="absolute bottom-2 left-3 text-xs text-base-content/40 pointer-events-none">
-                {reason.length}/300 characters
+                {t("badges.award.modal.charCount", {
+                  count: reason.length,
+                  max: REASON_MAX_LENGTH,
+                })}
               </span>
             </div>
           </div>
