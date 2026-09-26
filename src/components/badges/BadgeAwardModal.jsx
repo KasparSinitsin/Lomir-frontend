@@ -718,18 +718,23 @@ const BadgeAwardModal = ({
                         className="w-full flex items-center justify-between p-3 hover:bg-base-200/30 transition-colors"
                         style={{ backgroundColor: pastel }}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           {getCategoryIcon(category, color)}
                           <span
-                            className="font-medium text-sm"
+                            className="font-medium text-sm shrink-0"
                             style={{ color }}
                           >
                             {getCategoryLabel(category, t)}
                           </span>
                           {hasSelectedBadge && !isExpanded && (
+                            /* The house pill: outline on bg-white/60, border
+                               and text in the category colour. It used to be a
+                               solid chip with white text - the only one of its
+                               kind in the app, and it read as a notification
+                               count rather than as the badge it names. */
                             <span
-                              className="text-xs px-2 py-0.5 rounded-full text-white"
-                              style={{ backgroundColor: color }}
+                              className="badge badge-outline h-auto min-w-0 truncate bg-white/60 px-3 py-1 text-xs font-medium leading-tight"
+                              style={{ borderColor: color, color }}
                             >
                               {getBadgeName(selectedBadge.name, t)}
                             </span>
