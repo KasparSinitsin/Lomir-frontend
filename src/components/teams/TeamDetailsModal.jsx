@@ -15,7 +15,6 @@ import {
   formatMonthNumeric,
   formatMonthYear,
 } from "../../utils/dateHelpers";
-import TeamRoleManager from "./TeamRoleManager";
 import TeamEditForm from "./TeamEditForm";
 import { useAuth } from "../../contexts/AuthContext";
 import { teamService } from "../../services/teamService";
