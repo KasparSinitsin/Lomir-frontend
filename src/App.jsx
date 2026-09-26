@@ -15,7 +15,9 @@ import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Placeholder from "./components/common/Placeholder";
+import { useTranslation } from "react-i18next";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import Alert from "./components/common/Alert";
 import MessageNotifications from "./components/chat/MessageNotifications";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -35,12 +37,19 @@ import Settings from "./pages/Settings";
 import Contact from "./pages/Contact";
 import LegalPage from "./pages/LegalPage";
 
-const renderChatError = (error) => (
-  <div className="mx-auto max-w-3xl rounded-lg border border-error/30 bg-error/10 p-4 text-error">
-    <p className="font-semibold">Chat could not be rendered.</p>
-    <p className="mt-2 text-sm">{error?.message || "Unknown render error"}</p>
-  </div>
-);
+// A component, not plain JSX, so the sentence can go through `t()` - the
+// boundary that renders it is a class and cannot. The engine's own message is
+// left to the console; see `ErrorBoundary`.
+const ChatRenderError = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto flex max-w-3xl justify-center p-4">
+      <Alert type="error" message={t("chatPage.errors.renderFailed")} />
+    </div>
+  );
+};
+
+const renderChatError = () => <ChatRenderError />;
 
 function AppLayout() {
   const location = useLocation();

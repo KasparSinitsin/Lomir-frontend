@@ -287,7 +287,8 @@
       "uploadFileFailed": "Datei konnte nicht hochgeladen werden. Bitte versuche es erneut.",
       "uploadFileRejected": "Datei konnte nicht hochgeladen werden",
       "uploadImageFailed": "Bild konnte nicht hochgeladen werden. Bitte versuche es erneut.",
-      "uploadImageRejected": "Bild konnte nicht hochgeladen werden"
+      "uploadImageRejected": "Bild konnte nicht hochgeladen werden",
+      "renderFailed": "Der Chat konnte nicht dargestellt werden. Bitte lade die Seite neu."
     },
     "formerTeamMember": "{name} (ehemaliges Teammitglied)",
     "formerTeamMemberTooltip": "Ehemaliges Teammitglied",
@@ -1116,5 +1117,8 @@
     "toggleAria": "Sichtbarkeit umschalten",
     "visible": "Für alle Nutzer sichtbar",
     "visibleDescription": "Alle können das finden und ansehen"
+  },
+  "errors": {
+    "renderFailed": "Diese Seite konnte nicht dargestellt werden. Bitte lade die Seite neu."
   }
 }

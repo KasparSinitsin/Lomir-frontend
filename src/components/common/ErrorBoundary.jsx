@@ -1,4 +1,21 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
+import Alert from "./Alert";
+
+/**
+ * The boundary is a class component and cannot hold a hook, so its default
+ * fallback is a function component - the same split as
+ * `MessageBubbleErrorBoundary`, which takes its one string as a prop.
+ *
+ * ⚠️ The raw `error.message` is deliberately not shown. It is whatever the JS
+ * engine produced ("can't access property ..."), always English, untranslatable
+ * and meaningless to a reader. `componentDidCatch` logs it to the console,
+ * which is where it belongs.
+ */
+const DefaultFallback = () => {
+  const { t } = useTranslation();
+  return <Alert type="error" message={t("errors.renderFailed")} />;
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -25,12 +42,7 @@ class ErrorBoundary extends React.Component {
       return this.props.fallback(this.state.error, this.state.errorInfo);
     }
 
-    return (
-      <div className="rounded-lg border border-error/30 bg-error/10 p-4 text-error">
-        <p className="font-medium">Something went wrong.</p>
-        <p className="mt-1 text-sm opacity-80">{this.state.error.message}</p>
-      </div>
-    );
+    return <DefaultFallback />;
   }
 }
 
