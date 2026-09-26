@@ -287,7 +287,9 @@
       "uploadFileFailed": "Failed to upload file. Please try again.",
       "uploadFileRejected": "Failed to upload file",
       "uploadImageFailed": "Failed to upload image. Please try again.",
-      "uploadImageRejected": "Failed to upload image"
+      "uploadImageRejected": "Failed to upload image",
+      "renderFailed": "The chat could not be displayed. Please reload the page.",
+      "noConversationAccess": "You no longer have access to this conversation."
     },
     "formerTeamMember": "{name} (former team member)",
     "formerTeamMemberTooltip": "Former team member",
@@ -1116,5 +1118,8 @@
     "toggleAria": "Toggle visibility",
     "visible": "Visible for all Users",
     "visibleDescription": "Anyone can find and view this"
+  },
+  "errors": {
+    "renderFailed": "This page could not be displayed. Please reload the page."
   }
 }
