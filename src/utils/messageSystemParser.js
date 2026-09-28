@@ -724,12 +724,16 @@ export const PERSON_NAME_PLACEHOLDERS = Object.freeze(["someone", "unknown"]);
  * The same problem for the two entity slots — but shorter than it looks, and
  * one candidate had to be removed after reading a real transcript.
  *
- * 🔴 **"Vacant Role" is NOT a placeholder.** It is the default `roleName` in
- * `CreateVacantRoleModal.jsx:54,116`, saved to the database as a real role
- * name and deliberately kept English (settled decision, STATUS.md). A chat
- * from 18 May 2026 shows it as a clickable role: "The new role Vacant Role has
- * been created by you". Neutralising it would erase a name a user actually
- * chose.
+ * 🔴 **The default role name is NOT a placeholder.** It is the default
+ * `roleName` in `CreateVacantRoleModal.jsx`, saved to the database as a real
+ * role name and deliberately kept English (settled decision, STATUS.md).
+ * Neutralising it would erase a name a user actually chose.
+ *
+ * ⚠️ **Two spellings, both real.** The default is **"Open Role"** since
+ * 2026-09-28; before that it was **"Vacant Role"**, and stored chats keep the
+ * old one — a chat from 18 May 2026 shows it as a clickable role: "The new
+ * role Vacant Role has been created by you". Neither may be neutralised, and
+ * a user may also have typed either by hand.
  *
  * ⚠️ NOT neutralised yet either: a null role or team name needs a sentence
  * that does not mention one ("The role was closed"), and those arrive with the

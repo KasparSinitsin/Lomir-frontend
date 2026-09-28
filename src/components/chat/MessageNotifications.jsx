@@ -34,6 +34,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
 import { parseSystemMessage } from '../../utils/messageSystemParser';
+import { DEFAULT_ROLE_NAME } from '../../constants/roleDefaults';
 import {
   getMessageSenderDisplayName,
   getMessageConversationTarget,
@@ -193,9 +194,9 @@ const getRoleStatusChangedPreview = (payload) => {
   const { roleChangeType, roleName, userType } = payload;
   const template = ROLE_CHANGE_PREVIEW[roleChangeType];
   if (!template) return null;
-  // 'Vacant Role' is a saved role name, not UI copy — it stays English.
+  // 'Open Role' is a saved role name, not UI copy — it stays English.
   const values = {
-    role: roleName || 'Vacant Role',
+    role: roleName || DEFAULT_ROLE_NAME,
     userType: userType === 'applicant' ? 'applicant' : 'invitee',
   };
   return {

@@ -31,6 +31,7 @@ import {
 } from "../../utils/userHelpers";
 import { idsMatch } from "../../utils/teamRequestUtils";
 import { getTeamErrorText } from "../../utils/teamErrorText";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 const VacantRoleDetailsModal = lazy(() => import("./VacantRoleDetailsModal"));
 
@@ -220,10 +221,10 @@ const TeamApplicationModal = ({
       .toUpperCase();
   };
 
-  // Get role initials (matching VacantRoleCard pattern). "Vacant Role" is the
+  // Get role initials (matching VacantRoleCard pattern). "Open Role" is the
   // stored default role name, so the initials stay on it in every language.
   const getRoleInitials = (roleName) => {
-    const name = roleName || "Vacant Role";
+    const name = roleName || DEFAULT_ROLE_NAME;
     const words = name.trim().split(/\s+/);
     if (words.length >= 2) {
       return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
@@ -520,7 +521,7 @@ const TeamApplicationModal = ({
                             {getRoleInitials(
                               selectedRole.roleName ??
                                 selectedRole.role_name ??
-                                "Vacant Role",
+                                DEFAULT_ROLE_NAME,
                             )}
                           </span>
                         </div>

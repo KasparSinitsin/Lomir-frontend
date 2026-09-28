@@ -27,19 +27,17 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 /**
- * The role name a new role starts with, and is SAVED WITH if the user does not
- * overwrite it (`role_name` in the submit payload). It is stored data, not
- * display text, so it stays English in every language - otherwise the name in
- * the database would depend on the creator's language and every other viewer
- * would be stuck with it. The *display* fallback for a role with no name is a
- * separate, translated thing: `common:roleStatus.vacantRoleFallback`.
- *
- * Referenced by the focus handler below, which selects the field only while it
- * still holds this untouched default. Never compare against translated text.
+ * ⚠️ `DEFAULT_ROLE_NAME` is what this form prefills the name field with, and
+ * therefore what gets SAVED as `role_name` when the user does not overwrite it.
+ * It is stored data, not display text — the full reasoning, and the warning
+ * about the older spelling in stored chats, is in
+ * `constants/roleDefaults.js`. The focus handler below compares against it to
+ * select the field while it still holds the untouched default, so never
+ * compare against translated text here.
  */
-const DEFAULT_ROLE_NAME = "Vacant Role"; // i18n-ignore
 
 /**
  * CreateVacantRoleModal Component
