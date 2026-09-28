@@ -254,6 +254,12 @@ const SupercategoryAwardsModal = ({
                         </span>
                       </div>
 
+                      {/* ✅ Julia, 2026-09-29: a total of 0 is written out here, unlike
+                          everywhere else in the app, where a credit figure is
+                          guarded by `> 0`. This modal is about counting, so a
+                          tag whose only award is still hidden should say that it
+                          counts nothing — the grey card below gives the reason.
+                          Do not add a `> 0` guard here for consistency. */}
                       <span
                         className="text-sm font-medium px-3 py-0.5 rounded-full whitespace-nowrap"
                         style={{

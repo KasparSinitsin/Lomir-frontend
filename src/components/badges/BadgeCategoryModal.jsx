@@ -270,6 +270,12 @@ const BadgeCategoryModal = ({
                       </span>
                     </div>
 
+                    {/* ✅ Julia, 2026-09-29: a total of 0 is written out here, unlike
+                      everywhere else in the app, where a credit figure is
+                      guarded by `> 0`. This modal is about counting, so a badge
+                      whose awards are all still hidden should say that it counts
+                      nothing — the grey card below gives the reason. Do not add a
+                      `> 0` guard here for consistency. */}
                     <span
                       className="text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
                       style={{
@@ -300,6 +306,7 @@ const BadgeCategoryModal = ({
                         </span>
                       </div>
 
+                      {/* Writes out a 0 on purpose — see the note on the grouped view above. */}
                       <span
                         className="text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
                         style={{
