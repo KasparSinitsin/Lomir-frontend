@@ -94,9 +94,9 @@ const ResetPassword = () => {
 
       if (response.data.success) {
         setStatus("success");
-        setMessage(
-          response.data.message || t("auth:resetPassword.successFallback"),
-        );
+        // See ForgotPassword: the backend's success prose always wins over a
+        // `||` fallback, so the translation never rendered.
+        setMessage(t("auth:resetPassword.successFallback"));
       }
     } catch (error) {
       console.error("Reset password error:", error);

@@ -39,13 +39,14 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      const response = await api.post("/api/auth/forgot-password", { email });
+      await api.post("/api/auth/forgot-password", { email });
 
       setStatus("success");
-      setMessage(
-        response.data.message ||
-          t("auth:forgotPassword.successFallback"),
-      );
+      // Not `response.data.message || t(…)`: the backend always sends a message,
+      // so the German string was unreachable and this screen stayed English.
+      // The sentence is deliberately vague on both sides — the frontend knows
+      // everything it needs to write it itself.
+      setMessage(t("auth:forgotPassword.successFallback"));
     } catch (error) {
       console.error("Forgot password error:", error);
       setStatus("error");
