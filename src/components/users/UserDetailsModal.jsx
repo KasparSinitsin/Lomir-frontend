@@ -1069,6 +1069,7 @@ const UserDetailsModal = ({
             <TagsDisplaySection
               tags={userTags.length > 0 ? userTags : user?.tags}
               hideWhenEmpty={true}
+              showPending={false}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
               matchingTagIds={
@@ -1126,6 +1127,7 @@ const UserDetailsModal = ({
             <BadgesDisplaySection
               badges={visibleUserBadges}
               hideWhenEmpty={true}
+              showPending={false}
               maxVisible={8}
               groupByCategory={true}
               showCredits={true}

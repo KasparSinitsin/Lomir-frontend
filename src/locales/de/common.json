@@ -74,6 +74,7 @@
       "personal": "Persönliche Eigenschaften",
       "technical": "Technische Expertise"
     },
+    "pendingTooltip": "{name}: +{credits} ct., für andere noch nicht sichtbar. Die Credits zählen erst, wenn du das Badge sichtbar machst.",
     "creditsBare": "{credits} ct.",
     "creditsInline": "| {credits} ct.",
     "creditsInlinePlus": "| +{credits} ct.",
@@ -537,6 +538,7 @@
     "loading": "Lädt …",
     "placeholder": "Fokusbereiche hinzufügen …",
     "placeholderTeam": "Fokusbereiche hinzufügen …",
+    "pendingTooltip": "{name}: +{credits} ct. aus Badges, die für andere noch nicht sichtbar sind. Die Credits zählen erst, wenn du sie sichtbar machst.",
     "popularTitle": "Beliebte Fokusbereiche",
     "relatedTitle": "Verwandte Fokusbereiche",
     "remove": "{name} entfernen",

@@ -74,6 +74,7 @@
       "personal": "Personal Attributes",
       "technical": "Technical Expertise"
     },
+    "pendingTooltip": "{name}: +{credits} ct., not visible to others yet. The credits count once you make the badge visible.",
     "creditsBare": "{credits} ct.",
     "creditsInline": "| {credits} ct.",
     "creditsInlinePlus": "| +{credits} ct.",
@@ -537,6 +538,7 @@
     "loading": "Loading…",
     "placeholder": "Add focus areas...",
     "placeholderTeam": "Add focus areas...",
+    "pendingTooltip": "{name}: +{credits} ct. from badges that are not visible to others yet. The credits count once you make them visible.",
     "popularTitle": "Popular Focus Areas",
     "relatedTitle": "Related Focus Areas",
     "remove": "Remove {name}",
