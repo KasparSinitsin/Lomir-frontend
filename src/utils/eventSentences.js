@@ -30,6 +30,8 @@
 
 /** The event types whose sentences come from here — since PR 3, every type
  * `parseSystemMessage` returns. */
+import { DEFAULT_ROLE_NAME } from "../constants/roleDefaults";
+
 export const TRANSLATED_EVENT_TYPES = new Set([
   "role_created",
   "role_updated",
@@ -63,9 +65,7 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "invitation_response",
 ]);
 
-// "Vacant Role" is a real, saved role name that stays English by decision
-// (CreateVacantRoleModal) — the same default the renderers used before.
-const DEFAULT_ROLE_NAME = "Vacant Role";
+// The saved default role name lives in constants/roleDefaults.js.
 
 /** @returns {"you"|"named"|"deleted"|"other"} */
 export const perspectiveOf = (person) => {

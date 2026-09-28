@@ -37,6 +37,7 @@ import {
 } from "../../utils/chatEntityResolvers";
 import { parseSystemMessage } from "../../utils/messageSystemParser";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 const MessageDisplay = ({
   messages,
@@ -790,8 +791,8 @@ const MessageDisplay = ({
 
     const fallbackRole = {
       id: roleId,
-      roleName: safeName || "Vacant Role",
-      role_name: safeName || "Vacant Role",
+      roleName: safeName || DEFAULT_ROLE_NAME,
+      role_name: safeName || DEFAULT_ROLE_NAME,
       status: fallbackStatus,
       teamId,
       team_id: teamId,
@@ -849,7 +850,8 @@ const MessageDisplay = ({
     filledAt = null,
   }) => {
     // ⚠️ "Role" is unreachable: every role format the parser matches carries
-    // a non-empty name. Not "Vacant Role" either — that is a saved name.
+    // a non-empty name. Not "Open Role" either (nor the older "Vacant Role")
+    // — those are saved names.
     const safeName = (name || "").trim() || "Role";
 
     return (

@@ -48,6 +48,7 @@ import {
 import { formatDateMedium } from "../../utils/dateHelpers";
 import { formatListLocation } from "../../utils/locationUtils";
 import { getTeamErrorText } from "../../utils/teamErrorText";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -597,9 +598,9 @@ const TeamInviteModal = ({
       .toUpperCase();
   };
 
-  // "Vacant Role" is the stored default role name, so initials stay on it.
+  // "Open Role" is the stored default role name, so initials stay on it.
   const getRoleInitials = (roleName) => {
-    const name = roleName || "Vacant Role";
+    const name = roleName || DEFAULT_ROLE_NAME;
     const words = name.trim().split(/\s+/);
 
     if (words.length >= 2) {
@@ -1675,7 +1676,7 @@ const TeamInviteModal = ({
                             {getRoleInitials(
                               selectedRole.roleName ??
                                 selectedRole.role_name ??
-                                "Vacant Role",
+                                DEFAULT_ROLE_NAME,
                             )}
                           </span>
                           {isSyntheticRole(selectedRole) && (

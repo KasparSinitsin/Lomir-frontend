@@ -100,6 +100,7 @@ import { resolveFilledRoleUser } from "../../utils/vacantRoleUtils";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 const COLLAPSED_COUNT = 4;
 const EMPTY_TEAM_MEMBERS = [];
@@ -1717,8 +1718,8 @@ const VacantRoleDetailsModal = ({
     // NOT a label: this goes into the `roleName` search query parameter, so
     // it must stay English. Translating it would send a German word to a
     // backend that matches on the English one. Same shape as the stored
-    // `=== "Vacant Role"` default in CreateVacantRoleModal.
-    const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? "Vacant Role";
+    // `=== "Open Role"` default in CreateVacantRoleModal.
+    const searchRoleName = displayRole.roleName ?? displayRole.role_name ?? DEFAULT_ROLE_NAME;
     if (searchRoleName) params.set("roleName", searchRoleName);
     const searchTeamName = teamName ?? "";
     if (searchTeamName) params.set("excludeTeamName", searchTeamName);

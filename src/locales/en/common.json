@@ -962,8 +962,8 @@
     "filledRole": "Filled Role",
     "open": "Open Role",
     "roleInvitationFallback": "Role Invitation",
-    "vacant": "Vacant",
-    "vacantRoleFallback": "Vacant Role"
+    "vacant": "Open",
+    "vacantRoleFallback": "Open Role"
   },
   "roles": {
     "admin": "Admin",

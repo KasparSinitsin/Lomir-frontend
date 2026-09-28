@@ -67,6 +67,7 @@ import {
 } from "../../utils/locationUtils";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import Tooltip from "../common/Tooltip";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 
 const TYPE_META = {
   team: {
@@ -879,7 +880,7 @@ const getRolePostedAt = (item) =>
   firstPresent(item.postedAt, item.posted_at, item.createdAt, item.created_at);
 
 const getRoleInitials = (item) => {
-  const name = item.roleName ?? item.role_name ?? item.title ?? "Vacant Role";
+  const name = item.roleName ?? item.role_name ?? item.title ?? DEFAULT_ROLE_NAME;
   const words = String(name).trim().split(/\s+/).filter(Boolean);
 
   if (words.length >= 2) {
