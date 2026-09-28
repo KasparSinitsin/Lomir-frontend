@@ -74,9 +74,9 @@
       "personal": "Personal Attributes",
       "technical": "Technical Expertise"
     },
-    "creditsBare": "{credits}ct.",
-    "creditsInline": "| {credits}ct.",
-    "creditsInlinePlus": "| +{credits}ct.",
+    "creditsBare": "{credits} ct.",
+    "creditsInline": "| {credits} ct.",
+    "creditsInlinePlus": "| +{credits} ct.",
     "descriptions": {
       "adaptable": "Flexibly responds to changing circumstances and requirements",
       "artisan": "Creates beautiful and high-quality work in any medium",
@@ -169,8 +169,8 @@
       "title": "Badges"
     },
     "tooltip": {
-      "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
-      "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
+      "badge": "{name}: {credits} ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
+      "category": "{category}: {credits} ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     },
     "input": {
       "searchPlaceholder": "Search for badges...",
@@ -532,8 +532,8 @@
     "empty": "No focus areas yet",
     "emptyTeam": "No focus areas added yet.",
     "fallbackName": "Focus Area {id}",
-    "groupTooltip": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
-    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "groupTooltip": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "groupTooltipMembers": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
     "loading": "Loading…",
     "placeholder": "Add focus areas...",
     "placeholderTeam": "Add focus areas...",
@@ -544,8 +544,8 @@
     "searchPlaceholder": "Type to search focus areas...",
     "searchResultsTitle": "Search Results",
     "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
-    "tagTooltip": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
-    "tagTooltipMembers": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "tagTooltip": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "tagTooltipMembers": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
     "title": "Focus Areas",
     "updateFailed": "Failed to update",
     "updated": "Updated successfully!"
@@ -906,6 +906,16 @@
     "profileVisibilitySettings": "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.",
     "userLocation": "Location is optional. You can leave postal code, city, and country empty or remove them later. If you add location information, Lomir uses it to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir never asks for your street address. Depending on your profile visibility, approximate location details such as postal code, city, district, region, or country may be visible to other users."
   },
+  "publicProfile": {
+    "title": "Profile",
+    "bioHeading": "Bio",
+    "bioEmpty": "This person has not added a bio yet.",
+    "back": "Back",
+    "errors": {
+      "loadFailed": "Failed to load this profile. Please try again.",
+      "noId": "No profile ID was provided."
+    }
+  },
   "readReceipt": {
     "read": "Read",
     "readByAll": "Read by all",
@@ -1113,6 +1123,12 @@
     "privateProfile": "Private Profile",
     "profileImageAlt": "Profile picture of {name}",
     "profileImageAltGeneric": "Profile picture",
+    "profileUnavailable": {
+      "title": "This profile is not available",
+      "subtitle": "The link does not lead to an active profile.",
+      "goBack": "Go back",
+      "searchUsers": "Search users"
+    },
     "profileVisibilityPrivate": "Private Profile - only visible for you",
     "profileVisibilityPublic": "Public Profile - visible for everyone",
     "unknown": "Unknown",

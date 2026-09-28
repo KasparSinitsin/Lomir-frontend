@@ -1,14 +1,34 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import UserAvatar from "./UserAvatar";
 
-const DeletedUserProfilePlaceholder = ({
-  onNavigateAway = null,
-  title = "This user has left Lomir",
-  subtitle = "Their profile is no longer available",
-}) => {
+/**
+ * Shown when a profile cannot be opened.
+ *
+ * ⚠️ The wording is deliberately neutral and must stay that way. Both callers
+ * reach this component from a single 404 on `GET /api/users/:id`, and that 404
+ * has four causes the frontend cannot tell apart:
+ *
+ *   1. the account was deleted — a hard `DELETE FROM users`, so no row remains;
+ *   2. the ID never existed;
+ *   3. either party has blocked the other;
+ *   4. the profile is private (`is_public = false`) and the viewer is neither
+ *      its owner nor a teammate.
+ *
+ * Causes 3 and 4 answer 404 on purpose, so that neither a block nor a private
+ * account can be detected from the outside — see `getUserById` in
+ * `Lomir-backend/src/controllers/userController.js`.
+ *
+ * So "this user has left Lomir" is a claim the app cannot support in three of
+ * the four cases, and it is a statement about a third person. Do not narrow the
+ * text back to deletion, and do not add a `title` / `subtitle` override: one
+ * wording for one indistinguishable state.
+ */
+const DeletedUserProfilePlaceholder = ({ onNavigateAway = null }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleGoBack = () => {
@@ -39,19 +59,19 @@ const DeletedUserProfilePlaceholder = ({
 
           <div className="space-y-1">
             <p className="text-lg font-medium text-base-content/70">
-              {title}
+              {t("user.profileUnavailable.title")}
             </p>
             <p className="text-sm text-base-content/50">
-              {subtitle}
+              {t("user.profileUnavailable.subtitle")}
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             <Button variant="ghost" onClick={handleGoBack}>
-              Go Back
+              {t("user.profileUnavailable.goBack")}
             </Button>
             <Button variant="primary" onClick={handleSearchUsers}>
-              Search Users
+              {t("user.profileUnavailable.searchUsers")}
             </Button>
           </div>
         </div>

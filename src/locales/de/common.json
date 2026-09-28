@@ -169,8 +169,8 @@
       "title": "Badges"
     },
     "tooltip": {
-      "badge": "{name}: {credits}ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
-      "category": "{category}: {credits}ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
+      "badge": "{name}: {credits} ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
+      "category": "{category}: {credits} ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
     },
     "input": {
       "searchPlaceholder": "Badges suchen …",
@@ -906,6 +906,16 @@
     "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
     "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein."
   },
+  "publicProfile": {
+    "title": "Profil",
+    "bioHeading": "Bio",
+    "bioEmpty": "Diese Person hat noch nichts über sich geschrieben.",
+    "back": "Zurück",
+    "errors": {
+      "loadFailed": "Dieses Profil konnte nicht geladen werden. Bitte versuche es erneut.",
+      "noId": "Es wurde keine Profil-ID angegeben."
+    }
+  },
   "readReceipt": {
     "read": "Gelesen",
     "readByAll": "Von allen gelesen",
@@ -1113,6 +1123,12 @@
     "privateProfile": "Privates Profil",
     "profileImageAlt": "Profilbild von {name}",
     "profileImageAltGeneric": "Profilbild",
+    "profileUnavailable": {
+      "title": "Dieses Profil ist nicht verfügbar",
+      "subtitle": "Der Link führt zu keinem aktiven Profil.",
+      "goBack": "Zurück",
+      "searchUsers": "Personen suchen"
+    },
     "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
     "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
     "unknown": "Unbekannt",
