@@ -253,8 +253,10 @@ const RegisterForm = () => {
       }
 
       const available = Boolean(response.data.available);
-      const message =
-        response.data.message || t("auth:register.errors.usernameTaken");
+      // `authController` answers a taken username with "This username is already
+      // taken.", which used to win over the translation. `available` carries the
+      // whole answer, so the wording belongs here.
+      const message = t("auth:register.errors.usernameTaken");
 
       lastUsernameAvailabilityRef.current = {
         username,
