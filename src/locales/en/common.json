@@ -74,9 +74,9 @@
       "personal": "Personal Attributes",
       "technical": "Technical Expertise"
     },
-    "creditsBare": "{credits}ct.",
-    "creditsInline": "| {credits}ct.",
-    "creditsInlinePlus": "| +{credits}ct.",
+    "creditsBare": "{credits} ct.",
+    "creditsInline": "| {credits} ct.",
+    "creditsInlinePlus": "| +{credits} ct.",
     "descriptions": {
       "adaptable": "Flexibly responds to changing circumstances and requirements",
       "artisan": "Creates beautiful and high-quality work in any medium",
@@ -169,8 +169,8 @@
       "title": "Badges"
     },
     "tooltip": {
-      "badge": "{name}: {credits}ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
-      "category": "{category}: {credits}ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
+      "badge": "{name}: {credits} ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
+      "category": "{category}: {credits} ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
     },
     "input": {
       "searchPlaceholder": "Search for badges...",
@@ -532,8 +532,8 @@
     "empty": "No focus areas yet",
     "emptyTeam": "No focus areas added yet.",
     "fallbackName": "Focus Area {id}",
-    "groupTooltip": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
-    "groupTooltipMembers": "{group}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "groupTooltip": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "groupTooltipMembers": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
     "loading": "Loading…",
     "placeholder": "Add focus areas...",
     "placeholderTeam": "Add focus areas...",
@@ -544,8 +544,8 @@
     "searchPlaceholder": "Type to search focus areas...",
     "searchResultsTitle": "Search Results",
     "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
-    "tagTooltip": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
-    "tagTooltipMembers": "{name}: {credits}ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "tagTooltip": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "tagTooltipMembers": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
     "title": "Focus Areas",
     "updateFailed": "Failed to update",
     "updated": "Updated successfully!"
