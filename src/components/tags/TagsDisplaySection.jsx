@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Tag, Layers, Check, ChevronRight, ChevronUp } from "lucide-react";
+import { Tag, Layers, Check, ChevronRight, ChevronUp, EyeClosed } from "lucide-react";
 import {
   CATEGORY_COLORS,
   SUPERCATEGORY_ORDER,
@@ -8,6 +8,7 @@ import {
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
   TAG_SECTION_BG,
+  DEFAULT_COLOR,
 } from "../../constants/badgeConstants";
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
@@ -31,6 +32,11 @@ import TagInput from "./TagInput";
  * @param {Function} onSave - Optional: callback when tags are saved (required if canEdit is true)
  * @param {Function} onTagClick - Optional: callback when a credited tag is clicked (tag object)
  * @param {string} emptyMessage - Message to show when no tags
+ * @param {boolean} [showPending] - Whether to reveal what is not visible to
+ *   others: the muted pills and the closed-eye marker. True on a surface the
+ *   owner works on, false where the point is to show what everybody else sees —
+ *   the details modal is that second kind, so an award still awaiting visibility
+ *   is left out there entirely, exactly as a stranger would get it.
  * @param {boolean} [hideWhenEmpty] - Render nothing at all when there are no
  *   focus areas, instead of a heading above a placeholder. Opt-in: on your own
  *   profile the placeholder is the invitation to add some, so it stays there.
@@ -53,6 +59,7 @@ const TagsDisplaySection = ({
   matchingTagIds = null,
   emptyMessage,
   hideWhenEmpty = false,
+  showPending = true,
   placeholder,
   entityType,
   className = "",
@@ -151,6 +158,7 @@ const TagsDisplaySection = ({
         key: index,
         name: tag.trim(),
         badgeCredits: 0,
+        hiddenBadgeCredits: 0,
         dominantBadgeCategory: null,
         supercategory: null,
         category: null,
@@ -177,6 +185,8 @@ const TagsDisplaySection = ({
               key: tag.id || tag.tag_id || tag.tagId || name,
               name,
               badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
+              hiddenBadgeCredits:
+                tag.hidden_badge_credits || tag.hiddenBadgeCredits || 0,
               dominantBadgeCategory:
                 tag.dominant_badge_category || tag.dominantBadgeCategory || null,
               supercategory: tag.supercategory || tag.supercategoryName || tag.supercategory_name || null,
@@ -204,6 +214,7 @@ const TagsDisplaySection = ({
                 key: id,
                 name,
                 badgeCredits: 0,
+                hiddenBadgeCredits: 0,
                 dominantBadgeCategory: null,
                 supercategory: null,
                 category: null,
@@ -291,7 +302,17 @@ const TagsDisplaySection = ({
     setError(null);
   };
 
-  const displayTags = getDisplayTags();
+  const allDisplayTags = getDisplayTags();
+  // A focus area that exists only because of an award still awaiting visibility
+  // is dropped where pending state is not revealed, so the list, the pill count
+  // and the credit total match what a stranger is served. A focus area with no
+  // awards at all is the user's own choice and stays either way.
+  const displayTags = showPending
+    ? allDisplayTags
+    : allDisplayTags.filter(
+        (tag) =>
+          !(Number(tag.hiddenBadgeCredits || 0) > 0 && !(tag.badgeCredits > 0)),
+      );
   const groupedTags = getGroupedTags(displayTags);
 
   const totalCredits = displayTags.reduce((sum, t) => sum + (t.badgeCredits || 0), 0);
@@ -304,7 +325,23 @@ const TagsDisplaySection = ({
     //   : null;
 
     const hasBadgeCredits = tag.badgeCredits > 0;
-    const isClickable = hasBadgeCredits && onTagClick;
+
+    // Credits count only once the award behind them is visible to others
+    // (Julia, 2026-09-28). `hiddenBadgeCredits` is what is waiting, and the
+    // backend sends it to the owner only — a stranger gets 0 and sees none of
+    // this. Muted when nothing here counts yet, so the pill still shows that
+    // something arrived; the closed eye stays even beside counted credits, so
+    // the signal does not disappear once one award is made visible.
+    const hiddenCredits = Number(tag.hiddenBadgeCredits || 0);
+    const hasPending = showPending && hiddenCredits > 0;
+    const isPendingOnly = hasPending && !hasBadgeCredits;
+
+    // A pill whose credits are all still awaiting visibility is clickable too.
+    // It opens the awards behind it, which is where the eye button that makes
+    // them visible lives — otherwise confirming an award would only be possible
+    // through the badges section, and the focus-area pill that told you about it
+    // would be a dead end.
+    const isClickable = (hasBadgeCredits || isPendingOnly) && onTagClick;
 
     // Uncredited: base-content (dark green, matches section headers like "Location", "Badges")
     // Credited: primary (light green, matches "User Details" title)
@@ -328,7 +365,12 @@ const TagsDisplaySection = ({
               badges: Number(tag.linkedBadgeCount),
               people: personCount,
             })
-        : tag.name;
+        : hasPending
+          ? t("focusAreas.pendingTooltip", {
+              name: tag.name,
+              credits: hiddenCredits,
+            })
+          : tag.name;
 
     const isHighlighted =
       highlightTagName &&
@@ -354,9 +396,11 @@ const TagsDisplaySection = ({
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
-            ...(hasBadgeCredits
-              ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
-              : { borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }),
+            ...(isPendingOnly
+              ? { borderColor: DEFAULT_COLOR, color: DEFAULT_COLOR }
+              : hasBadgeCredits
+                ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
+                : { borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }),
             ...(isHighlighted
               ? {
                   borderWidth: "2px",
@@ -380,9 +424,28 @@ const TagsDisplaySection = ({
             />
           )}
           {tag.name}
-          {hasBadgeCredits && (
-            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
-              {t("badges.creditsBare", { credits: tag.badgeCredits })}
+          {(hasBadgeCredits || hasPending) && (
+            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start gap-1">
+              {/* Before a `+n` figure, which the eye qualifies; after a counted
+                  one, which it does not — there the eye means "and something
+                  else here is still waiting". */}
+              {hasPending && isPendingOnly && (
+                <EyeClosed
+                  size={11}
+                  className="flex-shrink-0 mt-[3px]"
+                  aria-hidden="true"
+                />
+              )}
+              {t("badges.creditsBare", {
+                credits: isPendingOnly ? hiddenCredits : tag.badgeCredits,
+              })}
+              {hasPending && !isPendingOnly && (
+                <EyeClosed
+                  size={11}
+                  className="flex-shrink-0 mt-[3px]"
+                  aria-hidden="true"
+                />
+              )}
             </span>
           )}
         </span>

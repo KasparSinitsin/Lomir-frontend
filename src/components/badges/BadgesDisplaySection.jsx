@@ -5,7 +5,7 @@ import {
   getBadgeName,
   getCategoryLabel,
 } from "../../utils/badgeLabels";
-import { Award, Check, ChevronRight, ChevronUp } from "lucide-react";
+import { Award, Check, ChevronRight, ChevronUp, EyeClosed } from "lucide-react";
 import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import {
@@ -25,6 +25,11 @@ import {
  * @param {Array} badges - Array of badge objects
  * @param {string} [emptyMessage] - Message when no badges; falls back to
  *   common:badges.section.empty (pass undefined to keep the translated default)
+ * @param {boolean} [showPending] - Whether to reveal what is not visible to
+ *   others: the muted pills and the closed-eye marker. True on a surface the
+ *   owner works on, false where the point is to show what everybody else sees —
+ *   the details modal is that second kind, so an award still awaiting visibility
+ *   is left out there entirely, exactly as a stranger would get it.
  * @param {boolean} [hideWhenEmpty] - Render nothing at all when there are no
  *   badges, instead of a heading above a placeholder. Opt-in, because the
  *   placeholder is worth keeping where the emptiness is the message ("this
@@ -53,6 +58,7 @@ const BadgesDisplaySection = ({
   matchingBadgeNames = null,
   headerRight = null,
   hideWhenEmpty = false,
+  showPending = true,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
   const { t } = useTranslation();
@@ -104,8 +110,22 @@ const BadgesDisplaySection = ({
     return () => ro.disconnect();
   }, [measureOverflow, badges]);
 
-  const totalCredits = (badges || []).reduce((sum, b) => sum + (b.total_credits ?? b.totalCredits ?? 0), 0);
-  const pillCount = (badges || []).length;
+  // See `showPending`: a badge whose credits are all still awaiting visibility is
+  // dropped where pending state is not revealed, so the pills, the count and the
+  // total agree with what a stranger sees.
+  const allBadges = badges || [];
+  const shownBadges = showPending
+    ? allBadges
+    : allBadges.filter((b) => {
+        const counted = b.total_credits ?? b.totalCredits ?? 0;
+        const waiting = b.hidden_credits ?? b.hiddenCredits ?? 0;
+        return !(waiting > 0 && !(counted > 0));
+      });
+  const totalCredits = shownBadges.reduce(
+    (sum, b) => sum + (b.total_credits ?? b.totalCredits ?? 0),
+    0,
+  );
+  const pillCount = shownBadges.length;
 
   const titleSummary = totalCredits > 0 ? (
     <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
@@ -134,7 +154,7 @@ const BadgesDisplaySection = ({
     </div>
   );
 
-  if (!badges || badges.length === 0) {
+  if (shownBadges.length === 0) {
     if (compact || hideWhenEmpty) return null;
     return (
       <div className={className}>
@@ -144,13 +164,23 @@ const BadgesDisplaySection = ({
     );
   }
 
-  const visibleBadges = badges.slice(0, maxVisible);
-  const remainingCount = badges.length - maxVisible;
+  const visibleBadges = shownBadges.slice(0, maxVisible);
+  const remainingCount = shownBadges.length - maxVisible;
 
   // Helper to get credits (handles both snake_case and camelCase)
   const getCredits = (badge) => {
     const credits = badge.total_credits ?? badge.totalCredits;
     return Number.isFinite(credits) && credits > 0 ? credits : null;
+  };
+
+  // Credits count only once the award is visible to others (Julia, 2026-09-28),
+  // so `getCredits` above is already the counted figure. This is what is waiting.
+  // The backend sends it to the owner only: a stranger gets 0 and sees none of
+  // the muting below.
+  const getHiddenCredits = (badge) => {
+    if (!showPending) return 0;
+    const credits = badge.hidden_credits ?? badge.hiddenCredits ?? 0;
+    return Number.isFinite(credits) && credits > 0 ? credits : 0;
   };
 
   // Get color for a category
@@ -188,7 +218,7 @@ const BadgesDisplaySection = ({
   // Group badges by category
   const normalizeCategory = (c) => (c ? String(c).trim() : "Other");
 
-  const badgesByCategory = badges.reduce((acc, badge) => {
+  const badgesByCategory = shownBadges.reduce((acc, badge) => {
     const category = normalizeCategory(badge.category);
     if (!acc[category]) {
       acc[category] = [];
@@ -263,19 +293,52 @@ const BadgesDisplaySection = ({
           <div className="flex flex-wrap gap-2">
             {visibleBadges.map((badge) => {
               const credits = getCredits(badge);
+              const hiddenCredits = getHiddenCredits(badge);
+              // Muted while nothing here counts yet, so the pill still shows that
+              // something arrived. The closed eye stays even beside counted
+              // credits, so the signal survives making one award visible.
+              const isPendingOnly = hiddenCredits > 0 && !credits;
               return (
                 <span
                   key={badge.id ?? badge.badge_id ?? badge.name}
                   className="badge badge-primary badge-outline p-3"
-                  style={{ borderColor: badge.color, color: badge.color }}
+                  style={
+                    isPendingOnly
+                      ? { borderColor: DEFAULT_COLOR, color: DEFAULT_COLOR }
+                      : { borderColor: badge.color, color: badge.color }
+                  }
                   title={
-                    getBadgeDescription(badge.name, badge.description, t) ||
-                    getCategoryLabel(badge.category, t)
+                    hiddenCredits > 0
+                      ? t("badges.pendingTooltip", {
+                          name: getBadgeName(badge.name, t),
+                          credits: hiddenCredits,
+                        })
+                      : getBadgeDescription(badge.name, badge.description, t) ||
+                        getCategoryLabel(badge.category, t)
                   }
                 >
                   {getBadgeName(badge.name, t)}
-                  {credits && showCredits && (
-                    <span className="ml-1 opacity-80">{t("badges.creditsInline", { credits })}</span>
+                  {(hiddenCredits > 0 || (showCredits && credits)) && (
+                    <span className="ml-1 inline-flex items-center gap-1 opacity-80">
+                      {hiddenCredits > 0 && isPendingOnly && (
+                        <EyeClosed
+                          size={11}
+                          className="inline-block flex-shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {showCredits &&
+                        t("badges.creditsInline", {
+                          credits: isPendingOnly ? hiddenCredits : credits,
+                        })}
+                      {hiddenCredits > 0 && !isPendingOnly && (
+                        <EyeClosed
+                          size={11}
+                          className="inline-block flex-shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </span>
                   )}
                 </span>
               );
@@ -367,8 +430,18 @@ const BadgesDisplaySection = ({
                   const awarderCount = Number(
                     badge.awarder_count ?? badge.awarderCount ?? 0,
                   );
+                  const hiddenCredits = getHiddenCredits(badge);
+                  // Muted while nothing here counts yet; the closed eye stays
+                  // even beside counted credits, so making one award visible
+                  // does not remove the signal that others are still waiting.
+                  const isPendingOnly = hiddenCredits > 0 && !credits;
                   const badgeTooltip =
-                    awardCount > 0
+                    hiddenCredits > 0
+                      ? t("badges.pendingTooltip", {
+                          name: getBadgeName(badge.name, t),
+                          credits: hiddenCredits,
+                        })
+                    : awardCount > 0
                       ? t("badges.tooltip.badge", {
                           name: getBadgeName(badge.name, t),
                           credits: credits || 0,
@@ -402,8 +475,10 @@ const BadgesDisplaySection = ({
                             : ""
                         }`}
                         style={{
-                          borderColor: categoryColor,
-                          color: categoryColor,
+                          borderColor: isPendingOnly
+                            ? DEFAULT_COLOR
+                            : categoryColor,
+                          color: isPendingOnly ? DEFAULT_COLOR : categoryColor,
                           ...(highlightBadgeName &&
                           badge.name?.toLowerCase() ===
                             highlightBadgeName.toLowerCase()
@@ -433,9 +508,28 @@ const BadgesDisplaySection = ({
                           />
                         )}
                         {getBadgeName(badge.name, t)}
-                        {credits && showCredits && (
-                          <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
-                            {t("badges.creditsBare", { credits })}
+                        {(hiddenCredits > 0 || (showCredits && credits)) && (
+                          <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start gap-1">
+                            {hiddenCredits > 0 && isPendingOnly && (
+                              <EyeClosed
+                                size={11}
+                                className="flex-shrink-0 mt-[3px]"
+                                aria-hidden="true"
+                              />
+                            )}
+                            {showCredits &&
+                              t("badges.creditsBare", {
+                                credits: isPendingOnly
+                                  ? hiddenCredits
+                                  : credits,
+                              })}
+                            {hiddenCredits > 0 && !isPendingOnly && (
+                              <EyeClosed
+                                size={11}
+                                className="flex-shrink-0 mt-[3px]"
+                                aria-hidden="true"
+                              />
+                            )}
                           </span>
                         )}
                       </span>

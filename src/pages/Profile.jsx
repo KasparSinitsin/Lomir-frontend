@@ -36,6 +36,7 @@ import {
   useUserTags,
   userProfileQueryKey,
   userTagsQueryKey,
+  userBadgesQueryKey,
 } from "../hooks/useUserQueries";
 import TagInput from "../components/tags/TagInput";
 import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
@@ -561,14 +562,34 @@ const Profile = () => {
   };
 
   const updateLocalUserBadges = (updater) => {
-    setLocalUser((prev) => {
-      const source = prev || user;
-      if (!source) return prev;
+    // `updateUser` used to be called inside the `setLocalUser` updater. React
+    // may run an updater during render, and updating AuthProvider from there is
+    // the "Cannot update a component while rendering a different component"
+    // warning — and it made the local patch land unreliably. An updater has to
+    // be pure, so the two writes happen side by side instead.
+    const source = localUser || user;
+    if (!source) return;
 
-      const nextUser = updater(source);
-      updateUser(nextUser);
-      return nextUser;
-    });
+    const nextUser = updater(source);
+    setLocalUser(nextUser);
+    updateUser(nextUser);
+  };
+
+  // Making an award visible, or hiding it again, changes what the server counts:
+  // credits only count once an award is shown (BE #339), and a hidden award takes
+  // its focus area with it (BE #336). Patching `hiddenAwardIds` locally is not
+  // enough — the totals, the pills and the focus-area list all come from the
+  // server, so they have to be refetched or the page keeps showing the old
+  // numbers until a reload.
+  const refetchAfterVisibilityChange = () => {
+    if (!user?.id) return;
+    for (const key of [
+      userProfileQueryKey(user.id),
+      userTagsQueryKey(user.id),
+      userBadgesQueryKey(user.id),
+    ]) {
+      queryClient.invalidateQueries({ queryKey: key });
+    }
   };
 
   const handleHideBadge = (award) => {
@@ -615,6 +636,7 @@ const Profile = () => {
         };
       });
 
+      refetchAfterVisibilityChange();
       setSuccess(t("status.badgeHidden"));
       setPendingBadgeAction(null);
     } catch (err) {
@@ -658,6 +680,7 @@ const Profile = () => {
         };
       });
 
+      refetchAfterVisibilityChange();
       setSuccess(t("status.badgeVisible"));
     } catch (err) {
       console.error("Failed to show badge:", err);
