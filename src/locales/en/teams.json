@@ -516,8 +516,6 @@
     "invitationDateAria": "{label} on {date}. Open invitation details",
     "calculatingMatchFor": "Calculating match details for {name}...",
     "calculatingMatchUnnamed": "Calculating match details for the filled member...",
-    "noFocusAreasRequired": "No specific focus areas required",
-    "noBadgesRequired": "No specific badges required",
     "applicationsHeading": "Applications for this role",
     "invitedHeading": "Invited for this role",
     "memberOfThisTeam": "Member of this team",

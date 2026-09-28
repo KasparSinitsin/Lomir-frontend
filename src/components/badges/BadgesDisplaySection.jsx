@@ -25,6 +25,10 @@ import {
  * @param {Array} badges - Array of badge objects
  * @param {string} [emptyMessage] - Message when no badges; falls back to
  *   common:badges.section.empty (pass undefined to keep the translated default)
+ * @param {boolean} [hideWhenEmpty] - Render nothing at all when there are no
+ *   badges, instead of a heading above a placeholder. Opt-in, because the
+ *   placeholder is worth keeping where the emptiness is the message ("this
+ *   user's badges are hidden") or an invitation to act (your own profile).
  * @param {number} maxVisible - Maximum badges to show before "+N more"
  * @param {boolean} compact - Compact inline display mode
  * @param {string} className - Additional CSS classes
@@ -48,6 +52,7 @@ const BadgesDisplaySection = ({
   highlightBadgeName = null,
   matchingBadgeNames = null,
   headerRight = null,
+  hideWhenEmpty = false,
 }) => {
   // Hooks must be called before any early returns (Rules of Hooks)
   const { t } = useTranslation();
@@ -130,7 +135,7 @@ const BadgesDisplaySection = ({
   );
 
   if (!badges || badges.length === 0) {
-    if (compact) return null;
+    if (compact || hideWhenEmpty) return null;
     return (
       <div className={className}>
         {sectionHeader}

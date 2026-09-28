@@ -31,6 +31,10 @@ import TagInput from "./TagInput";
  * @param {Function} onSave - Optional: callback when tags are saved (required if canEdit is true)
  * @param {Function} onTagClick - Optional: callback when a credited tag is clicked (tag object)
  * @param {string} emptyMessage - Message to show when no tags
+ * @param {boolean} [hideWhenEmpty] - Render nothing at all when there are no
+ *   focus areas, instead of a heading above a placeholder. Opt-in: on your own
+ *   profile the placeholder is the invitation to add some, so it stays there.
+ *   Never hides a section that offers an edit button.
  * @param {string} placeholder - Placeholder for edit input
  * @param {string} className - Additional CSS classes
  */
@@ -48,6 +52,7 @@ const TagsDisplaySection = ({
   highlightTagColor = null,
   matchingTagIds = null,
   emptyMessage,
+  hideWhenEmpty = false,
   placeholder,
   entityType,
   className = "",
@@ -496,6 +501,14 @@ const TagsDisplaySection = ({
         />
       </div>
     );
+  }
+
+  // Nothing to show and nothing to do here: render no section rather than a
+  // heading above a placeholder. `canEdit && onSave` is what draws the edit
+  // button in the header below, so a section someone can still act on is never
+  // hidden, whatever the caller passes.
+  if (hideWhenEmpty && displayTags.length === 0 && !(canEdit && onSave)) {
+    return null;
   }
 
   // DISPLAY MODE

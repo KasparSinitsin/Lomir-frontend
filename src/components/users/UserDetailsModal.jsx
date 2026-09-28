@@ -982,6 +982,12 @@ const UserDetailsModal = ({
     </div>
   ) : null;
 
+  // The floor keeps the modal from being a thin strip around the loading
+  // spinner. Once loaded it only adds dead space at the bottom, which became
+  // visible when empty sections stopped being rendered: a profile with no
+  // location, no bio and nothing awarded is genuinely short.
+  const modalMinHeight = loading ? "min-h-[300px]" : "";
+
   return (
     <>
       <Modal
@@ -992,7 +998,7 @@ const UserDetailsModal = ({
         position="center"
         size="default"
         maxHeight="max-h-[90vh]"
-        minHeight="min-h-[300px]"
+        minHeight={modalMinHeight}
         closeOnBackdrop={true}
         closeOnEscape={true}
         showCloseButton={true}
@@ -1062,6 +1068,7 @@ const UserDetailsModal = ({
             {/* Focus Areas */}
             <TagsDisplaySection
               tags={userTags.length > 0 ? userTags : user?.tags}
+              hideWhenEmpty={true}
               onTagClick={handleTagClick}
               onSupercategoryClick={handleSupercategoryClick}
               matchingTagIds={
@@ -1118,6 +1125,7 @@ const UserDetailsModal = ({
             {/* Badges */}
             <BadgesDisplaySection
               badges={visibleUserBadges}
+              hideWhenEmpty={true}
               maxVisible={8}
               groupByCategory={true}
               showCredits={true}
