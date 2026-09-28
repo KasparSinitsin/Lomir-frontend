@@ -196,6 +196,7 @@ const PublicProfile = () => {
                 <BadgesDisplaySection
                   badges={badges}
                   emptyMessage={badgeEmptyMessage}
+                  hideWhenEmpty={!shouldHideBadges}
                   groupByCategory={true}
                   showCredits={true}
                 />

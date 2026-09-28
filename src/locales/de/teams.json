@@ -516,8 +516,6 @@
     "invitationDateAria": "{label} am {date}. Einladungsdetails öffnen",
     "calculatingMatchFor": "Match-Details für {name} werden berechnet...",
     "calculatingMatchUnnamed": "Match-Details für das besetzende Mitglied werden berechnet...",
-    "noFocusAreasRequired": "Keine bestimmten Fokusbereiche gefordert",
-    "noBadgesRequired": "Keine bestimmten Badges gefordert",
     "applicationsHeading": "Bewerbungen auf diese Rolle",
     "invitedHeading": "Für diese Rolle eingeladen",
     "memberOfThisTeam": "Mitglied dieses Teams",

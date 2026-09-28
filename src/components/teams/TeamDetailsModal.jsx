@@ -2031,6 +2031,7 @@ const TeamDetailsModal = ({
                   {!isEditing && (
                     <TagsDisplaySection
                       tags={team?.tags || []}
+                      hideWhenEmpty={true}
                       matchingTagIds={showHighlightsForContext ? currentUserTagIds : null}
                       allTags={allTags}
                       canEdit={false}
@@ -2078,6 +2079,7 @@ const TeamDetailsModal = ({
                   {!isEditing && teamBadges && teamBadges.length > 0 && (
                     <BadgesDisplaySection
                       badges={teamBadges}
+                      hideWhenEmpty={true}
                       maxVisible={10}
                       groupByCategory={true}
                       showCredits={true}

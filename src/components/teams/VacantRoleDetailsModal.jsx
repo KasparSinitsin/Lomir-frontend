@@ -2394,126 +2394,240 @@ const VacantRoleDetailsModal = ({
         )}
 
         {/* Desired Focus Areas */}
-        <div>
-          <div className="flex items-start gap-2 mb-2">
-            <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
-            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
-              <h3 className="font-medium leading-[1.1]">
-                <span className="sm:hidden">{t("focusAreas.title")}</span>
-                <span className="hidden sm:inline">{t("focusAreas.desired")}</span>
-              </h3>
-              {shouldShowComparisonSummary && tags.length > 0 && (() => {
-                const matchCount = tags.filter((t) => {
-                  const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
-                  return userTagMap.has(tagId);
-                }).length;
-                const total = tags.length;
-                if (matchCount > 0) {
-                  const MatchIcon = matchCount === total ? CheckCheck : Check;
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
-                      <MatchIcon size={14} className="flex-shrink-0" />
-                      <span className="break-words sm:hidden">
-                        {matchSummaryText(matchCount, total)}
+        {tags.length > 0 && (
+          <div>
+            <div className="flex items-start gap-2 mb-2">
+              <Tag size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+                <h3 className="font-medium leading-[1.1]">
+                  <span className="sm:hidden">{t("focusAreas.title")}</span>
+                  <span className="hidden sm:inline">{t("focusAreas.desired")}</span>
+                </h3>
+                {shouldShowComparisonSummary && tags.length > 0 && (() => {
+                  const matchCount = tags.filter((t) => {
+                    const tagId = Number(t.tagId ?? t.tag_id ?? t.id);
+                    return userTagMap.has(tagId);
+                  }).length;
+                  const total = tags.length;
+                  if (matchCount > 0) {
+                    const MatchIcon = matchCount === total ? CheckCheck : Check;
+                    return (
+                      <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
+                        <MatchIcon size={14} className="flex-shrink-0" />
+                        <span className="break-words sm:hidden">
+                          {matchSummaryText(matchCount, total)}
+                        </span>
+                        <span className="hidden break-words sm:inline">
+                          {matchCountedText(matchCount, total)}
+                        </span>
                       </span>
-                      <span className="hidden break-words sm:inline">
-                        {matchCountedText(matchCount, total)}
+                    );
+                  }
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
+                      <X size={14} className="flex-shrink-0" />
+                      <span className="leading-[1.1]">
+                        {matchSummaryText(0, 0)}
                       </span>
                     </span>
                   );
-                }
-                return (
-                  <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
-                    <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">
-                      {matchSummaryText(0, 0)}
-                    </span>
-                  </span>
-                );
-              })()}
+                })()}
+              </div>
             </div>
+
+            {
+              (() => {
+                const groups = {};
+                for (const tag of tags) {
+                  // English for the same reason as badgesByCategory above:
+                  // SUPERCATEGORY_ORDER.indexOf() sorts on this value.
+                  const supercat = tag.supercategory || "Other";
+                  if (!groups[supercat]) groups[supercat] = [];
+                  groups[supercat].push(tag);
+                }
+
+                const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+                  const idxA = SUPERCATEGORY_ORDER.indexOf(a);
+                  const idxB = SUPERCATEGORY_ORDER.indexOf(b);
+                  const posA = idxA === -1 ? 999 : idxA;
+                  const posB = idxB === -1 ? 999 : idxB;
+                  return posA - posB;
+                });
+
+                for (const [, groupTags] of sortedGroups) {
+                  groupTags.sort((a, b) => a.name.localeCompare(b.name));
+                }
+
+                return (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    {sortedGroups.map(([supercategory, groupTags]) => (
+                      <div
+                        key={supercategory}
+                        className="flex items-start gap-0"
+                        title={supercategory}
+                      >
+                        <Tooltip content={supercategory}>
+                          <span
+                            className="inline-flex items-center justify-center pr-[6px] flex-shrink-0"
+                            style={{
+                              height: PILL_ROW_HEIGHT,
+                              color: FOCUS_GREEN_DARK,
+                            }}
+                          >
+                            {getSupercategoryIcon(
+                              supercategory,
+                              14,
+                              FOCUS_GREEN_DARK,
+                            )}
+                          </span>
+                        </Tooltip>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {groupTags.map((tag) => {
+                            const tagId = Number(
+                              tag.tagId ?? tag.tag_id ?? tag.id,
+                            );
+                            const userTag = userTagMap.get(tagId);
+                            const isMatch =
+                              shouldShowComparisonSummary && !!userTag;
+                            const credits = userTag?.badgeCredits || 0;
+
+                            return (
+                              <Tooltip
+                                key={tagId}
+                                content={`${tag.name} — ${tag.supercategory || "Other"}`}
+                              >
+                                <span
+                                  className="badge badge-outline p-3 inline-flex items-center gap-1"
+                                  style={{
+                                    borderColor: FOCUS_GREEN_DARK,
+                                    color: FOCUS_GREEN_DARK,
+                                    ...(isMatch
+                                      ? { backgroundColor: TAG_SECTION_BG }
+                                      : {}),
+                                  }}
+                                >
+                                  {isMatch && (
+                                    <Check
+                                      size={12}
+                                      className="flex-shrink-0"
+                                      style={{ color: FOCUS_GREEN }}
+                                    />
+                                  )}
+                                  {tag.name}
+                                  {isMatch && credits > 0 && (
+                                    <span className="opacity-70">
+                                      {t("badges.creditsInline", { credits })}
+                                    </span>
+                                  )}
+                                </span>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            }
           </div>
+        )}
 
-          {tags.length > 0 ? (
-            (() => {
-              const groups = {};
-              for (const tag of tags) {
-                // English for the same reason as badgesByCategory above:
-                // SUPERCATEGORY_ORDER.indexOf() sorts on this value.
-                const supercat = tag.supercategory || "Other";
-                if (!groups[supercat]) groups[supercat] = [];
-                groups[supercat].push(tag);
-              }
+        {/* Desired Badges */}
+        {badges.length > 0 && (
+          <div>
+            <div className="flex items-start gap-2 mb-2">
+              <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
+                <h3 className="font-medium leading-[1.1]">
+                  <span className="sm:hidden">{t("badges.section.title")}</span>
+                  <span className="hidden sm:inline">{t("badges.section.desired")}</span>
+                </h3>
+                {shouldShowComparisonSummary && badges.length > 0 && (() => {
+                  const matchCount = badges.filter((b) => {
+                    const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
+                    return userBadgeMap.has(badgeKey);
+                  }).length;
+                  const total = badges.length;
+                  if (matchCount > 0) {
+                    const MatchIcon = matchCount === total ? CheckCheck : Check;
+                    return (
+                      <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
+                        <MatchIcon size={14} className="flex-shrink-0" />
+                        <span className="break-words sm:hidden">
+                          {matchSummaryText(matchCount, total)}
+                        </span>
+                        <span className="hidden break-words sm:inline">
+                          {matchCountedText(matchCount, total)}
+                        </span>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
+                      <X size={14} className="flex-shrink-0" />
+                      <span className="leading-[1.1]">
+                        {matchSummaryText(0, 0)}
+                      </span>
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
 
-              const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
-                const idxA = SUPERCATEGORY_ORDER.indexOf(a);
-                const idxB = SUPERCATEGORY_ORDER.indexOf(b);
-                const posA = idxA === -1 ? 999 : idxA;
-                const posB = idxB === -1 ? 999 : idxB;
-                return posA - posB;
-              });
+            {
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {Object.entries(badgesByCategory).map(([category, catBadges]) => {
+                  const categoryColor =
+                    CATEGORY_COLORS[category] || DEFAULT_COLOR;
 
-              for (const [, groupTags] of sortedGroups) {
-                groupTags.sort((a, b) => a.name.localeCompare(b.name));
-              }
-
-              return (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  {sortedGroups.map(([supercategory, groupTags]) => (
-                    <div
-                      key={supercategory}
-                      className="flex items-start gap-0"
-                      title={supercategory}
-                    >
-                      <Tooltip content={supercategory}>
+                  return (
+                    <div key={category} className="flex items-start">
+                      <Tooltip content={category}>
                         <span
-                          className="inline-flex items-center justify-center pr-[6px] flex-shrink-0"
+                          className="inline-flex items-center justify-center pr-[6px]"
                           style={{
                             height: PILL_ROW_HEIGHT,
-                            color: FOCUS_GREEN_DARK,
+                            color: categoryColor,
                           }}
                         >
-                          {getSupercategoryIcon(
-                            supercategory,
-                            14,
-                            FOCUS_GREEN_DARK,
-                          )}
+                          {getCategoryIcon(category, categoryColor, 14)}
                         </span>
                       </Tooltip>
 
                       <div className="flex flex-wrap gap-1.5">
-                        {groupTags.map((tag) => {
-                          const tagId = Number(
-                            tag.tagId ?? tag.tag_id ?? tag.id,
-                          );
-                          const userTag = userTagMap.get(tagId);
+                        {catBadges.map((badge) => {
+                          const badgeColor = badge.color || categoryColor;
+                          const badgeKey = (badge.name ?? "")
+                            .trim()
+                            .toLowerCase();
+                          const userBadge = userBadgeMap.get(badgeKey);
                           const isMatch =
-                            shouldShowComparisonSummary && !!userTag;
-                          const credits = userTag?.badgeCredits || 0;
+                            shouldShowComparisonSummary && !!userBadge;
+                          const credits = userBadge?.totalCredits || 0;
+                          const pastel =
+                            CATEGORY_CARD_PASTELS[category] || `${badgeColor}15`;
 
                           return (
                             <Tooltip
-                              key={tagId}
-                              content={`${tag.name} — ${tag.supercategory || "Other"}`}
+                              key={badge.badgeId ?? badge.badge_id ?? badge.id}
+                              content={
+                                badge.description || `${badge.name} — ${category}`
+                              }
                             >
                               <span
                                 className="badge badge-outline p-3 inline-flex items-center gap-1"
                                 style={{
-                                  borderColor: FOCUS_GREEN_DARK,
-                                  color: FOCUS_GREEN_DARK,
-                                  ...(isMatch
-                                    ? { backgroundColor: TAG_SECTION_BG }
-                                    : {}),
+                                  borderColor: badgeColor,
+                                  color: badgeColor,
+                                  ...(isMatch ? { backgroundColor: pastel } : {}),
                                 }}
                               >
                                 {isMatch && (
-                                  <Check
-                                    size={12}
-                                    className="flex-shrink-0"
-                                    style={{ color: FOCUS_GREEN }}
-                                  />
+                                  <Check size={12} className="flex-shrink-0" />
                                 )}
-                                {tag.name}
+                                {badge.name}
                                 {isMatch && credits > 0 && (
                                   <span className="opacity-70">
                                     {t("badges.creditsInline", { credits })}
@@ -2525,130 +2639,12 @@ const VacantRoleDetailsModal = ({
                         })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              );
-            })()
-          ) : (
-            <p className="text-sm text-base-content/50">
-              {t("teams:vacantRoleDetails.noFocusAreasRequired")}
-            </p>
-          )}
-        </div>
-
-        {/* Desired Badges */}
-        <div>
-          <div className="flex items-start gap-2 mb-2">
-            <Award size={18} className="mt-0.5 text-primary flex-shrink-0" />
-            <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
-              <h3 className="font-medium leading-[1.1]">
-                <span className="sm:hidden">{t("badges.section.title")}</span>
-                <span className="hidden sm:inline">{t("badges.section.desired")}</span>
-              </h3>
-              {shouldShowComparisonSummary && badges.length > 0 && (() => {
-                const matchCount = badges.filter((b) => {
-                  const badgeKey = (b.name ?? b.badgeName ?? b.badge_name ?? "").trim().toLowerCase();
-                  return userBadgeMap.has(badgeKey);
-                }).length;
-                const total = badges.length;
-                if (matchCount > 0) {
-                  const MatchIcon = matchCount === total ? CheckCheck : Check;
-                  return (
-                    <span className="flex items-center gap-1.5 text-sm text-success shrink-0">
-                      <MatchIcon size={14} className="flex-shrink-0" />
-                      <span className="break-words sm:hidden">
-                        {matchSummaryText(matchCount, total)}
-                      </span>
-                      <span className="hidden break-words sm:inline">
-                        {matchCountedText(matchCount, total)}
-                      </span>
-                    </span>
                   );
-                }
-                return (
-                  <span className="flex items-center gap-1.5 text-sm text-slate-500 shrink-0">
-                    <X size={14} className="flex-shrink-0" />
-                    <span className="leading-[1.1]">
-                      {matchSummaryText(0, 0)}
-                    </span>
-                  </span>
-                );
-              })()}
-            </div>
+                })}
+              </div>
+            }
           </div>
-
-          {badges.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {Object.entries(badgesByCategory).map(([category, catBadges]) => {
-                const categoryColor =
-                  CATEGORY_COLORS[category] || DEFAULT_COLOR;
-
-                return (
-                  <div key={category} className="flex items-start">
-                    <Tooltip content={category}>
-                      <span
-                        className="inline-flex items-center justify-center pr-[6px]"
-                        style={{
-                          height: PILL_ROW_HEIGHT,
-                          color: categoryColor,
-                        }}
-                      >
-                        {getCategoryIcon(category, categoryColor, 14)}
-                      </span>
-                    </Tooltip>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {catBadges.map((badge) => {
-                        const badgeColor = badge.color || categoryColor;
-                        const badgeKey = (badge.name ?? "")
-                          .trim()
-                          .toLowerCase();
-                        const userBadge = userBadgeMap.get(badgeKey);
-                        const isMatch =
-                          shouldShowComparisonSummary && !!userBadge;
-                        const credits = userBadge?.totalCredits || 0;
-                        const pastel =
-                          CATEGORY_CARD_PASTELS[category] || `${badgeColor}15`;
-
-                        return (
-                          <Tooltip
-                            key={badge.badgeId ?? badge.badge_id ?? badge.id}
-                            content={
-                              badge.description || `${badge.name} — ${category}`
-                            }
-                          >
-                            <span
-                              className="badge badge-outline p-3 inline-flex items-center gap-1"
-                              style={{
-                                borderColor: badgeColor,
-                                color: badgeColor,
-                                ...(isMatch ? { backgroundColor: pastel } : {}),
-                              }}
-                            >
-                              {isMatch && (
-                                <Check size={12} className="flex-shrink-0" />
-                              )}
-                              {badge.name}
-                              {isMatch && credits > 0 && (
-                                <span className="opacity-70">
-                                  {t("badges.creditsInline", { credits })}
-                                </span>
-                              )}
-                            </span>
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-base-content/50">
-              {t("teams:vacantRoleDetails.noBadgesRequired")}
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Applications for this role — admin/owner only */}
         {canManage && isRoleOpen && (
