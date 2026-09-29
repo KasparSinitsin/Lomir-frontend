@@ -267,7 +267,19 @@ const Profile = () => {
   }, [structuredTags]);
 
   useEffect(() => {
-    setSelectedTags(fetchedUserTags.map((tag) => tag.id));
+    // 🔴 **The edit list is not the display list.** It used to be seeded from
+    // every focus area, including the ones a badge giver's award created — and
+    // since saving the profile writes back exactly what this holds, every save
+    // silently adopted them as the user's own, for good. That is how the
+    // distinction was destroyed before `user_tags.source` existed; measured on
+    // user 374, whose award-created `Testing & QA` had picked up the default
+    // levels of a hand-edited row.
+    // The display keeps showing everything: `userTagObjects` is untouched.
+    setSelectedTags(
+      fetchedUserTags
+        .filter((tag) => tag.source !== "award")
+        .map((tag) => tag.id),
+    );
     setUserTagObjects(fetchedUserTags);
   }, [fetchedUserTags]);
 

@@ -118,9 +118,20 @@ const TagsDisplaySection = ({
   }, [measureOverflow, tags]);
 
   // Normalize tags to a consistent format for editing (array of IDs)
+  // 🔴 **The editor's list is not the display list, and this is where the two
+  // part company.** What lands here is what `handleSave` submits, and the save
+  // replaces the user's focus areas with exactly it. An award-created focus
+  // area must therefore never arrive in it uninvited: it would be adopted as
+  // chosen on the next save, which is how the distinction was destroyed before
+  // `user_tags.source` existed. The user can still add such a tag themselves —
+  // then it is a deliberate claim, and the backend promotes it.
+  // ⚠️ Filtering here rather than at the caller covers every surface that edits
+  // focus areas, including ones added later. Anything without a `source` — a
+  // team's focus areas, a plain id — is kept, as everywhere else.
   useEffect(() => {
     if (Array.isArray(tags)) {
       const ids = tags
+        .filter((tag) => !(typeof tag === "object" && tag?.source === "award"))
         .map((tag) => {
           if (typeof tag === "object") {
             return Number(tag.id ?? tag.tag_id ?? tag.tagId);
@@ -194,6 +205,14 @@ const TagsDisplaySection = ({
               linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
               awarderCount: tag.awarder_count || tag.awarderCount || 0,
               awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
+              // Where this focus area came from. Anything that does not say is
+              // treated as the user's own, which is the safe direction: it is
+              // shown rather than withheld, and a team's focus areas — which
+              // have no such column and never will — keep behaving as before.
+              source:
+                tag.source === "award" || tag.tagSource === "award"
+                  ? "award"
+                  : "user",
             };
           })
           .filter(Boolean);
@@ -288,7 +307,11 @@ const TagsDisplaySection = ({
 
   const handleCancel = () => {
     if (Array.isArray(tags)) {
+      // Cancel restores the same list the editor was opened with, so it filters
+      // the same way — otherwise cancelling would quietly put the award-created
+      // focus areas back into the selection the next save submits.
       const ids = tags
+        .filter((tag) => !(typeof tag === "object" && tag?.source === "award"))
         .map((tag) => {
           if (typeof tag === "object") {
             return Number(tag.id ?? tag.tag_id ?? tag.tagId);
@@ -303,15 +326,24 @@ const TagsDisplaySection = ({
   };
 
   const allDisplayTags = getDisplayTags();
-  // A focus area that exists only because of an award still awaiting visibility
-  // is dropped where pending state is not revealed, so the list, the pill count
-  // and the credit total match what a stranger is served. A focus area with no
-  // awards at all is the user's own choice and stays either way.
+  // Where pending state is not revealed, an **award-created** focus area whose
+  // credits are all still waiting is dropped: it does not exist for anyone but
+  // its owner yet, so the list, the pill count and the credit total match what
+  // a stranger is served. A **self-chosen** one stays — the user put it there,
+  // and the hidden award only withholds its credits (Julia, 2026-09-28). One
+  // with no awards at all stays either way.
+  // 🔴 This used to drop both, which is why the owner's own details modal was
+  // missing `AI/ML` while the search list, served by the backend rule, showed
+  // it. Found by walking it on 2026-09-29.
   const displayTags = showPending
     ? allDisplayTags
     : allDisplayTags.filter(
         (tag) =>
-          !(Number(tag.hiddenBadgeCredits || 0) > 0 && !(tag.badgeCredits > 0)),
+          !(
+            tag.source === "award" &&
+            Number(tag.hiddenBadgeCredits || 0) > 0 &&
+            !(tag.badgeCredits > 0)
+          ),
       );
   const groupedTags = getGroupedTags(displayTags);
 
@@ -336,12 +368,26 @@ const TagsDisplaySection = ({
     const hasPending = showPending && hiddenCredits > 0;
     const isPendingOnly = hasPending && !hasBadgeCredits;
 
+    // ✅ Julia, 2026-09-28/29: only an **award-created** focus area announces
+    // that it is waiting. One the user chose is simply theirs — shown in
+    // `#036b0c` with no credits, exactly like `Home Gardening & Plants`, which
+    // has no award at all. The two look alike on purpose: neither counts
+    // anything yet, and light green stays reserved for credits that do.
+    // The pill reads the same to everyone, its owner included.
+    // ⚠️ A pill with counted credits AND something still waiting keeps the
+    // trailing closed eye whatever its source — that case says "and there is
+    // more", which is true and useful, and it is not what this changes.
+
     // A pill whose credits are all still awaiting visibility is clickable too.
     // It opens the awards behind it, which is where the eye button that makes
     // them visible lives — otherwise confirming an award would only be possible
     // through the badges section, and the focus-area pill that told you about it
     // would be a dead end.
-    const isClickable = (hasBadgeCredits || isPendingOnly) && onTagClick;
+    const showsPendingState = isPendingOnly && tag.source === "award";
+    // A self-chosen pill that announces nothing must not lead anywhere either:
+    // it would be a route to an award the pill does not mention. The badges
+    // section still shows that award grey, with the eye that makes it visible.
+    const isClickable = (hasBadgeCredits || showsPendingState) && onTagClick;
 
     // Uncredited: base-content (dark green, matches section headers like "Location", "Badges")
     // Credited: primary (light green, matches "User Details" title)
@@ -365,7 +411,10 @@ const TagsDisplaySection = ({
               badges: Number(tag.linkedBadgeCount),
               people: personCount,
             })
-        : hasPending
+        : // Same reasoning as the pill itself: a self-chosen focus area does not
+          // mention what is waiting, so its tooltip must not either — it would
+          // put back in words exactly what the pill leaves out.
+          showsPendingState
           ? t("focusAreas.pendingTooltip", {
               name: tag.name,
               credits: hiddenCredits,
@@ -396,7 +445,7 @@ const TagsDisplaySection = ({
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
-            ...(isPendingOnly
+            ...(showsPendingState
               ? { borderColor: DEFAULT_COLOR, color: DEFAULT_COLOR }
               : hasBadgeCredits
                 ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
@@ -424,7 +473,7 @@ const TagsDisplaySection = ({
             />
           )}
           {tag.name}
-          {(hasBadgeCredits || hasPending) && (
+          {(hasBadgeCredits || showsPendingState) && (
             <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start gap-1">
               {/* Before a `+n` figure, which the eye qualifies; after a counted
                   one, which it does not — there the eye means "and something
