@@ -495,23 +495,6 @@ const Profile = () => {
   };
 
   const getAwardId = (award) => award?.awardId ?? award?.award_id ?? award?.id;
-  const getBadgeId = (awardOrBadge) => {
-    const explicitBadgeId = awardOrBadge?.badgeId ?? awardOrBadge?.badge_id;
-    if (explicitBadgeId !== undefined && explicitBadgeId !== null) {
-      return explicitBadgeId;
-    }
-
-    const hasAwardId =
-      awardOrBadge?.awardId !== undefined || awardOrBadge?.award_id !== undefined;
-    return hasAwardId ? undefined : awardOrBadge?.id;
-  };
-  const getBadgeName = (awardOrBadge) =>
-    (
-      awardOrBadge?.badgeName ??
-      awardOrBadge?.badge_name ??
-      awardOrBadge?.name ??
-      ""
-    ).trim();
   const getAwardContextLabel = (award) => {
     const contextType = award?.contextType ?? award?.context_type;
 
@@ -542,25 +525,6 @@ const Profile = () => {
       t("common:badges.award.unknownAwarder")
     );
   };
-  const getAwardTagName = (award) => award?.tagName ?? award?.tag_name ?? null;
-
-  const sameBadge = (badge, awardOrBadge) => {
-    const badgeId = getBadgeId(badge);
-    const targetBadgeId = getBadgeId(awardOrBadge);
-    if (
-      badgeId !== undefined &&
-      badgeId !== null &&
-      targetBadgeId !== undefined &&
-      targetBadgeId !== null
-    ) {
-      return String(badgeId) === String(targetBadgeId);
-    }
-
-    const badgeName = getBadgeName(badge).toLowerCase();
-    const targetBadgeName = getBadgeName(awardOrBadge).toLowerCase();
-    return Boolean(badgeName && targetBadgeName && badgeName === targetBadgeName);
-  };
-
   const updateLocalUserBadges = (updater) => {
     // `updateUser` used to be called inside the `setLocalUser` updater. React
     // may run an updater during render, and updating AuthProvider from there is
@@ -575,13 +539,14 @@ const Profile = () => {
     updateUser(nextUser);
   };
 
-  // Making an award visible, or hiding it again, changes what the server counts:
+  // Making an award visible, hiding it again or deleting it changes what the
+  // server counts:
   // credits only count once an award is shown (BE #339), and a hidden award takes
   // its focus area with it (BE #336). Patching `hiddenAwardIds` locally is not
   // enough — the totals, the pills and the focus-area list all come from the
   // server, so they have to be refetched or the page keeps showing the old
   // numbers until a reload.
-  const refetchAfterVisibilityChange = () => {
+  const refetchBadgeDerivedData = () => {
     if (!user?.id) return;
     for (const key of [
       userProfileQueryKey(user.id),
@@ -636,7 +601,7 @@ const Profile = () => {
         };
       });
 
-      refetchAfterVisibilityChange();
+      refetchBadgeDerivedData();
       setSuccess(t("status.badgeHidden"));
       setPendingBadgeAction(null);
     } catch (err) {
@@ -680,7 +645,7 @@ const Profile = () => {
         };
       });
 
-      refetchAfterVisibilityChange();
+      refetchBadgeDerivedData();
       setSuccess(t("status.badgeVisible"));
     } catch (err) {
       console.error("Failed to show badge:", err);
@@ -704,65 +669,28 @@ const Profile = () => {
     }
 
     const loadingKey = `delete-${awardId}`;
-    const removedCredits = Number(award?.credits ?? 0);
+    // A hidden award counts towards nothing, so deleting one must not subtract
+    // anything either. The open modal is the only surface that cannot refetch
+    // itself — its header total is state from when it was opened — so it is the
+    // one place still patched by hand, and it needs to know this.
+    const countedTowardsTotal = !hiddenAwardIds
+      .map((value) => String(value))
+      .includes(String(awardId));
 
     try {
       setError(null);
       setBadgeActionLoadingKey(loadingKey);
       await userService.deleteUserBadgeAward(user.id, awardId);
 
-      removeAwardFromBadgeModal(award);
-      setUserTagObjects((currentTags) => {
-        const awardTagName = getAwardTagName(award);
-        if (!awardTagName) return currentTags;
-
-        return currentTags
-          .map((tag) => {
-            const tagName = tag.name ?? tag.tag_name;
-            if (tagName !== awardTagName) return tag;
-
-            const currentCredits = Number(
-              tag.badgeCredits ?? tag.badge_credits ?? 0,
-            );
-            const nextCredits = Math.max(0, currentCredits - removedCredits);
-
-            return {
-              ...tag,
-              badgeCredits: nextCredits,
-              badge_credits: nextCredits,
-            };
-          })
-          .filter((tag) => Number(tag.badgeCredits ?? tag.badge_credits ?? 0) > 0);
-      });
-      updateLocalUserBadges((currentUser) => ({
-        ...currentUser,
-        badges: Array.isArray(currentUser.badges)
-          ? currentUser.badges
-              .map((badge) => {
-                if (!sameBadge(badge, award)) return badge;
-
-                const currentCredits = Number(
-                  badge.total_credits ?? badge.totalCredits ?? 0,
-                );
-                const currentAwardCount = Number(
-                  badge.award_count ?? badge.awardCount ?? 1,
-                );
-                const nextCredits = Math.max(0, currentCredits - removedCredits);
-                const nextAwardCount = Math.max(0, currentAwardCount - 1);
-
-                if (nextCredits <= 0 || nextAwardCount <= 0) return null;
-
-                return {
-                  ...badge,
-                  total_credits: nextCredits,
-                  totalCredits: nextCredits,
-                  award_count: nextAwardCount,
-                  awardCount: nextAwardCount,
-                };
-              })
-              .filter(Boolean)
-          : currentUser.badges,
-      }));
+      removeAwardFromBadgeModal(award, { countedTowardsTotal });
+      // Everything else is refetched rather than patched, exactly as hiding and
+      // showing an award already does. The three subtractions that used to live
+      // here each had to know the visibility rule on their own, and none of them
+      // did: they lowered the credit totals, the focus-area pill and the badge
+      // by the credits of an award that had never been counted, and the
+      // "drop what reaches zero" filters then removed pills that were only ever
+      // at zero — every focus area without counted credits, not just this one.
+      refetchBadgeDerivedData();
 
       setSuccess(t("status.badgeDeleted"));
       setPendingBadgeAction(null);

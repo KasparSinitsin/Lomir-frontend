@@ -70,12 +70,12 @@ const BadgeCategoryModal = ({
       : false;
   };
 
-  const visibleDetailedAwards = showHiddenBadgeAwards
+  const listedDetailedAwards = showHiddenBadgeAwards
     ? detailedAwards
     : detailedAwards.filter((award) => !isAwardHidden(award));
 
   // Group detailed awards by badge name
-  const awardsByBadge = visibleDetailedAwards.reduce((acc, award) => {
+  const awardsByBadge = listedDetailedAwards.reduce((acc, award) => {
     const badgeName = award.badgeName;
     if (!badgeName) return acc;
 
@@ -91,7 +91,16 @@ const BadgeCategoryModal = ({
     }
 
     acc[badgeName].awards.push(award);
-    acc[badgeName].totalCredits += Number(award.credits ?? 0);
+    // Credits count only once the award behind them is shown (BE #339, and the
+    // rule holds for the owner too). The list itself keeps every award the
+    // viewer may see — the owner's hidden ones render grey with the closed eye,
+    // which is where they go to make one visible — so only the SUM skips them.
+    // ⚠️ Counts are deliberately not filtered here: the app shows what is
+    // waiting and leaves it out of the totals, the same split as
+    // `BadgesDisplaySection` ("24 ct. in 15 Bereichen").
+    if (!isAwardHidden(award)) {
+      acc[badgeName].totalCredits += Number(award.credits ?? 0);
+    }
     return acc;
   }, {});
 
@@ -109,21 +118,21 @@ const BadgeCategoryModal = ({
   const cardPastel = CATEGORY_CARD_PASTELS[category] || DEFAULT_CARD_PASTEL;
 
   // Total awards in this category
-  const totalAwards = visibleDetailedAwards.length;
+  const totalAwards = listedDetailedAwards.length;
 
   // Unique awarding users (people)
   const peopleCount = new Set(
-    visibleDetailedAwards.map((a) => a.awardedByUserId).filter(Boolean),
+    listedDetailedAwards.map((a) => a.awardedByUserId).filter(Boolean),
   ).size;
 
   // Focus areas in this category = distinct tagName that received awards
   const creditedFocusAreaCount = new Set(
-    visibleDetailedAwards.map((a) => a.tagName).filter(Boolean),
+    listedDetailedAwards.map((a) => a.tagName).filter(Boolean),
   ).size;
 
   // Unique teams with awards in this category
   const teamCount = new Set(
-    visibleDetailedAwards.map((a) => a.teamName).filter(Boolean),
+    listedDetailedAwards.map((a) => a.teamName).filter(Boolean),
   ).size;
 
   const titleNode = (
@@ -261,6 +270,12 @@ const BadgeCategoryModal = ({
                       </span>
                     </div>
 
+                    {/* ✅ Julia, 2026-09-29: a total of 0 is written out here, unlike
+                      everywhere else in the app, where a credit figure is
+                      guarded by `> 0`. This modal is about counting, so a badge
+                      whose awards are all still hidden should say that it counts
+                      nothing — the grey card below gives the reason. Do not add a
+                      `> 0` guard here for consistency. */}
                     <span
                       className="text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
                       style={{
@@ -291,6 +306,7 @@ const BadgeCategoryModal = ({
                         </span>
                       </div>
 
+                      {/* Writes out a 0 on purpose — see the note on the grouped view above. */}
                       <span
                         className="text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
                         style={{

@@ -67,18 +67,27 @@ const SupercategoryAwardsModal = ({
       : false;
   };
 
-  const visibleAwards = showHiddenBadgeAwards
+  const listedAwards = showHiddenBadgeAwards
     ? awards
     : awards.filter((award) => !isAwardHidden(award));
 
   // Group awards by tag name
-  const awardsByTag = visibleAwards.reduce((acc, award) => {
+  const awardsByTag = listedAwards.reduce((acc, award) => {
     const tagName = award.tagName ?? award.tag_name ?? "Unknown";
     if (!acc[tagName]) {
       acc[tagName] = { awards: [], totalCredits: 0 };
     }
     acc[tagName].awards.push(award);
-    acc[tagName].totalCredits += Number(award.credits ?? 0);
+    // Credits count only once the award behind them is shown (BE #339, and the
+    // rule holds for the owner too). The list itself keeps every award the
+    // viewer may see — the owner's hidden ones render grey with the closed eye,
+    // which is where they go to make one visible — so only the SUM skips them.
+    // ⚠️ Counts are deliberately not filtered here: the app shows what is
+    // waiting and leaves it out of the totals, the same split as
+    // `BadgesDisplaySection` ("24 ct. in 15 Bereichen").
+    if (!isAwardHidden(award)) {
+      acc[tagName].totalCredits += Number(award.credits ?? 0);
+    }
     return acc;
   }, {});
 
@@ -93,12 +102,12 @@ const SupercategoryAwardsModal = ({
   const personCount =
     entityType === "team"
       ? new Set(
-          visibleAwards
+          listedAwards
             .map((a) => a.awardedToUserId || a.awarded_to_user_id)
             .filter(Boolean),
         ).size
       : new Set(
-          visibleAwards
+          listedAwards
             .map((a) => a.awardedByUserId || a.awarded_by_user_id)
             .filter(Boolean),
         ).size;
@@ -156,10 +165,10 @@ const SupercategoryAwardsModal = ({
                 <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Award size={14} />
-                    <span className="font-medium">{visibleAwards.length}</span>
+                    <span className="font-medium">{listedAwards.length}</span>
                     <span className="hidden sm:inline">
                       {t("badges.modal.awards", {
-                        count: visibleAwards.length,
+                        count: listedAwards.length,
                       })}
                     </span>
                   </span>
@@ -200,6 +209,11 @@ const SupercategoryAwardsModal = ({
 
               {/* Awards grouped by tag */}
               {sortedTags.map(([tagName, tagData]) => {
+                // 🟢 This total is never displayed — it only orders the badge
+                // categories inside a tag, so it deliberately counts hidden
+                // awards too. Filtering it would sort a tag's only waiting
+                // award last, away from its peers, and that card is where its
+                // owner goes to make it visible.
                 const awardsByCategory = tagData.awards.reduce((acc, award) => {
                   const category =
                     award.badgeCategory || award.badge_category || "Other";
@@ -240,6 +254,12 @@ const SupercategoryAwardsModal = ({
                         </span>
                       </div>
 
+                      {/* ✅ Julia, 2026-09-29: a total of 0 is written out here, unlike
+                          everywhere else in the app, where a credit figure is
+                          guarded by `> 0`. This modal is about counting, so a
+                          tag whose only award is still hidden should say that it
+                          counts nothing — the grey card below gives the reason.
+                          Do not add a `> 0` guard here for consistency. */}
                       <span
                         className="text-sm font-medium px-3 py-0.5 rounded-full whitespace-nowrap"
                         style={{
