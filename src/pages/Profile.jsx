@@ -567,6 +567,23 @@ const Profile = () => {
     ]) {
       queryClient.invalidateQueries({ queryKey: key });
     }
+
+    // 🔴 **A member's badges are team data too, and this list used to stop at
+    // the user.** Every team the member belongs to aggregates their awards into
+    // its focus-area credits, the pill colour, the header total and the badge
+    // wall — so hiding one badge changes what those teams show, and a team view
+    // already in the cache kept the old numbers until a reload. Found by
+    // walking BE #341 on 2026-09-29: the profile updated at once, the team
+    // details modal only after reloading My Teams.
+    // Invalidating the whole `["teams", …]` prefix covers the detail payload,
+    // the member badges and the paginated list in one go. It refetches a little
+    // more than strictly needed — open roles and the viewer's role hang off the
+    // same prefix — and that is the cheaper trade against enumerating which
+    // teams this member is in.
+    // ⚠️ Only the acting user's own session is fixed here. An award granted or
+    // hidden by someone else still reaches this client no earlier than its next
+    // fetch; nothing pushes it, and that is a different problem.
+    queryClient.invalidateQueries({ queryKey: ["teams"] });
   };
 
   const handleHideBadge = (award) => {
