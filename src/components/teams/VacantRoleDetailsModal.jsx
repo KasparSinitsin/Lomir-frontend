@@ -1916,12 +1916,15 @@ const VacantRoleDetailsModal = ({
   })();
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-start gap-2 whitespace-nowrap">
-      <ModalStatusIcon
-        className="flex-shrink-0 mt-0.5"
-        size={20}
-      />
-      {modalStatusTitle}
+    <h2 className="text-xl font-medium text-primary leading-[110%] min-w-0">
+      <Tooltip
+        content={modalStatusTitle}
+        position="bottom"
+        wrapperClassName="flex items-center gap-2 min-w-0"
+      >
+        <ModalStatusIcon className="flex-shrink-0" size={20} />
+        <span className="truncate">{modalStatusTitle}</span>
+      </Tooltip>
     </h2>
   );
   const canShowRoleManagementActions = canManage && !hideActions;
