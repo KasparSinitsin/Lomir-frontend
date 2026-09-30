@@ -1570,9 +1570,17 @@ const TeamDetailsModal = ({
       : null;
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
-      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
-      {isEditing ? t("teams:teamDetails.editTitle") : t("teams:teamDetails.title")}
+    <h2 className="text-xl font-medium text-primary leading-[110%] min-w-0">
+      <Tooltip
+        content={isEditing ? t("teams:teamDetails.editTitle") : t("teams:teamDetails.title")}
+        position="bottom"
+        wrapperClassName="flex items-center gap-2 min-w-0"
+      >
+        {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <Users size={20} className="flex-shrink-0" />}
+        <span className="truncate">
+          {isEditing ? t("teams:teamDetails.editTitle") : t("teams:teamDetails.title")}
+        </span>
+      </Tooltip>
     </h2>
   );
 

@@ -882,9 +882,17 @@ const UserDetailsModal = ({
   // =================================================
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary leading-[110%] flex items-center gap-2">
-      {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
-      {isEditing ? t("userDetails.editTitle") : t("userDetails.title")}
+    <h2 className="text-xl font-medium text-primary leading-[110%] min-w-0">
+      <Tooltip
+        content={isEditing ? t("userDetails.editTitle") : t("userDetails.title")}
+        position="bottom"
+        wrapperClassName="flex items-center gap-2 min-w-0"
+      >
+        {isEditing ? <Edit size={20} className="flex-shrink-0" /> : <User size={20} className="flex-shrink-0" />}
+        <span className="truncate">
+          {isEditing ? t("userDetails.editTitle") : t("userDetails.title")}
+        </span>
+      </Tooltip>
     </h2>
   );
 
