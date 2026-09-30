@@ -890,8 +890,14 @@ const ConversationList = ({
                       )}
                       {isSearchActive && conversation.searchMatchCount > 0 && (() => {
                         const count = conversation.searchMatchCount;
-                        const matchWord = count === 1 ? "match" : "matches";
                         const query = searchQuery.trim();
+                        // Resolved at render, so a language change re-words it.
+                        // The quotation marks belong to the translation: “…” in
+                        // English, „…“ in German.
+                        const matchSentence = t(
+                          "chatPage.searchMatchesInConversation",
+                          { count, query },
+                        );
                         return (
                           <>
                             <Search size={12} className="flex-shrink-0 ml-2" />
@@ -900,7 +906,7 @@ const ConversationList = ({
                               <>
                                 <span className="whitespace-nowrap sm:hidden">{count}</span>
                                 <span className="truncate whitespace-nowrap hidden sm:inline md:hidden">
-                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                  {matchSentence}
                                 </span>
                                 <span className="whitespace-nowrap hidden md:inline">{count}</span>
                               </>
@@ -909,7 +915,7 @@ const ConversationList = ({
                               <>
                                 <span className="whitespace-nowrap sm:hidden">{count}</span>
                                 <span className="truncate whitespace-nowrap hidden sm:inline">
-                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                  {matchSentence}
                                 </span>
                               </>
                             )}
