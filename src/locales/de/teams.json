@@ -29,7 +29,7 @@
       "subtitleBoth": "{teamCount, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} und {roleCount, plural, one {# Rollen-Bewerbung} other {# Rollen-Bewerbungen}}"
     },
     "memberTeams": {
-      "title": "Teams, in denen du Mitglied bist",
+      "title": "Meine Teams",
       "subtitle": "{count, plural, one {# Team, das du erstellt hast oder dem du als Mitglied beigetreten bist} other {# Teams, die du erstellt hast oder denen du als Mitglied beigetreten bist}}",
       "empty": "Du bist noch keinem Team beigetreten.",
       "createFirst": "Erstelle dein erstes Team",
