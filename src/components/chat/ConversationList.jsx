@@ -38,6 +38,7 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 import { getEventPreview } from "../../utils/eventPreview";
+import { splitChatSearchMatches } from "../../utils/chatSearch";
 import { useAuth } from "../../contexts/AuthContext";
 
 const EVENT_PREVIEW_ICONS = {
@@ -56,42 +57,27 @@ const EVENT_PREVIEW_ICONS = {
   UserSearch,
 };
 
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
+// One phrase, case- and diacritic-insensitive — the rule lives in
+// `chatSearch.js` beside the counter that has to agree with it.
 const renderHighlightedText = (value, query) => {
-  const text = String(value ?? "");
-  const terms = String(query ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(escapeRegExp);
+  const parts = splitChatSearchMatches(value, query);
+  if (parts.length === 1 && !parts[0].isMatch) return parts[0].text;
 
-  if (!text || terms.length === 0) return text;
-
-  const matcher = new RegExp(`(${terms.join("|")})`, "gi");
-  const parts = text.split(matcher);
-
-  return parts.map((part, index) => {
-    if (!part) return null;
-
-    const isMatch = terms.some((term) =>
-      new RegExp(`^${term}$`, "i").test(part),
-    );
-
-    if (!isMatch) return part;
-
-    return (
+  return parts.map((part, index) =>
+    part.isMatch ? (
       <mark
-        key={`${part}-${index}`}
+        key={index}
         className="rounded-full bg-yellow-100 px-1.5 py-0.5"
         // Highlight only adds the yellow background — keep the surrounding text's
         // colour and weight (override the browser's default <mark> styling).
         style={{ color: "inherit", fontWeight: "inherit" }}
       >
-        {part}
+        {part.text}
       </mark>
-    );
-  });
+    ) : (
+      part.text
+    ),
+  );
 };
 
 const MENTION_TOKEN_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;

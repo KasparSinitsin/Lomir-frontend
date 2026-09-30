@@ -77,6 +77,90 @@ export const countChatSearchMatches = (value, normalizedQuery) => {
   return count;
 };
 
+/**
+ * Split `value` into alternating plain and matching segments, by exactly the
+ * rule `countChatSearchMatches` counts by: the query as **one contiguous
+ * phrase**, case-insensitive and diacritic-insensitive.
+ *
+ * ⚠️ This replaces three independent copies of a per-WORD highlighter (in
+ * `messageDisplayRenderers.jsx`, `MessageText.jsx` and `ConversationList.jsx`)
+ * that disagreed with the counter in two separate ways:
+ *
+ *  1. They split the query on whitespace and highlighted each word on its own.
+ *     Searching `cooking & Recipe Swap` — a phrase that occurs verbatim, and
+ *     that the counter matched once — painted **four** separate yellow pills
+ *     over it, one per word, with the spaces between them unmarked.
+ *  2. They matched with a `gi` regex against the RAW text, while the counter
+ *     matches against `normalizeChatSearchText` output. So a search for
+ *     "Muller" was counted inside "Müller" and highlighted in neither — which
+ *     matters in a German UI (Müller, Köln, Straße).
+ *
+ * Both mechanisms now come from this one function, beside the counter, so they
+ * cannot drift apart again. The query is trimmed then normalized, matching
+ * `useChatSearchState`'s `normalizedChatSearchQuery` exactly.
+ *
+ * Returns data, not JSX, on purpose: the three call sites style their `<mark>`
+ * differently — the conversation list keeps the surrounding colour and weight —
+ * and that difference is deliberate.
+ *
+ * @param {string} value the text to highlight, as displayed
+ * @param {string} query the raw search box content
+ * @returns {{text: string, isMatch: boolean}[]}
+ */
+export const splitChatSearchMatches = (value, query) => {
+  const text = String(value ?? "");
+  const needle = normalizeChatSearchText(String(query ?? "").trim());
+
+  if (!text || !needle) return [{ text, isMatch: false }];
+
+  // Normalize per CODE POINT, remembering where each normalized character came
+  // from, so a match found in the normalized text is sliced out of the
+  // ORIGINAL text with its accents, case and emoji intact. Iterating with
+  // `for...of` rather than by index is what keeps a surrogate pair (any emoji)
+  // from being normalized as two broken halves.
+  let normalized = "";
+  const originIndex = [];
+  let cursor = 0;
+
+  for (const char of text) {
+    const piece = normalizeChatSearchText(char);
+    for (let i = 0; i < piece.length; i += 1) originIndex.push(cursor);
+    normalized += piece;
+    cursor += char.length;
+  }
+  originIndex.push(text.length); // sentinel, so an end offset always maps
+
+  const parts = [];
+  let searchFrom = 0;
+  let sliceFrom = 0;
+
+  while (searchFrom + needle.length <= normalized.length) {
+    const found = normalized.indexOf(needle, searchFrom);
+    if (found === -1) break;
+
+    const start = originIndex[found];
+    const end = originIndex[found + needle.length] ?? text.length;
+
+    if (end > start) {
+      if (start > sliceFrom) {
+        parts.push({ text: text.slice(sliceFrom, start), isMatch: false });
+      }
+      parts.push({ text: text.slice(start, end), isMatch: true });
+      sliceFrom = end;
+    }
+
+    // Advancing by the whole needle makes matches non-overlapping, which is
+    // how `countChatSearchMatches` counts them.
+    searchFrom = found + needle.length;
+  }
+
+  if (sliceFrom < text.length) {
+    parts.push({ text: text.slice(sliceFrom), isMatch: false });
+  }
+
+  return parts.length ? parts : [{ text, isMatch: false }];
+};
+
 const addSearchPart = (parts, value) => {
   if (value == null) return;
 
