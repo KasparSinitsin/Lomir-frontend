@@ -1,6 +1,8 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Cloud, Link as LinkIcon, ExternalLink } from "lucide-react";
 import Tooltip from "../common/Tooltip";
+import { useAuth } from "../../contexts/AuthContext";
 
 // --- helpers -------------------------------------------------
 
@@ -173,8 +175,20 @@ const LinkChip = ({ href }) => {
 };
 
 const MentionChip = ({ name, userId, onUserClick }) => {
+  const { t } = useTranslation();
+  const { blockedRelationshipIds } = useAuth();
+
   if (userId === "all" || !onUserClick) {
     return <span className="font-medium text-primary">@{name}</span>;
+  }
+  // A block in either direction anonymizes the mention, same as everywhere
+  // else this can happen (F12) — no click, since there is nothing to open.
+  if (blockedRelationshipIds?.has?.(String(userId))) {
+    return (
+      <span className="font-medium text-base-content/50">
+        @{t("badges.card.privateProfile")}
+      </span>
+    );
   }
   return (
     <button
