@@ -57,8 +57,14 @@ const EVENT_REACTION_PREVIEW_COLORS = {
  *                                the id-less formats match the reader by name
  * @param {Function|null} t       i18next `t` — required: every event sentence is translated
  */
-export const getEventReactionPreview = (content, viewer = null, t = null) => {
-  const event = describeEvent(content, viewer);
+export const getEventReactionPreview = (
+  content,
+  viewer = null,
+  t = null,
+  blockedIds = null,
+  blockedNames = null,
+) => {
+  const event = describeEvent(content, viewer, blockedIds, blockedNames);
   if (!event) return null;
 
   switch (event.type) {
@@ -199,8 +205,18 @@ export const getEventReactionPreview = (content, viewer = null, t = null) => {
   }
 };
 
-export const formatReplyTooltipText = (content, eventPreview = null) => {
+export const formatReplyTooltipText = (
+  content,
+  eventPreview = null,
+  { blockedIds = null, t = null } = {},
+) => {
   if (eventPreview?.text) return eventPreview.text;
 
-  return String(content ?? "").replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1");
+  return String(content ?? "").replace(
+    /@\[([^\]]+)\]\(([^)]+)\)/g,
+    (_match, name, id) =>
+      blockedIds?.has?.(String(id)) && t
+        ? `@${t("badges.card.privateProfile")}`
+        : `@${name}`,
+  );
 };
