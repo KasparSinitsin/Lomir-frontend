@@ -222,43 +222,10 @@ const InlineUserLink = ({
   );
 };
 
-/**
- * Preset variants for common use cases
- */
-
-// "Awarded by [avatar] Name"
-export const AwardedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Awarded by" {...props} />
-);
-
-// "Invited by [avatar] Name"
-// The one labelled variant with a caller, so the one that is translated.
+// "Invited by [avatar] Name" — the only preset variant with a caller.
 export const InvitedByLink = ({ user, ...props }) => {
   const { t } = useTranslation();
   return <InlineUserLink user={user} label={t("userLink.invitedBy")} {...props} />;
 };
-
-// "Sent by [avatar] Name"
-export const SentByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Sent by" {...props} />
-);
-
-// "From [avatar] Name"
-export const FromUserLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="From" {...props} />
-);
-
-// "Applied by [avatar] Name"
-export const AppliedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Applied by" {...props} />
-);
-
-// "Received by [avatar] Name"
-export const ReceivedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Received by" {...props} />
-);
-
-// Just "[avatar] Name" (no label)
-export const UserLink = (props) => <InlineUserLink {...props} />;
 
 export default InlineUserLink;
