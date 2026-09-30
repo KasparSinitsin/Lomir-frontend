@@ -29,7 +29,7 @@
       "subtitleBoth": "{teamCount, plural, one {# team application} other {# team applications}} and {roleCount, plural, one {# role application} other {# role applications}}"
     },
     "memberTeams": {
-      "title": "Teams You're A Part Of",
+      "title": "My Teams",
       "subtitle": "{count, plural, one {# Team you've created or joined as a member} other {# Teams you've created or joined as a member}}",
       "empty": "You haven't joined any teams yet.",
       "createFirst": "Create Your First Team",
