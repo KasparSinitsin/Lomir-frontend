@@ -826,7 +826,18 @@ const Chat = () => {
             onEditMessage={handleEditMessage}
             onLeaveTeam={handleLeaveTeam}
             onReply={handleReplyToMessage}
-            searchQuery={chatSearchQuery}
+            // Defence in depth, mirroring the conversation list above, which
+            // already guarded this: with no search results there is nothing to
+            // highlight.
+            // ⚠️ Do not read this as a fix for a bug anyone can reproduce.
+            // `useChatSearchState` resets `searchChatVisible` to false on every
+            // query change, so `hideChatDuringSearch` unmounts this panel
+            // entirely while a search is active — the state "no results AND an
+            // open transcript" is unreachable by typing. It survives only in a
+            // narrow race: reveal the chat from a result while
+            // `searchingChatMessages` is still true, then have the list fall to
+            // zero matches without the query changing.
+            searchQuery={isNoSearchResults ? "" : chatSearchQuery}
             isActiveTeamArchived={isActiveTeamArchived}
             isCurrentUserActiveTeamMember={isCurrentUserActiveTeamMember}
             activeTeamArchiveTimeRemaining={activeTeamArchiveTimeRemaining}
