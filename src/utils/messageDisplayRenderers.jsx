@@ -5,9 +5,17 @@
 // dedup is a separate task).
 import React from "react";
 
-const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
-export const renderReplyContent = (text, maxLen = 120) => {
+/**
+ * @param {string} text
+ * @param {number} maxLen
+ * @param {{ blockedIds?: Set|null, t?: Function|null }} [options]
+ *   a block in either direction anonymizes the mention here too (F12) — the
+ *   quoted reply used to still show the real name after MessageText.jsx and
+ *   the transcript were already fixed.
+ */
+export const renderReplyContent = (text, maxLen = 120, { blockedIds = null, t = null } = {}) => {
   if (!text) return null;
   const sliced = text.slice(0, maxLen);
   const parts = [];
@@ -16,7 +24,15 @@ export const renderReplyContent = (text, maxLen = 120) => {
   MENTION_RE.lastIndex = 0;
   while ((m = MENTION_RE.exec(sliced)) !== null) {
     if (m.index > last) parts.push(<React.Fragment key={last}>{sliced.slice(last, m.index)}</React.Fragment>);
-    parts.push(<span key={m.index} className="font-medium text-primary">@{m[1]}</span>);
+    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
+    parts.push(
+      <span
+        key={m.index}
+        className={isBlocked ? "font-medium text-base-content/50" : "font-medium text-primary"}
+      >
+        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
+      </span>,
+    );
     last = m.index + m[0].length;
   }
   if (last < sliced.length) parts.push(<React.Fragment key={last}>{sliced.slice(last)}</React.Fragment>);

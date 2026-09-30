@@ -50,17 +50,22 @@ const tokenizeMentions = (text, mentionMap) => {
   return result;
 };
 
-const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
-const renderReplyText = (text) => {
+const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
+// A block in either direction anonymizes the mention here too (F12).
+const renderReplyText = (text, blockedIds = null, t = null) => {
   const parts = [];
   let last = 0;
   let m;
   MENTION_RE.lastIndex = 0;
   while ((m = MENTION_RE.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
+    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
     parts.push(
-      <span key={m.index} className="font-medium text-primary">
-        @{m[1]}
+      <span
+        key={m.index}
+        className={isBlocked ? "font-medium text-base-content/50" : "font-medium text-primary"}
+      >
+        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
       </span>
     );
     last = m.index + m[0].length;
@@ -80,7 +85,7 @@ const MessageInput = ({
   onClearReply,
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
   const expirationText = useFileExpirationText();
 
   /**
@@ -104,7 +109,13 @@ const MessageInput = ({
   // The whole user is needed, not just the id: the id-less legacy formats
   // (OWNERSHIP_TEAM, the 👋/🎯 messages) can only recognise the reader by name.
   const replyEventPreview = replyingTo?.content
-    ? getEventPreview(replyingTo.content, user, t)
+    ? getEventPreview(
+        replyingTo.content,
+        user,
+        t,
+        blockedRelationshipIds,
+        blockedRelationshipNames,
+      )
     : null;
   const ReplyEventIcon = replyEventPreview
     ? EVENT_PREVIEW_ICONS[replyEventPreview.icon]
@@ -276,7 +287,7 @@ const MessageInput = ({
                 <div className="min-w-0 flex-1">
                   {replyingTo.content && (
                     <p className="text-xs text-base-content/60 truncate">
-                      {renderReplyText(replyingTo.content.slice(0, 100))}
+                      {renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t)}
                     </p>
                   )}
                   {replyExpirationStatus.status !== "none" &&
@@ -312,7 +323,7 @@ const MessageInput = ({
             ) : (
               <p className="text-xs text-base-content/60 truncate">
                 {replyingTo.content
-                  ? renderReplyText(replyingTo.content.slice(0, 100))
+                  ? renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t)
                   : t("messageInput.attachmentImageOrFile")}
               </p>
             )}

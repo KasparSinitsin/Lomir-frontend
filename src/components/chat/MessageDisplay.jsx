@@ -49,7 +49,6 @@ const MessageDisplay = ({
   typingUsers = [],
   conversationType = "direct",
   teamMembers = [],
-  allTeamMembers = [],
   highlightMessageIds = [],
   hasMoreMessages = false,
   loadingMore = false,
@@ -62,7 +61,7 @@ const MessageDisplay = ({
   searchQuery = "",
 }) => {
   const { t } = useTranslation();
-  const { user: currentUser, blockedRelationshipIds } = useAuth();
+  const { user: currentUser, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -571,21 +570,6 @@ const MessageDisplay = ({
     return exact?.id ?? null;
   };
 
-  // `teamMembers` already excludes blocked members (Chat.jsx), so it cannot
-  // answer "is this specific mentioned name blocked" once someone is filtered
-  // out of it. `allTeamMembers` is the same list before that filter, kept
-  // only to check names against `blockedRelationshipIds` here.
-  const blockedMemberNames = useMemo(() => {
-    const names = new Set();
-    (allTeamMembers || []).forEach((m) => {
-      const id = getTeamMemberUserId(m);
-      if (id != null && blockedRelationshipIds?.has?.(String(id))) {
-        names.add(normalizeName(getTeamMemberFullName(m)));
-      }
-    });
-    return names;
-  }, [allTeamMembers, blockedRelationshipIds]);
-
   const handleMentionClick = async (name) => {
     const safe = (name || "").trim().replace(/\s+/g, " ");
 
@@ -625,7 +609,7 @@ const MessageDisplay = ({
     // A block in either direction anonymizes the mention the same way it
     // already does in InlineUserLink/AwardCard (F12) — before any click, not
     // just when one fails.
-    if (blockedMemberNames.has(normalizeName(safe))) {
+    if (blockedRelationshipNames?.has?.(normalizeName(safe))) {
       return (
         <span className="font-medium text-base-content/50">
           {renderHighlightedSearchText(t("badges.card.privateProfile"), searchQuery)}

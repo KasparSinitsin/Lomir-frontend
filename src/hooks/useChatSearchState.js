@@ -36,13 +36,24 @@ const useChatSearchState = ({
   // language (D3). Both are therefore part of the index's identity: when either
   // changes, the index is dropped and rebuilt rather than left stale.
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
-  const searchOptions = useMemo(() => ({ viewer: user, t }), [user, t]);
+  const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const searchOptions = useMemo(
+    () => ({
+      viewer: user,
+      t,
+      blockedIds: blockedRelationshipIds,
+      blockedNames: blockedRelationshipNames,
+    }),
+    [user, t, blockedRelationshipIds, blockedRelationshipNames],
+  );
 
   useEffect(() => {
     setChatMessageSearchIndex({});
     setChatMessageSearchSnippets({});
-  }, [i18n.language, user?.id]);
+    // A new block/unblock changes an event sentence's perspective (D3), same
+    // as a language switch — a cached index built before it would keep
+    // showing the now-anonymized person's real name.
+  }, [i18n.language, user?.id, blockedRelationshipIds, blockedRelationshipNames]);
 
   const normalizedChatSearchQuery = useMemo(
     () => normalizeChatSearchText(chatSearchQuery.trim()),

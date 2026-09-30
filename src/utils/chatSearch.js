@@ -16,6 +16,24 @@ import {
 export const CHAT_SEARCH_PAGE_SIZE = 100;
 export const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
 
+const MESSAGE_MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
+
+// A regular message's raw content still carries `@[Name](id)` for its
+// mentions — fine for the display renderers (they resolve it per-render, see
+// MessageText.jsx), but this text also feeds the search index, and a block
+// happening after the message was sent must still stop a search for the
+// blocked person's real name from matching (F12). Blocked mentions collapse
+// to the anonymized phrase like every other renderer; a non-blocked mention
+// keeps its plain name, same as before.
+const sanitizeMentionsForSearch = (content, blockedIds, t) => {
+  if (!content || !content.includes("@[")) return content;
+  return content.replace(MESSAGE_MENTION_RE, (_match, name, id) =>
+    blockedIds?.has?.(String(id)) && t
+      ? `@${t("badges.card.privateProfile")}`
+      : `@${name}`,
+  );
+};
+
 export const dedupeConversations = (list) =>
   (list || []).filter((conv, index, self) => {
     if (conv.type === "direct") {
@@ -112,8 +130,11 @@ const addUserSearchParts = (parts, user) => {
  * number that orders the conversation list. Decided 2026-09-16; the cost is
  * a word that only the short form uses ("Rolle wieder geöffnet").
  */
-const getTranslatedEventSearchParts = (message, { viewer = null, t = null } = {}) => {
-  const event = describeEvent(message?.content ?? null, viewer);
+const getTranslatedEventSearchParts = (
+  message,
+  { viewer = null, t = null, blockedIds = null, blockedNames = null } = {},
+) => {
+  const event = describeEvent(message?.content ?? null, viewer, blockedIds, blockedNames);
   const full = getEventSentenceText(t, event, "full");
   if (full == null) return null;
   // What the member typed is shown beside the banner, so it stays searchable.
@@ -122,15 +143,19 @@ const getTranslatedEventSearchParts = (message, { viewer = null, t = null } = {}
 
 /**
  * @param {object} message
- * @param {{ viewer?: object|null, t?: Function|null }} [options]
- *   the reader and the active `t` — required for event messages
+ * @param {{ viewer?: object|null, t?: Function|null, blockedIds?: Set|null }} [options]
+ *   the reader, the active `t`, and their block relationships — required for
+ *   event messages
  */
 export const buildMessageSearchText = (message, options = {}) => {
   const parts = [];
   const eventParts = getTranslatedEventSearchParts(message, options);
+  const { blockedIds = null, t = null } = options;
 
   addSearchPart(parts, [
-    ...(eventParts ?? [message?.content]),
+    ...(eventParts ?? [
+      sanitizeMentionsForSearch(message?.content, blockedIds, t),
+    ]),
     message?.fileName,
     message?.file_name,
     message?.senderUsername,

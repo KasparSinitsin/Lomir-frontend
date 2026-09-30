@@ -38,6 +38,7 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 import { getEventPreview } from "../../utils/eventPreview";
+import { useAuth } from "../../contexts/AuthContext";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -93,10 +94,17 @@ const renderHighlightedText = (value, query) => {
   });
 };
 
-const MENTION_TOKEN_RE = /@\[([^\]]+)\]\([^)]+\)/g;
+const MENTION_TOKEN_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
-const stripMentionTokens = (text) =>
-  text ? text.replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1") : text;
+// A block in either direction anonymizes the mention here too (F12).
+const stripMentionTokens = (text, blockedIds = null, t = null) =>
+  text
+    ? text.replace(MENTION_TOKEN_RE, (_match, name, id) =>
+        blockedIds?.has?.(String(id)) && t
+          ? `@${t("badges.card.privateProfile")}`
+          : `@${name}`,
+      )
+    : text;
 
 const MESSAGE_PAYLOAD_KEYS = [
   "lastMessage",
@@ -258,7 +266,8 @@ const getConversationAttachmentPreview = (conversation, t) => {
   return null;
 };
 
-const renderPreviewWithMentions = (text, query) => {
+// A block in either direction anonymizes the mention here too (F12).
+const renderPreviewWithMentions = (text, query, blockedIds = null, t = null) => {
   if (!text) return null;
   const parts = [];
   let last = 0;
@@ -266,14 +275,24 @@ const renderPreviewWithMentions = (text, query) => {
   MENTION_TOKEN_RE.lastIndex = 0;
   while ((m = MENTION_TOKEN_RE.exec(text)) !== null) {
     if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
-    parts.push({ type: "mention", name: m[1] });
+    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
+    parts.push({
+      type: "mention",
+      name: isBlocked && t ? t("badges.card.privateProfile") : m[1],
+      isBlocked,
+    });
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
 
   return parts.map((part, idx) =>
     part.type === "mention" ? (
-      <span key={idx} className="text-primary font-medium">@{part.name}</span>
+      <span
+        key={idx}
+        className={part.isBlocked ? "font-medium text-base-content/50" : "text-primary font-medium"}
+      >
+        @{part.name}
+      </span>
     ) : (
       <React.Fragment key={idx}>{renderHighlightedText(part.value, query)}</React.Fragment>
     ),
@@ -293,6 +312,7 @@ const ConversationList = ({
   currentUser = null,
 }) => {
   const { t } = useTranslation();
+  const { blockedRelationshipIds, blockedRelationshipNames } = useAuth();
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -597,6 +617,8 @@ const ConversationList = ({
             lastMessageText,
             currentUser,
             t,
+            blockedRelationshipIds,
+            blockedRelationshipNames,
           );
           // During search the matched message may be an older system/event
           // message (not the conversation's last message). Style it through the
@@ -605,7 +627,13 @@ const ConversationList = ({
           const hasSearchMessageMatch =
             isSearchActive && Boolean(conversation.searchMatchContent);
           const searchEventPreview = hasSearchMessageMatch
-            ? getEventPreview(conversation.searchMatchContent, currentUser, t)
+            ? getEventPreview(
+                conversation.searchMatchContent,
+                currentUser,
+                t,
+                blockedRelationshipIds,
+                blockedRelationshipNames,
+              )
             : null;
           // When the hit is on the conversation's metadata (e.g. team name) and
           // no message matched, the preview shows the last message — style it the
@@ -772,7 +800,7 @@ const ConversationList = ({
                   <Tooltip
                     content={
                       (previewText?.length ?? 0) > 60
-                        ? stripMentionTokens(previewText)
+                        ? stripMentionTokens(previewText, blockedRelationshipIds, t)
                         : undefined
                     }
                     position="bottom"
@@ -816,13 +844,13 @@ const ConversationList = ({
                             },
                           )}
                           <span className="truncate">
-                            {renderPreviewWithMentions(previewText, searchQuery)}
+                            {renderPreviewWithMentions(previewText, searchQuery, blockedRelationshipIds, t)}
                           </span>
                         </span>
                       </p>
                     ) : hasConversationPreview ? (
                       <p className="text-sm text-base-content/70 truncate">
-                        {renderPreviewWithMentions(previewText, searchQuery)}
+                        {renderPreviewWithMentions(previewText, searchQuery, blockedRelationshipIds, t)}
                       </p>
                     ) : conversation.isVirtual && !isTeam ? (
                       <p className="text-sm text-base-content/70 truncate">

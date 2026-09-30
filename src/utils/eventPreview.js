@@ -33,8 +33,14 @@ const byline = (person) => ({
   senderIsViewer: Boolean(person.isViewer),
 });
 
-export const getEventPreview = (lastMessage, currentUser = null, t = null) => {
-  const event = describeEvent(lastMessage, currentUser);
+export const getEventPreview = (
+  lastMessage,
+  currentUser = null,
+  t = null,
+  blockedIds = null,
+  blockedNames = null,
+) => {
+  const event = describeEvent(lastMessage, currentUser, blockedIds, blockedNames);
 
   if (!event) return null;
 

@@ -208,7 +208,7 @@ const MessageActions = ({
 
 const ReplyPreview = ({ replyPreview }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
   const expirationText = useFileExpirationText();
   const replyImageUrl = replyPreview?.imageUrl || replyPreview?.image_url;
   const replyFileUrl = replyPreview?.fileUrl || replyPreview?.file_url;
@@ -223,7 +223,13 @@ const ReplyPreview = ({ replyPreview }) => {
   const replyHasMedia = Boolean(replyImageUrl || replyFileUrl || replyFileName);
   const ReplyFileIcon = getFileIcon(replyFileName);
   const replyEventPreview = replyPreview?.content
-    ? getEventReactionPreview(replyPreview.content, user, t)
+    ? getEventReactionPreview(
+        replyPreview.content,
+        user,
+        t,
+        blockedRelationshipIds,
+        blockedRelationshipNames,
+      )
     : null;
   const ReplyEventIcon = replyEventPreview?.Icon;
   const ReplyEventTrailingIcon = replyEventPreview?.trailingIcon;
@@ -248,7 +254,10 @@ const ReplyPreview = ({ replyPreview }) => {
                 : replyImageUrl
                   ? t("messageInput.attachmentImage")
                   : replyFileName || t("messageBubble.attachmentFile")
-            : formatReplyTooltipText(replyPreview.content, replyEventPreview)
+            : formatReplyTooltipText(replyPreview.content, replyEventPreview, {
+                blockedIds: blockedRelationshipIds,
+                t,
+              })
         }
         position="top"
         wrapperClassName="block min-w-0 max-w-full"
@@ -271,7 +280,7 @@ const ReplyPreview = ({ replyPreview }) => {
             <div className="mt-1 min-w-0">
               {replyPreview.content && (
                 <p className="text-xs text-base-content/60 truncate">
-                  {renderReplyContent(replyPreview.content)}
+                  {renderReplyContent(replyPreview.content, 120, { blockedIds: blockedRelationshipIds, t })}
                 </p>
               )}
               {replyExpirationStatus.status !== "none" &&
@@ -337,7 +346,7 @@ const ReplyPreview = ({ replyPreview }) => {
         ) : (
           <p className="text-xs text-base-content/60 truncate">
             {replyPreview.content ? (
-              renderReplyContent(replyPreview.content)
+              renderReplyContent(replyPreview.content, 120, { blockedIds: blockedRelationshipIds, t })
             ) : replyPreview.deletedAt || replyPreview.deleted_at ? (
               <span className="italic">{t("messageBubble.originalDeleted")}</span>
             ) : (

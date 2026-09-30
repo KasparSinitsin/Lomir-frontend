@@ -34,6 +34,7 @@ const EMPTY_PERSON = Object.freeze({
   name: null,
   isViewer: false,
   isDeleted: false,
+  isBlocked: false,
   isKnown: false,
 });
 
@@ -50,7 +51,11 @@ const sameId = (a, b) =>
 // chat of 2 April 2026), so the comparison collapses whitespace. Without it a
 // reader fails to recognise themselves in exactly the id-less formats that
 // depend on this fallback.
-const normalizeNameForMatch = (value) =>
+// Exported: AuthContext normalizes blocked people's names the same way, so a
+// prose-format mention ("... by Anna Kowalski") can match a blocked person by
+// name when the message carries no id and the person is no longer on any
+// roster the reader has to hand.
+export const normalizeNameForMatch = (value) =>
   value.trim().replace(/\s+/g, " ").toLowerCase();
 
 /**
@@ -78,20 +83,34 @@ const isViewerPerson = (id, name, viewer, viewerName) => {
   return normalizeNameForMatch(name) === normalizeNameForMatch(viewerName);
 };
 
-const buildPerson = (id, rawName, viewer, viewerName) => {
+const buildPerson = (id, rawName, viewer, viewerName, blockedIds, blockedNames) => {
   const name = typeof rawName === "string" ? rawName.trim() || null : null;
   const isDeleted = name === DELETED_USER_DISPLAY_NAME;
   const isViewer = isViewerPerson(id, name, viewer, viewerName);
+  // A block in either direction anonymizes the person the same way a
+  // deleted account does (F12) — the reader cannot tell blocked apart from
+  // deleted apart from never-existed by design, so the sentence must not
+  // reveal which one this is.
+  // ⚠️ Some stored events are old prose with a name but no id ("... by Anna
+  // Kowalski") — id-matching alone misses every one of them, so a blocked
+  // person is also matched by name (`blockedNames`, from AuthContext), the
+  // same fallback `isViewerPerson` already uses for id-less formats.
+  const isBlocked =
+    !isViewer &&
+    !isDeleted &&
+    ((id != null && Boolean(blockedIds?.has?.(String(id)))) ||
+      (id == null && hasRealName(name) && Boolean(blockedNames?.has?.(normalizeNameForMatch(name)))));
 
   return {
     id: id ?? null,
-    // A deleted account has no name to show — the label belongs to the
-    // sentence, not to the data. Callers that still print the English
-    // placeholder read `isDeleted`.
-    name: isDeleted ? null : name,
+    // A deleted or blocked person has no name to show — the label belongs
+    // to the sentence, not to the data. Callers that still print the
+    // English placeholder read `isDeleted` / `isBlocked`.
+    name: isDeleted || isBlocked ? null : name,
     isViewer,
     isDeleted,
-    isKnown: isViewer || Boolean(isDeleted ? null : name),
+    isBlocked,
+    isKnown: isViewer || Boolean(isDeleted || isBlocked ? null : name),
   };
 };
 
@@ -103,9 +122,19 @@ const buildEntity = (id, rawName) => {
 /**
  * @param {object|string|null} source  a parsed event, or the raw stored content
  * @param {object|null} viewer         the current user (`user` from AuthContext)
+ * @param {Set<string>|null} blockedIds  ids in a block relationship with the
+ *   viewer, either direction (`blockedRelationshipIds` from AuthContext)
+ * @param {Set<string>|null} blockedNames  normalized names for the same
+ *   people (`blockedRelationshipNames` from AuthContext) — the fallback for
+ *   the id-less legacy formats
  * @returns {object|null} descriptor, or null when the content is not an event
  */
-export const describeEvent = (source, viewer = null) => {
+export const describeEvent = (
+  source,
+  viewer = null,
+  blockedIds = null,
+  blockedNames = null,
+) => {
   const parsed =
     typeof source === "string" || source == null
       ? parseSystemMessage(source)
@@ -119,7 +148,14 @@ export const describeEvent = (source, viewer = null) => {
   for (const [key, value] of Object.entries(parsed)) {
     if (!key.endsWith("Name") || ENTITY_KEYS.has(key)) continue;
     const slot = key.slice(0, -"Name".length);
-    people[slot] = buildPerson(parsed[`${slot}Id`] ?? null, value, viewer, viewerName);
+    people[slot] = buildPerson(
+      parsed[`${slot}Id`] ?? null,
+      value,
+      viewer,
+      viewerName,
+      blockedIds,
+      blockedNames,
+    );
   }
 
   return {

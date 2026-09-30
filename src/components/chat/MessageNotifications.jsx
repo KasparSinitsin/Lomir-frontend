@@ -393,9 +393,10 @@ const buildCurrentUserRemovalText = (t, payload) => {
   return payload?.title || t("messageNotifications.text.removedNoTeam");
 };
 
-const MENTION_REGEX =/@\[([^\]]+)\]\([^)]+\)/g;
+const MENTION_REGEX =/@\[([^\]]+)\]\(([^)]+)\)/g;
 
-const renderTextWithMentions = (text) => {
+// A block in either direction anonymizes the mention here too (F12).
+const renderTextWithMentions = (text, blockedIds = null, t = null) => {
   if (!text || !text.includes("@[")) return text;
   const parts = [];
   let last = 0;
@@ -403,9 +404,13 @@ const renderTextWithMentions = (text) => {
   MENTION_REGEX.lastIndex = 0;
   while ((m = MENTION_REGEX.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
+    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
     parts.push(
-      <span key={m.index} className="font-semibold text-primary">
-        @{m[1]}
+      <span
+        key={m.index}
+        className={isBlocked ? "font-semibold text-base-content/50" : "font-semibold text-primary"}
+      >
+        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
       </span>,
     );
     last = m.index + m[0].length;
@@ -454,7 +459,7 @@ const MessageNotifications = () => {
     pathname: location.pathname,
     search: location.search,
   });
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
   const { t } = useTranslation();
   const prevIsAuthenticatedRef = useRef(false);
   const currentUserRemovalSuppressionsRef = useRef(new Map());
@@ -671,7 +676,7 @@ const MessageNotifications = () => {
       // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
       if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
 
-      const eventPreview = getEventPreview(eventContent, user, t);
+      const eventPreview = getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames);
       const dedupeKey =
         getRoleReopenedToastKey(eventContent, message) ||
         (parsedMessage?.type === 'member_removed_public'
@@ -691,7 +696,7 @@ const MessageNotifications = () => {
           senderIsViewer: Boolean(eventPreview?.senderIsViewer),
           text: eventPreview ? null : getMessagePreviewText(message),
           getText: eventPreview
-            ? (t) => getEventPreview(eventContent, user, t)?.text
+            ? (t) => getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames)?.text
             : null,
           isEvent: Boolean(eventPreview),
           eventIcon: eventPreview?.icon || null,
@@ -709,6 +714,8 @@ const MessageNotifications = () => {
     upsertCurrentUserRemovalToast,
     user,
     t,
+    blockedRelationshipIds,
+    blockedRelationshipNames,
   ]);
 
   const handleMessageDeleted = useCallback((payload) => {
@@ -932,7 +939,7 @@ const MessageNotifications = () => {
             color: notification.eventColor,
             backgroundColor: notification.eventBackgroundColor,
           }) ||
-          getEventPreview(text, user, t);
+          getEventPreview(text, user, t, blockedRelationshipIds, blockedRelationshipNames);
         const isEvent = Boolean(renderEventPreview);
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock
@@ -988,7 +995,7 @@ const MessageNotifications = () => {
                 </span>
               </p>
             ) : (
-              <p className="text-sm">{renderTextWithMentions(text)}</p>
+              <p className="text-sm">{renderTextWithMentions(text, blockedRelationshipIds, t)}</p>
             )}
             {hasByline && (
               <p
