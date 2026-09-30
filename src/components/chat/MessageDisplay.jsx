@@ -1104,7 +1104,7 @@ const MessageDisplay = ({
             className="avatar-fallback bg-base-300 text-base-content/60 flex items-center justify-center w-full h-full rounded-full absolute inset-0"
           >
             <span className="text-sm font-medium event-message-text">
-              FM
+              {t("chatPage.formerTeamMemberInitials")}
             </span>
           </div>
         </div>

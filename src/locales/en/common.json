@@ -338,6 +338,7 @@
     },
     "formerTeamMember": "{name} (former team member)",
     "formerTeamMemberTooltip": "Former team member",
+    "formerTeamMemberInitials": "FM",
     "leaveTeam": {
       "confirmLabel": "Leave",
       "fallbackTeamName": "this team",
