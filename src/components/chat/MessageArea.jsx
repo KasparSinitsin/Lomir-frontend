@@ -83,6 +83,7 @@ const MessageArea = ({
             typingUsers={typingUsers}
             conversationType={conversationType}
             teamMembers={teamMembers}
+            allTeamMembers={activeConversation?.team?.members || []}
             highlightMessageIds={highlightMessageIds}
             hasMoreMessages={hasMoreMessages}
             loadingMore={loadingMore}

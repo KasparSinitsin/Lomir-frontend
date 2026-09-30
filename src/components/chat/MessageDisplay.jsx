@@ -24,6 +24,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { createEventRenderers } from "./messageEventRenderers";
 import MessageBubble from "./MessageBubble";
 import Tooltip from "../common/Tooltip";
+import ScreenAlert from "../common/ScreenAlert";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
@@ -48,6 +49,7 @@ const MessageDisplay = ({
   typingUsers = [],
   conversationType = "direct",
   teamMembers = [],
+  allTeamMembers = [],
   highlightMessageIds = [],
   hasMoreMessages = false,
   loadingMore = false,
@@ -60,7 +62,7 @@ const MessageDisplay = ({
   searchQuery = "",
 }) => {
   const { t } = useTranslation();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, blockedRelationshipIds } = useAuth();
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -569,6 +571,21 @@ const MessageDisplay = ({
     return exact?.id ?? null;
   };
 
+  // `teamMembers` already excludes blocked members (Chat.jsx), so it cannot
+  // answer "is this specific mentioned name blocked" once someone is filtered
+  // out of it. `allTeamMembers` is the same list before that filter, kept
+  // only to check names against `blockedRelationshipIds` here.
+  const blockedMemberNames = useMemo(() => {
+    const names = new Set();
+    (allTeamMembers || []).forEach((m) => {
+      const id = getTeamMemberUserId(m);
+      if (id != null && blockedRelationshipIds?.has?.(String(id))) {
+        names.add(normalizeName(getTeamMemberFullName(m)));
+      }
+    });
+    return names;
+  }, [allTeamMembers, blockedRelationshipIds]);
+
   const handleMentionClick = async (name) => {
     const safe = (name || "").trim().replace(/\s+/g, " ");
 
@@ -605,6 +622,16 @@ const MessageDisplay = ({
         </span>
       );
     }
+    // A block in either direction anonymizes the mention the same way it
+    // already does in InlineUserLink/AwardCard (F12) — before any click, not
+    // just when one fails.
+    if (blockedMemberNames.has(normalizeName(safe))) {
+      return (
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(t("badges.card.privateProfile"), searchQuery)}
+        </span>
+      );
+    }
 
     return (
       <Tooltip content={detailsTooltip(safe)} position="top">
@@ -629,6 +656,13 @@ const MessageDisplay = ({
         </span>
       ) : (
         <Mention name={safeName} />
+      );
+    }
+    if (blockedRelationshipIds?.has?.(String(userId))) {
+      return (
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(t("badges.card.privateProfile"), searchQuery)}
+        </span>
       );
     }
 
@@ -1254,10 +1288,12 @@ const MessageDisplay = ({
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <>
+        <ScreenAlert
+          type="error"
+          message={nameResolveErrorText}
+          onClose={() => setNameResolveError(null)}
+        />
         <div className="space-y-6">
-          {nameResolveError && (
-            <div className="mb-2 text-sm text-warning">{nameResolveErrorText}</div>
-          )}
 
           {resolvedConversationPartner && conversationType === "direct" && (
             <div
@@ -1371,10 +1407,12 @@ const MessageDisplay = ({
 
   return (
     <>
+      <ScreenAlert
+        type="error"
+        message={nameResolveErrorText}
+        onClose={() => setNameResolveError(null)}
+      />
       <div className="space-y-6">
-        {nameResolveError && (
-          <div className="mb-2 text-sm text-warning">{nameResolveErrorText}</div>
-        )}
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}
         {resolvedConversationPartner && conversationType === "direct" && (
