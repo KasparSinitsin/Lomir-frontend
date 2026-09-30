@@ -39,6 +39,11 @@ import {
   getSupercategoryIcon,
 } from "../../utils/badgeIconUtils";
 import {
+  getBadgeDescription,
+  getBadgeName,
+  getCategoryLabel,
+} from "../../utils/badgeLabels";
+import {
   CATEGORY_COLORS,
   CATEGORY_CARD_PASTELS,
   DEFAULT_COLOR,
@@ -2587,7 +2592,7 @@ const VacantRoleDetailsModal = ({
 
                   return (
                     <div key={category} className="flex items-start">
-                      <Tooltip content={category}>
+                      <Tooltip content={getCategoryLabel(category, t)}>
                         <span
                           className="inline-flex items-center justify-center pr-[6px]"
                           style={{
@@ -2616,7 +2621,12 @@ const VacantRoleDetailsModal = ({
                             <Tooltip
                               key={badge.badgeId ?? badge.badge_id ?? badge.id}
                               content={
-                                badge.description || `${badge.name} — ${category}`
+                                getBadgeDescription(
+                                  badge.name,
+                                  badge.description,
+                                  t
+                                ) ||
+                                `${getBadgeName(badge.name, t)} — ${getCategoryLabel(category, t)}`
                               }
                             >
                               <span
@@ -2630,7 +2640,7 @@ const VacantRoleDetailsModal = ({
                                 {isMatch && (
                                   <Check size={12} className="flex-shrink-0" />
                                 )}
-                                {badge.name}
+                                {getBadgeName(badge.name, t)}
                                 {isMatch && credits > 0 && (
                                   <span className="opacity-70">
                                     {t("badges.creditsInline", { credits })}
