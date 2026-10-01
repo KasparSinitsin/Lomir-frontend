@@ -309,6 +309,109 @@ export const createEventRenderers = (ctx) => {
       Icon: UserCheck,
     });
 
+  /**
+   * The 🎯 sibling of the renderer above, for the format that carries no role
+   * name. It takes the sender arguments because it renders the personal
+   * message, which `renderRoleInvitationAssignedLegacyMessage` does not.
+   *
+   * ⚠️ Rendering the personal message is the point, not a flourish. The format
+   * is stored as `<sentence>\n\n"<whatever the user typed>"`, and until this
+   * type was parsed the whole string was shown verbatim — so the quoted text is
+   * visible to users today. Parsing the format without rendering that text
+   * would hide user-authored content, which is worse than the untranslated
+   * sentence this change removes. One such row in the live data reads
+   * "Hi Anna, seems the role is already filled".
+   */
+  const renderRoleInvitationAcceptedLegacyMessage = (
+    message,
+    parsedMessage,
+    senderInfo,
+    isCurrentUser,
+    senderId,
+  ) => {
+    // The sender of this message is the member who accepted, so they are the
+    // invitee the sentence talks about.
+    const event = eventOf(parsedMessage);
+    const invitee = senderAsViewer(personOf(event, "invitee"), isCurrentUser);
+    const sentenceText = renderSentence(
+      getEventSentence(t, event, "full", { invitee }),
+    );
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner mb-3" style={ROLE_BANNER_STYLE}>
+          <span className="text-sm font-medium event-message-text">
+            <UserCheck size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(sentenceText)}
+          </span>
+        </div>
+
+        {parsedMessage.personalMessage && (
+          <div
+            className={`flex ${
+              isCurrentUser ? "justify-end" : "justify-start"
+            } w-full`}
+          >
+            {!isCurrentUser && renderAvatar(senderInfo, true, senderId)}
+
+            <div className="flex flex-col max-w-[70%]">
+              {!isCurrentUser &&
+                renderSenderName(
+                  senderInfo,
+                  senderId,
+                  "text-xs font-medium mb-1 ml-3",
+                )}
+
+              <div
+                className={`
+                  rounded-lg p-3
+                  ${
+                    isCurrentUser
+                      ? "bg-green-100 text-base-content rounded-br-none ml-auto"
+                      : "bg-base-200 rounded-bl-none"
+                  }
+                `}
+              >
+                <p>
+                  {renderHighlightedSearchText(
+                    parsedMessage.personalMessage,
+                    searchQuery,
+                  )}
+                </p>
+                <div
+                  className={`
+                    flex justify-end items-center text-xs mt-1
+                    ${
+                      isCurrentUser
+                        ? "text-base-content/60"
+                        : "text-base-content/50"
+                    }
+                  `}
+                >
+                  <span>{formatLocalTime(message.createdAt)}</span>
+                  <ReadReceipt
+                    message={message}
+                    isCurrentUser={isCurrentUser}
+                    conversationType={conversationType}
+                    teamMembers={teamMembers}
+                    currentUserId={currentUserId}
+                    getReadByTooltip={getReadByTooltip}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!parsedMessage.personalMessage && (
+          <div className="text-xs text-base-content/50">
+            {formatLocalTime(message.createdAt)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderRoleReopenedMessage = (message, parsedMessage) =>
     renderRoleEventBanner(message, {
       sentence: getEventSentence(t, eventOf(parsedMessage)),
@@ -972,6 +1075,7 @@ export const createEventRenderers = (ctx) => {
     renderRoleInvitationFilledMessage,
     renderRoleInvitationAcceptedMessage,
     renderRoleInvitationAssignedLegacyMessage,
+    renderRoleInvitationAcceptedLegacyMessage,
     renderRoleReopenedMessage,
     renderRoleReopenedAdminMessage,
     renderRoleFilledMessage,
