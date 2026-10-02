@@ -152,6 +152,7 @@ export const getEventPreview = (
     case "role_invitation_filled":
     case "role_invitation_accepted":
     case "role_invitation_assigned_legacy":
+    case "role_invitation_accepted_legacy":
       return {
         text: getEventSentenceText(t, event, "short"),
         icon: "UserCheck",

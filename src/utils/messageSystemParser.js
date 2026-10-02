@@ -396,6 +396,26 @@ const parseSystemMessageRaw = (content) => {
     };
   }
 
+  // Pattern 4K: the sibling of 4J, written when an existing member accepts an
+  // internal role invitation but the role is NOT filled (the invitation's role
+  // was closed or taken in the meantime), so there is no role name to show.
+  // Format: 🎯 Name accepted a role invitation!\n\n"personal message"
+  //
+  // Until this pattern existed the format fell through every branch and was
+  // shown as its raw stored text — an English sentence naming a person in a
+  // German chat — and, because the unparsed path is the ordinary-message path,
+  // the chat offered its sender Edit and Delete on a team event record.
+  const roleInvitationAcceptedLegacyMatch = content.match(
+    /^🎯\s+(.+?)\s+accepted a role invitation!(?:\s*\n+"(.+)")?$/s,
+  );
+  if (roleInvitationAcceptedLegacyMatch) {
+    return {
+      type: "role_invitation_accepted_legacy",
+      inviteeName: roleInvitationAcceptedLegacyMatch[1].trim(),
+      personalMessage: roleInvitationAcceptedLegacyMatch[2]?.trim() ?? null,
+    };
+  }
+
   // Pattern 4E: Application decline response (direct message to applicant)
   // Format: 📋 Application declined: [Applicant] for "[Team]":\n\n"personal message"
   const applicationDeclineMatch = content.match(

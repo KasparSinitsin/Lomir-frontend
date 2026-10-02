@@ -46,6 +46,7 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "role_invitation_filled",
   "role_invitation_accepted",
   "role_invitation_assigned_legacy",
+  "role_invitation_accepted_legacy",
   "team_join",
   "team_leave",
   "user_left_lomir",
@@ -252,6 +253,19 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
           ? t("chatEvents.roleInvitationAssigned.short", values)
           : t("chatEvents.roleInvitationAssigned.full", values),
         slots: { invitee: personSlot(invitee), role },
+      };
+    }
+
+    // The sibling format with no role name at all, so no `role` slot — the
+    // sentence must not reference <role/>.
+    case "role_invitation_accepted_legacy": {
+      const invitee = person("invitee");
+      const values = { invitee: perspectiveOf(invitee) };
+      return {
+        text: short
+          ? t("chatEvents.roleInvitationAcceptedLegacy.short", values)
+          : t("chatEvents.roleInvitationAcceptedLegacy.full", values),
+        slots: { invitee: personSlot(invitee) },
       };
     }
 

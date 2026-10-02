@@ -91,6 +91,7 @@ export const getEventReactionPreview = (
     case "role_invitation_filled":
     case "role_invitation_accepted":
     case "role_invitation_assigned_legacy":
+    case "role_invitation_accepted_legacy":
     case "role_filled":
       return {
         text: getEventSentenceText(t, event, "full"),

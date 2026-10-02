@@ -1224,6 +1224,7 @@ const MessageDisplay = ({
     renderRoleInvitationFilledMessage,
     renderRoleInvitationAcceptedMessage,
     renderRoleInvitationAssignedLegacyMessage,
+    renderRoleInvitationAcceptedLegacyMessage,
     renderRoleReopenedMessage,
     renderRoleReopenedAdminMessage,
     renderRoleFilledMessage,
@@ -1692,6 +1693,22 @@ const MessageDisplay = ({
                     if (hasFrontendMessage) return null;
                     return renderSystemMessage(
                       renderRoleInvitationAssignedLegacyMessage(message, parsedMessage),
+                    );
+                  } else if (
+                    parsedMessage.type === "role_invitation_accepted_legacy"
+                  ) {
+                    // No de-duplication against a richer frontend message here,
+                    // unlike the sibling above: this format is written only when
+                    // the role was NOT filled, so there is no role to match on
+                    // and no ROLE_INVITATION_FILLED counterpart to collide with.
+                    return renderSystemMessage(
+                      renderRoleInvitationAcceptedLegacyMessage(
+                        message,
+                        parsedMessage,
+                        senderInfo,
+                        isCurrentUser,
+                        messageGroup.senderId,
+                      ),
                     );
                   } else if (parsedMessage.type === "role_reopened") {
                     return renderSystemMessage(
