@@ -60,6 +60,7 @@ import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
 import VisibilityToggle from "../components/common/VisibilityToggle";
 import { formatMonthYear } from "../utils/dateHelpers";
+import { joinNameParts } from "../utils/nameFormatters";
 
 const EMPTY_QUERY_ARRAY = [];
 
@@ -528,7 +529,7 @@ const Profile = () => {
       award?.awardedByFirstName ?? award?.awarded_by_first_name ?? "";
     const lastName =
       award?.awardedByLastName ?? award?.awarded_by_last_name ?? "";
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = joinNameParts(firstName, lastName);
 
     return (
       fullName ||

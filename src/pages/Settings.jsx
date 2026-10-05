@@ -23,6 +23,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { joinNameParts } from "../utils/nameFormatters";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -97,7 +98,7 @@ const getDisplayName = (entity) => {
 
   const firstName = firstNonEmptyString(entity.firstName, entity.first_name);
   const lastName = firstNonEmptyString(entity.lastName, entity.last_name);
-  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  const fullName = joinNameParts(firstName, lastName);
 
   return fullName || null;
 };

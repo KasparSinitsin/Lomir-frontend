@@ -9,6 +9,7 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import { formatRelativeChatTimestamp } from "../../utils/dateHelpers";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 // Compact conversation header for the chat page: avatar, name, and meta line
 // (team member count / DM label, demo overlay, relative timestamp), plus a
@@ -36,9 +37,10 @@ const ConversationHeader = ({
   const detailsTooltip = (name) =>
     name ? t("chatHeader.viewDetails", { name }) : t("chatHeader.viewDetailsGeneric");
 
-  const partnerName = [conversationPartner?.firstName, conversationPartner?.lastName]
-    .filter(Boolean)
-    .join(" ");
+  const partnerName = joinNameParts(
+    conversationPartner?.firstName,
+    conversationPartner?.lastName,
+  );
 
   return (
               <div

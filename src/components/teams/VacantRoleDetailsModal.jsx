@@ -106,6 +106,7 @@ import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const COLLAPSED_COUNT = 4;
 const EMPTY_TEAM_MEMBERS = [];
@@ -1369,7 +1370,7 @@ const VacantRoleDetailsModal = ({
     shouldAnonymizeCreator
       ? t("user.privateProfile")
       : creatorFirstName && creatorLastName
-      ? `${creatorFirstName} ${creatorLastName}`
+      ? joinNameParts(creatorFirstName, creatorLastName)
       : creatorUsername || null;
   const creatorDisplayName = shouldAnonymizeCreator
     ? t("user.privateProfile")
@@ -2698,9 +2699,10 @@ const VacantRoleDetailsModal = ({
                     applicantProfile.last_name ??
                     "";
                   const username = applicantProfile.username ?? "";
-                  const displayName = firstName && lastName
-                    ? `${firstName} ${lastName}`
-                    : firstName || lastName || username || t("user.unknown");
+                  const displayName =
+                    joinNameParts(firstName, lastName) ||
+                    username ||
+                    t("user.unknown");
                   const applicationRoleMatch = application.role || {};
                   const applicantScore =
                     applicantMatch?.matchScore ??
@@ -2886,9 +2888,10 @@ const VacantRoleDetailsModal = ({
                     inviteeProfile.last_name ??
                     "";
                   const username = inviteeProfile.username ?? "";
-                  const displayName = firstName && lastName
-                    ? `${firstName} ${lastName}`
-                    : firstName || lastName || username || t("user.unknown");
+                  const displayName =
+                    joinNameParts(firstName, lastName) ||
+                    username ||
+                    t("user.unknown");
                   const invitationRoleMatch = invitation.role || {};
                   const inviteeScore =
                     inviteeMatch?.matchScore ??

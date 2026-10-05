@@ -20,6 +20,7 @@ import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
 import UserAvatar from "../users/UserAvatar";
 import { isSyntheticUser } from "../../utils/userHelpers";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const getTeamMemberId = (member) =>
   member?.userId ??
@@ -191,8 +192,10 @@ const TeamMembersSection = ({
                                 member.firstName || member.first_name || "";
                               const lastName =
                                 member.lastName || member.last_name || "";
-                              const fullName =
-                                `${firstName} ${lastName}`.trim();
+                              const fullName = joinNameParts(
+                                firstName,
+                                lastName,
+                              );
                               return fullName || member.username || t("common:user.unknown");
                             })()
                       }

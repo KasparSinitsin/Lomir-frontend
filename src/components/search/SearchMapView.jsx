@@ -68,6 +68,7 @@ import {
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import Tooltip from "../common/Tooltip";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const TYPE_META = {
   team: {
@@ -264,7 +265,7 @@ const getDisplayName = (item, type) => {
 
   const firstName = item.first_name || item.firstName || "";
   const lastName = item.last_name || item.lastName || "";
-  return [firstName, lastName].filter(Boolean).join(" ") || item.username || null;
+  return joinNameParts(firstName, lastName) || item.username || null;
 };
 
 const getMapPointType = (item) =>

@@ -1,3 +1,5 @@
+import { joinNameParts } from "./nameFormatters";
+
 // ⚠️ A wire value, not a label: both repos write it into stored messages and
 // compare against it. Display it as t("user.formerUser"), never translate it.
 export const DELETED_USER_DISPLAY_NAME = "Former Lomir User";
@@ -18,7 +20,7 @@ export const getDisplayName = (
 
   const first = user.firstName || user.first_name || "";
   const last = user.lastName || user.last_name || "";
-  const full = `${first} ${last}`.trim();
+  const full = joinNameParts(first, last);
 
   return full || user.username || fallback;
 };
