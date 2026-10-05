@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -20,6 +20,8 @@ import {
   getFileIcon,
 } from "../../utils/messageDisplayHelpers";
 import { renderReplyContent } from "../../utils/messageDisplayRenderers";
+import { collectMentionIds } from "../../utils/mentions";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 import Tooltip from "../common/Tooltip";
 import FileAttachment from "./FileAttachment";
 import MessageText from "./MessageText";
@@ -209,6 +211,15 @@ const MessageActions = ({
 const ReplyPreview = ({ replyPreview }) => {
   const { t } = useTranslation();
   const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames, requestIds: requestMentionIds } = useMentionNames();
+
+  // ⚠️ The quoted message is NOT necessarily loaded in the transcript - a reply
+  // can quote something scrolled far away or never fetched - so this surface
+  // asks for its own ids rather than relying on MentionChip having asked.
+  useEffect(() => {
+    requestMentionIds(collectMentionIds(replyPreview?.content));
+  }, [requestMentionIds, replyPreview?.content]);
+
   const expirationText = useFileExpirationText();
   const replyImageUrl = replyPreview?.imageUrl || replyPreview?.image_url;
   const replyFileUrl = replyPreview?.fileUrl || replyPreview?.file_url;
@@ -256,6 +267,7 @@ const ReplyPreview = ({ replyPreview }) => {
                   : replyFileName || t("messageBubble.attachmentFile")
             : formatReplyTooltipText(replyPreview.content, replyEventPreview, {
                 blockedIds: blockedRelationshipIds,
+                names: mentionNames,
                 t,
               })
         }
@@ -280,7 +292,11 @@ const ReplyPreview = ({ replyPreview }) => {
             <div className="mt-1 min-w-0">
               {replyPreview.content && (
                 <p className="text-xs text-base-content/60 truncate">
-                  {renderReplyContent(replyPreview.content, 120, { blockedIds: blockedRelationshipIds, t })}
+                  {renderReplyContent(replyPreview.content, 120, {
+                    blockedIds: blockedRelationshipIds,
+                    names: mentionNames,
+                    t,
+                  })}
                 </p>
               )}
               {replyExpirationStatus.status !== "none" &&
@@ -346,7 +362,11 @@ const ReplyPreview = ({ replyPreview }) => {
         ) : (
           <p className="text-xs text-base-content/60 truncate">
             {replyPreview.content ? (
-              renderReplyContent(replyPreview.content, 120, { blockedIds: blockedRelationshipIds, t })
+              renderReplyContent(replyPreview.content, 120, {
+                blockedIds: blockedRelationshipIds,
+                names: mentionNames,
+                t,
+              })
             ) : replyPreview.deletedAt || replyPreview.deleted_at ? (
               <span className="italic">{t("messageBubble.originalDeleted")}</span>
             ) : (

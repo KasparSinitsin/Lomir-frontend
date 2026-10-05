@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
+import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
 import {
   AlertTriangle,
   CircleX,
@@ -50,29 +52,34 @@ const tokenizeMentions = (text, mentionMap) => {
   return result;
 };
 
-const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
-// A block in either direction anonymizes the mention here too (F12).
-const renderReplyText = (text, blockedIds = null, t = null) => {
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_RE.lastIndex = 0;
-  while ((m = MENTION_RE.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
-    parts.push(
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - precedence shared via utils/mentions.js.
+//
+// ⚠️ The write side of mentions - `tokenizeMentions` above - deliberately does
+// NOT move into that module. This file is the only place that turns a typed
+// `@Name` into a stored token, and reading must stay free to handle shapes the
+// current writer no longer produces.
+const renderReplyText = (text, blockedIds = null, t = null, names = null) =>
+  splitMentions(text).map((segment, index) => {
+    if (!segment.isMention) return segment.text;
+    const { label, isAnonymized } = resolveMentionLabel(segment, {
+      blockedIds,
+      names,
+      t,
+    });
+    return (
       <span
-        key={m.index}
-        className={isBlocked ? "font-medium text-base-content/50" : "font-medium text-primary"}
+        key={index}
+        className={
+          isAnonymized
+            ? "font-medium text-base-content/50"
+            : "font-medium text-primary"
+        }
       >
-        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
+        @{label}
       </span>
     );
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-};
+  });
 
 const MessageInput = ({
   onSendMessage,
@@ -86,6 +93,7 @@ const MessageInput = ({
 }) => {
   const { t } = useTranslation();
   const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames } = useMentionNames();
   const expirationText = useFileExpirationText();
 
   /**
@@ -287,7 +295,7 @@ const MessageInput = ({
                 <div className="min-w-0 flex-1">
                   {replyingTo.content && (
                     <p className="text-xs text-base-content/60 truncate">
-                      {renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t)}
+                      {renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t, mentionNames)}
                     </p>
                   )}
                   {replyExpirationStatus.status !== "none" &&
@@ -323,7 +331,7 @@ const MessageInput = ({
             ) : (
               <p className="text-xs text-base-content/60 truncate">
                 {replyingTo.content
-                  ? renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t)
+                  ? renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t, mentionNames)
                   : t("messageInput.attachmentImageOrFile")}
               </p>
             )}

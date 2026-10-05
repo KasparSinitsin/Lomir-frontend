@@ -1,22 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Cloud, Link as LinkIcon, ExternalLink } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 import { useAuth } from "../../contexts/AuthContext";
 import { splitChatSearchMatches } from "../../utils/chatSearch";
+import { findMentions, resolveMentionLabel } from "../../utils/mentions";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 
 // --- helpers -------------------------------------------------
-
-const findMentions = (text) => {
-  if (!text) return [];
-  const regex = /@\[([^\]]+)\]\(([^)]+)\)/g;
-  const matches = [];
-  let m;
-  while ((m = regex.exec(text)) !== null) {
-    matches.push({ type: "mention", name: m[1], userId: m[2], index: m.index, end: m.index + m[0].length });
-  }
-  return matches;
-};
 
 const isHttpUrl = (raw) => {
   try {
@@ -163,26 +154,41 @@ const LinkChip = ({ href }) => {
 const MentionChip = ({ name, userId, onUserClick }) => {
   const { t } = useTranslation();
   const { blockedRelationshipIds } = useAuth();
+  const { names, requestIds } = useMentionNames();
+
+  // Each chip asks for its own id; the context dedupes and batches, so a
+  // transcript full of mentions is one request. `@all` is filtered out there.
+  useEffect(() => {
+    requestIds([String(userId)]);
+  }, [requestIds, userId]);
+
+  // 🔴 The stored `name` is only the FALLBACK now. It was written into the
+  // message at send time, so it is a deleted person's real name until this
+  // resolves, and a renamed person's old one forever. The precedence - @all,
+  // then blocked, then deleted, then current, then stored - lives in
+  // resolveMentionLabel so that all six mention surfaces share it.
+  const { label, isAnonymized } = resolveMentionLabel(
+    { name, userId },
+    { blockedIds: blockedRelationshipIds, names, t },
+  );
 
   if (userId === "all" || !onUserClick) {
-    return <span className="font-medium text-primary">@{name}</span>;
+    return <span className="font-medium text-primary">@{label}</span>;
   }
-  // A block in either direction anonymizes the mention, same as everywhere
-  // else this can happen (F12) — no click, since there is nothing to open.
-  if (blockedRelationshipIds?.has?.(String(userId))) {
+  // Anonymized either way - blocked (F12) or deleted - gets no click, since
+  // there is nothing to open and the reader must not tell the two apart.
+  if (isAnonymized) {
     return (
-      <span className="font-medium text-base-content/50">
-        @{t("badges.card.privateProfile")}
-      </span>
+      <span className="font-medium text-base-content/50">@{label}</span>
     );
   }
   return (
     <button
       type="button"
       className="font-medium text-primary underline underline-offset-2 hover:no-underline transition-colors"
-      onClick={() => onUserClick(userId, name)}
+      onClick={() => onUserClick(userId, label)}
     >
-      @{name}
+      @{label}
     </button>
   );
 };
@@ -208,7 +214,10 @@ export default function MessageText({ content, searchQuery = "", onUserClick }) 
   if (!content) return null;
 
   // Collect all special segments (mentions + URLs), sorted by position
-  const mentionMatches = findMentions(content);
+  const mentionMatches = findMentions(content).map((m) => ({
+    ...m,
+    type: "mention",
+  }));
   const mentionRanges = mentionMatches.map((m) => [m.index, m.end]);
   const urlMatches = findUrls(content).filter(
     (u) => !mentionRanges.some(([s, e]) => u.index >= s && u.end <= e),

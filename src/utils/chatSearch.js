@@ -3,6 +3,7 @@ import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
 import { messageService } from "../services/messageService";
+import { hasMention, resolveMentionLabel, splitMentions } from "./mentions";
 import {
   getConversationPartnerId,
   isDirectConversationForPartner,
@@ -16,8 +17,6 @@ import {
 export const CHAT_SEARCH_PAGE_SIZE = 100;
 export const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
 
-const MESSAGE_MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
-
 // A regular message's raw content still carries `@[Name](id)` for its
 // mentions — fine for the display renderers (they resolve it per-render, see
 // MessageText.jsx), but this text also feeds the search index, and a block
@@ -25,13 +24,33 @@ const MESSAGE_MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
 // blocked person's real name from matching (F12). Blocked mentions collapse
 // to the anonymized phrase like every other renderer; a non-blocked mention
 // keeps its plain name, same as before.
+//
+// 🔴 DELIBERATELY NOT id-resolved, and this is the one mention surface that is
+// not. The five DISPLAY surfaces now show the name an id carries today, so a
+// deleted person's name is gone from the screen - but it is still inside the
+// stored text this index is built from, so searching the old name still finds
+// the message. That residual is known and it is NOT fixed here, for a reason
+// that is about the search rather than about the name:
+//
+//   the index would then depend on a map that fills ASYNCHRONOUSLY, so the
+//   match counter would move as names land. That is precisely the trap
+//   `STATUS.md` records - "a partial result looks exactly like a final one" -
+//   and it cost two withdrawn conclusions on 2026-10-01. Making the counter
+//   drift again, inside the PR that is supposed to make names trustworthy, is
+//   a bad trade.
+//
+// What it DOES take from the shared module is the pattern, so there is no
+// sixth private copy of the regex left to drift. Julia's call on the search
+// semantics; see the handover note.
 const sanitizeMentionsForSearch = (content, blockedIds, t) => {
-  if (!content || !content.includes("@[")) return content;
-  return content.replace(MESSAGE_MENTION_RE, (_match, name, id) =>
-    blockedIds?.has?.(String(id)) && t
-      ? `@${t("badges.card.privateProfile")}`
-      : `@${name}`,
-  );
+  if (!hasMention(content)) return content;
+  return splitMentions(content)
+    .map((segment) =>
+      segment.isMention
+        ? `@${resolveMentionLabel(segment, { blockedIds, t }).label}`
+        : segment.text,
+    )
+    .join("");
 };
 
 export const dedupeConversations = (list) =>

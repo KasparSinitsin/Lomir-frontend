@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { describeEvent } from "./describeEvent";
 import { getEventSentenceText } from "./eventSentences";
+import { resolveMentionLabel, splitMentions } from "./mentions";
 
 // Maps a file name to its lucide icon component reference (not JSX). Shared by
 // FileAttachment and the reply-preview block in MessageDisplay.
@@ -209,15 +210,19 @@ export const getEventReactionPreview = (
 export const formatReplyTooltipText = (
   content,
   eventPreview = null,
-  { blockedIds = null, t = null } = {},
+  { blockedIds = null, names = null, t = null } = {},
 ) => {
   if (eventPreview?.text) return eventPreview.text;
 
-  return String(content ?? "").replace(
-    /@\[([^\]]+)\]\(([^)]+)\)/g,
-    (_match, name, id) =>
-      blockedIds?.has?.(String(id)) && t
-        ? `@${t("badges.card.privateProfile")}`
-        : `@${name}`,
-  );
+  // Plain text, not JSX - a tooltip takes a string. The name precedence is
+  // still the shared one, which is the whole point of utils/mentions.js: this
+  // site used to carry its own unnamed inline copy of the pattern and would
+  // have been the easiest of the six to forget.
+  return splitMentions(String(content ?? ""))
+    .map((segment) =>
+      segment.isMention
+        ? `@${resolveMentionLabel(segment, { blockedIds, names, t }).label}`
+        : segment.text,
+    )
+    .join("");
 };

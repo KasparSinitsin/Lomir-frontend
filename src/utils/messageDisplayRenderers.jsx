@@ -6,11 +6,15 @@
 // `chatSearch.splitChatSearchMatches`, beside the counter it has to agree with,
 // and the three copies that used to exist here, in MessageText and in
 // ConversationList are gone. Only the <mark> styling is still per-component,
-// deliberately. MENTION_RE is still local — that dedup is a separate task.
+// deliberately.
+// ✅ And the mention rule is no longer local either - `utils/mentions.js` now
+// holds the pattern and the name precedence that all six mention surfaces
+// share. That was the "separate task" this comment used to name; resolving a
+// name from its id made it unavoidable, because the rule stopped being a
+// one-line read of stored text.
 import React from "react";
 import { splitChatSearchMatches } from "./chatSearch";
-
-const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
+import { resolveMentionLabel, splitMentions } from "./mentions";
 
 /**
  * @param {string} text
@@ -20,28 +24,38 @@ const MENTION_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
  *   quoted reply used to still show the real name after MessageText.jsx and
  *   the transcript were already fixed.
  */
-export const renderReplyContent = (text, maxLen = 120, { blockedIds = null, t = null } = {}) => {
+export const renderReplyContent = (
+  text,
+  maxLen = 120,
+  { blockedIds = null, names = null, t = null } = {},
+) => {
   if (!text) return null;
+  // ⚠️ Sliced BEFORE the mentions are read, as before: a token cut by `maxLen`
+  // stops being a mention and shows as the raw text it is. Pre-existing, and
+  // left alone so this stays a refactor.
   const sliced = text.slice(0, maxLen);
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_RE.lastIndex = 0;
-  while ((m = MENTION_RE.exec(sliced)) !== null) {
-    if (m.index > last) parts.push(<React.Fragment key={last}>{sliced.slice(last, m.index)}</React.Fragment>);
-    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
-    parts.push(
+  return splitMentions(sliced).map((segment, index) => {
+    if (!segment.isMention) {
+      return <React.Fragment key={index}>{segment.text}</React.Fragment>;
+    }
+    const { label, isAnonymized } = resolveMentionLabel(segment, {
+      blockedIds,
+      names,
+      t,
+    });
+    return (
       <span
-        key={m.index}
-        className={isBlocked ? "font-medium text-base-content/50" : "font-medium text-primary"}
+        key={index}
+        className={
+          isAnonymized
+            ? "font-medium text-base-content/50"
+            : "font-medium text-primary"
+        }
       >
-        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
-      </span>,
+        @{label}
+      </span>
     );
-    last = m.index + m[0].length;
-  }
-  if (last < sliced.length) parts.push(<React.Fragment key={last}>{sliced.slice(last)}</React.Fragment>);
-  return parts;
+  });
 };
 
 // The matching rule lives beside the counter in `chatSearch.js` — one phrase,

@@ -42,6 +42,8 @@ import {
   isMessageForCurrentChatPath,
   isOwnMessage,
 } from '../../utils/messageNotificationUtils';
+import { hasMention, resolveMentionLabel, splitMentions } from '../../utils/mentions';
+import { useMentionNames } from '../../contexts/MentionNamesContext';
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -393,30 +395,52 @@ const buildCurrentUserRemovalText = (t, payload) => {
   return payload?.title || t("messageNotifications.text.removedNoTeam");
 };
 
-const MENTION_REGEX =/@\[([^\]]+)\]\(([^)]+)\)/g;
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - both via the shared precedence in utils/mentions.js.
+// One span, resolving its own id. A component rather than a plain branch of
+// `renderTextWithMentions` because asking for the name is a side effect, and
+// the notification list does not otherwise know which ids its text mentions -
+// the same reason MentionChip asks for its own in the transcript.
+const NotificationMention = ({ segment, blockedIds, t }) => {
+  const { names, requestIds } = useMentionNames();
 
-// A block in either direction anonymizes the mention here too (F12).
+  useEffect(() => {
+    requestIds([segment.userId]);
+  }, [requestIds, segment.userId]);
+
+  const { label, isAnonymized } = resolveMentionLabel(segment, {
+    blockedIds,
+    names,
+    t,
+  });
+
+  return (
+    <span
+      className={
+        isAnonymized
+          ? "font-semibold text-base-content/50"
+          : "font-semibold text-primary"
+      }
+    >
+      @{label}
+    </span>
+  );
+};
+
 const renderTextWithMentions = (text, blockedIds = null, t = null) => {
-  if (!text || !text.includes("@[")) return text;
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_REGEX.lastIndex = 0;
-  while ((m = MENTION_REGEX.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
-    parts.push(
-      <span
-        key={m.index}
-        className={isBlocked ? "font-semibold text-base-content/50" : "font-semibold text-primary"}
-      >
-        @{isBlocked && t ? t("badges.card.privateProfile") : m[1]}
-      </span>,
-    );
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
+  if (!hasMention(text)) return text;
+  return splitMentions(text).map((segment, index) =>
+    segment.isMention ? (
+      <NotificationMention
+        key={index}
+        segment={segment}
+        blockedIds={blockedIds}
+        t={t}
+      />
+    ) : (
+      segment.text
+    ),
+  );
 };
 
 const getNotificationSenderName = (message) => {

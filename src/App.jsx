@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { MentionNamesProvider } from "./contexts/MentionNamesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { UserModalProvider } from "./contexts/UserModalContext";
 import { TeamModalProvider } from "./contexts/TeamModalContext";
@@ -163,9 +164,15 @@ function App() {
       {/* Inside AuthProvider: the account language outranks every other step
           of the precedence chain, and it arrives with the user. */}
       <LanguageProvider>
-        <Router>
-          <AppLayout />
-        </Router>
+        {/* Inside AuthProvider because it needs the signed-in user, and
+            outside Router because the resolved names are cached across
+            navigation - a mention of the same person on the chat page and in
+            a notification is one lookup, not two. */}
+        <MentionNamesProvider>
+          <Router>
+            <AppLayout />
+          </Router>
+        </MentionNamesProvider>
       </LanguageProvider>
     </AuthProvider>
   );
