@@ -40,6 +40,8 @@ import {
 import { getEventPreview } from "../../utils/eventPreview";
 import { splitChatSearchMatches } from "../../utils/chatSearch";
 import { useAuth } from "../../contexts/AuthContext";
+import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -80,16 +82,24 @@ const renderHighlightedText = (value, query) => {
   );
 };
 
-const MENTION_TOKEN_RE = /@\[([^\]]+)\]\(([^)]+)\)/g;
-
-// A block in either direction anonymizes the mention here too (F12).
-const stripMentionTokens = (text, blockedIds = null, t = null) =>
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - precedence shared via utils/mentions.js.
+//
+// ⚠️ This file held the SEVENTH and EIGHTH copies of the mention pattern, and
+// it is the reason the inventory for this work was wrong once: a grep for the
+// literal `"@["` found the other surfaces, because each pre-checks the string
+// before running its regex - this one never did, so it did not show up. Two
+// surfaces, one shared constant, both invisible to the search that found the
+// rest. Keep the pattern in one module and the question stops arising.
+const stripMentionTokens = (text, blockedIds = null, t = null, names = null) =>
   text
-    ? text.replace(MENTION_TOKEN_RE, (_match, name, id) =>
-        blockedIds?.has?.(String(id)) && t
-          ? `@${t("badges.card.privateProfile")}`
-          : `@${name}`,
-      )
+    ? splitMentions(text)
+        .map((segment) =>
+          segment.isMention
+            ? `@${resolveMentionLabel(segment, { blockedIds, names, t }).label}`
+            : segment.text,
+        )
+        .join("")
     : text;
 
 const MESSAGE_PAYLOAD_KEYS = [
@@ -252,37 +262,61 @@ const getConversationAttachmentPreview = (conversation, t) => {
   return null;
 };
 
-// A block in either direction anonymizes the mention here too (F12).
-const renderPreviewWithMentions = (text, query, blockedIds = null, t = null) => {
-  if (!text) return null;
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_TOKEN_RE.lastIndex = 0;
-  while ((m = MENTION_TOKEN_RE.exec(text)) !== null) {
-    if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
-    const isBlocked = Boolean(blockedIds?.has?.(String(m[2])));
-    parts.push({
-      type: "mention",
-      name: isBlocked && t ? t("badges.card.privateProfile") : m[1],
-      isBlocked,
-    });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+// One mention in a preview, resolving its own id. A component because asking
+// for the name is a side effect and the list does not otherwise know which ids
+// its previews mention - same shape as NotificationMention and MentionChip.
+const PreviewMention = ({ segment, blockedIds, t }) => {
+  const { names, requestIds } = useMentionNames();
 
-  return parts.map((part, idx) =>
-    part.type === "mention" ? (
-      <span
-        key={idx}
-        className={part.isBlocked ? "font-medium text-base-content/50" : "text-primary font-medium"}
-      >
-        @{part.name}
-      </span>
-    ) : (
-      <React.Fragment key={idx}>{renderHighlightedText(part.value, query)}</React.Fragment>
-    ),
+  useEffect(() => {
+    requestIds([segment.userId]);
+  }, [requestIds, segment.userId]);
+
+  const { label, isAnonymized } = resolveMentionLabel(segment, {
+    blockedIds,
+    names,
+    t,
+  });
+
+  return (
+    <span
+      className={
+        isAnonymized
+          ? "font-medium text-base-content/50"
+          : "text-primary font-medium"
+      }
+    >
+      @{label}
+    </span>
   );
+};
+
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account.
+const renderPreviewWithMentions = (
+  text,
+  query,
+  blockedIds = null,
+  t = null,
+) => {
+  if (!text) return null;
+  return splitMentions(text).map((segment, index) => {
+    if (!segment.isMention) {
+      return (
+        <React.Fragment key={index}>
+          {renderHighlightedText(segment.text, query)}
+        </React.Fragment>
+      );
+    }
+    return (
+      <PreviewMention
+        key={index}
+        segment={segment}
+        blockedIds={blockedIds}
+        t={t}
+      />
+    );
+  });
 };
 
 const ConversationList = ({
@@ -299,6 +333,8 @@ const ConversationList = ({
 }) => {
   const { t } = useTranslation();
   const { blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  // Only the plain-text path needs it here; the JSX path resolves per span.
+  const { names: mentionNames } = useMentionNames();
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -786,7 +822,7 @@ const ConversationList = ({
                   <Tooltip
                     content={
                       (previewText?.length ?? 0) > 60
-                        ? stripMentionTokens(previewText, blockedRelationshipIds, t)
+                        ? stripMentionTokens(previewText, blockedRelationshipIds, t, mentionNames)
                         : undefined
                     }
                     position="bottom"
