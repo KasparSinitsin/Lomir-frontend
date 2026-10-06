@@ -235,9 +235,21 @@ const addUserSearchParts = (parts, user) => {
  */
 const getTranslatedEventSearchParts = (
   message,
-  { viewer = null, t = null, blockedIds = null, blockedNames = null } = {},
+  {
+    viewer = null,
+    t = null,
+    blockedIds = null,
+    blockedNames = null,
+    names = null,
+  } = {},
 ) => {
-  const event = describeEvent(message?.content ?? null, viewer, blockedIds, blockedNames);
+  const event = describeEvent(
+    message?.content ?? null,
+    viewer,
+    blockedIds,
+    blockedNames,
+    names,
+  );
   const full = getEventSentenceText(t, event, "full");
   if (full == null) return null;
   // What the member typed is shown beside the banner, so it stays searchable.

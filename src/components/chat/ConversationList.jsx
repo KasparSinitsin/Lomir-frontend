@@ -42,6 +42,7 @@ import { splitChatSearchMatches } from "../../utils/chatSearch";
 import { useAuth } from "../../contexts/AuthContext";
 import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
 import { useMentionNames } from "../../contexts/MentionNamesContext";
+import { collectEventPersonIds } from "../../utils/describeEvent";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -334,7 +335,27 @@ const ConversationList = ({
   const { t } = useTranslation();
   const { blockedRelationshipIds, blockedRelationshipNames } = useAuth();
   // Only the plain-text path needs it here; the JSX path resolves per span.
-  const { names: mentionNames } = useMentionNames();
+  const { names: mentionNames, requestIds: requestEventPersonIds } =
+    useMentionNames();
+
+  /**
+   * This surface asks for its OWN event-person ids rather than relying on the
+   * transcript having asked — the same reason MessageBubble does. A surface
+   * that forgets keeps the stored name, which looks exactly like the fix not
+   * being there.
+   */
+  useEffect(() => {
+    const ids = new Set();
+    for (const conversation of conversations || []) {
+      for (const id of collectEventPersonIds(
+        getConversationLastMessageText(conversation),
+      )) {
+        ids.add(id);
+      }
+    }
+    if (ids.size > 0) requestEventPersonIds([...ids]);
+  }, [conversations, requestEventPersonIds]);
+
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -641,6 +662,7 @@ const ConversationList = ({
             t,
             blockedRelationshipIds,
             blockedRelationshipNames,
+            mentionNames,
           );
           // During search the matched message may be an older system/event
           // message (not the conversation's last message). Style it through the
@@ -655,6 +677,7 @@ const ConversationList = ({
                 t,
                 blockedRelationshipIds,
                 blockedRelationshipNames,
+                mentionNames,
               )
             : null;
           // When the hit is on the conversation's metadata (e.g. team name) and

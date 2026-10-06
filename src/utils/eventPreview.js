@@ -39,8 +39,9 @@ export const getEventPreview = (
   t = null,
   blockedIds = null,
   blockedNames = null,
+  names = null,
 ) => {
-  const event = describeEvent(lastMessage, currentUser, blockedIds, blockedNames);
+  const event = describeEvent(lastMessage, currentUser, blockedIds, blockedNames, names);
 
   if (!event) return null;
 

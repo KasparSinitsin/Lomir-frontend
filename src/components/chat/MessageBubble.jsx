@@ -21,6 +21,7 @@ import {
 } from "../../utils/messageDisplayHelpers";
 import { renderReplyContent } from "../../utils/messageDisplayRenderers";
 import { collectMentionIds } from "../../utils/mentions";
+import { collectEventPersonIds } from "../../utils/describeEvent";
 import { useMentionNames } from "../../contexts/MentionNamesContext";
 import Tooltip from "../common/Tooltip";
 import FileAttachment from "./FileAttachment";
@@ -217,7 +218,10 @@ const ReplyPreview = ({ replyPreview }) => {
   // can quote something scrolled far away or never fetched - so this surface
   // asks for its own ids rather than relying on MentionChip having asked.
   useEffect(() => {
-    requestMentionIds(collectMentionIds(replyPreview?.content));
+    requestMentionIds([
+      ...collectMentionIds(replyPreview?.content),
+      ...collectEventPersonIds(replyPreview?.content),
+    ]);
   }, [requestMentionIds, replyPreview?.content]);
 
   const expirationText = useFileExpirationText();
@@ -240,6 +244,7 @@ const ReplyPreview = ({ replyPreview }) => {
         t,
         blockedRelationshipIds,
         blockedRelationshipNames,
+        mentionNames,
       )
     : null;
   const ReplyEventIcon = replyEventPreview?.Icon;

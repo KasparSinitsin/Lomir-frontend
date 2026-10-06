@@ -44,6 +44,7 @@ import {
 } from '../../utils/messageNotificationUtils';
 import { hasMention, resolveMentionLabel, splitMentions } from '../../utils/mentions';
 import { useMentionNames } from '../../contexts/MentionNamesContext';
+import { collectEventPersonIds } from '../../utils/describeEvent';
 import { joinNameParts } from '../../utils/nameFormatters';
 import { normalizeNameForMatch } from '../../utils/describeEvent';
 
@@ -486,6 +487,12 @@ const getNotificationSenderName = (message) => {
 };
 
 const MessageNotifications = () => {
+  // A toast names people too, so it resolves from the same lookup as the
+  // transcript. A name that arrives after the toast is already on screen
+  // simply stays the stored one — acceptable for something transient, and
+  // never wrong, only stale.
+  const { names: mentionNames, requestIds: requestEventPersonIds } =
+    useMentionNames();
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -710,7 +717,8 @@ const MessageNotifications = () => {
       // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
       if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
 
-      const eventPreview = getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames);
+      requestEventPersonIds(collectEventPersonIds(eventContent));
+      const eventPreview = getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames);
       const dedupeKey =
         getRoleReopenedToastKey(eventContent, message) ||
         (parsedMessage?.type === 'member_removed_public'
@@ -730,7 +738,7 @@ const MessageNotifications = () => {
           senderIsViewer: Boolean(eventPreview?.senderIsViewer),
           text: eventPreview ? null : getMessagePreviewText(message),
           getText: eventPreview
-            ? (t) => getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames)?.text
+            ? (t) => getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames)?.text
             : null,
           isEvent: Boolean(eventPreview),
           eventIcon: eventPreview?.icon || null,
@@ -743,6 +751,8 @@ const MessageNotifications = () => {
       ]);
     }
   }, [
+    mentionNames,
+    requestEventPersonIds,
     isTeamSuppressedForCurrentUserRemoval,
     isCombinedApplicationApprovalSuppressed,
     upsertCurrentUserRemovalToast,
@@ -973,7 +983,7 @@ const MessageNotifications = () => {
             color: notification.eventColor,
             backgroundColor: notification.eventBackgroundColor,
           }) ||
-          getEventPreview(text, user, t, blockedRelationshipIds, blockedRelationshipNames);
+          getEventPreview(text, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames);
         const isEvent = Boolean(renderEventPreview);
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock

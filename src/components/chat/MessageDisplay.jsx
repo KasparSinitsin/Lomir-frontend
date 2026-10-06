@@ -1,7 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
-import { matchesViewer } from "../../utils/describeEvent";
+import {
+  collectEventPersonIds,
+  matchesViewer,
+} from "../../utils/describeEvent";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 import {
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
@@ -63,6 +67,30 @@ const MessageDisplay = ({
 }) => {
   const { t } = useTranslation();
   const { user: currentUser, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames, requestIds: requestMentionIds } = useMentionNames();
+
+  /**
+   * Every person id the rendered events name, asked for ONCE per message list
+   * rather than per banner.
+   *
+   * ⚠️ The request deliberately does not live inside `MentionById`.
+   * That component is defined inside this one, so React sees a new type on
+   * every render and remounts it — a `useEffect` in there would re-fire for
+   * every banner on every keystroke in the composer.
+   */
+  const eventPersonIds = useMemo(() => {
+    const ids = new Set();
+    for (const message of messages || []) {
+      for (const id of collectEventPersonIds(message?.content ?? null)) {
+        ids.add(id);
+      }
+    }
+    return [...ids];
+  }, [messages]);
+
+  useEffect(() => {
+    if (eventPersonIds.length > 0) requestMentionIds(eventPersonIds);
+  }, [eventPersonIds, requestMentionIds]);
 
   /**
    * The same tooltip appears at nine sites in this file, and again in
@@ -632,6 +660,20 @@ const MessageDisplay = ({
     );
   };
 
+  /**
+   * A person named by an event banner.
+   *
+   * 🟢 `name` is already the CURRENT name: `describeEvent`'s
+   * `buildPerson` resolves it from the id against the lookup, so all four
+   * paths that render an event agree. Nothing is resolved here — a hook in
+   * this component would re-fire for every banner on every render, because it
+   * is defined inside `MessageDisplay` and React remounts it each time.
+   *
+   * ⚠️ Without an id there is nothing to resolve from, and the stored
+   * name is all there is: `👑 OWNERSHIP_TEAM` and
+   * `🗑️ TEAM_DELETED` carry none at all, and prose rows written
+   * before the writers emitted tokens carry none either.
+   */
   const MentionById = ({ userId, name }) => {
     const safeName = (name || "").trim() || t("user.fallbackName");
     if (!userId) {
@@ -1249,6 +1291,7 @@ const MessageDisplay = ({
     renderMemberRemovedMessage,
     renderTeamDeletedMessage,
   } = createEventRenderers({
+    mentionNames,
     Mention,
     MentionById,
     TeamMentionById,

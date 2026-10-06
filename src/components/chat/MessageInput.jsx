@@ -124,6 +124,7 @@ const MessageInput = ({
         t,
         blockedRelationshipIds,
         blockedRelationshipNames,
+        mentionNames,
       )
     : null;
   const ReplyEventIcon = replyEventPreview

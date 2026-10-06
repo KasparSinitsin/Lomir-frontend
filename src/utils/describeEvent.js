@@ -21,6 +21,7 @@ import { parseSystemMessage } from "./messageSystemParser";
 import { getDisplayName } from "./userHelpers";
 import { DELETED_USER_DISPLAY_NAME } from "./deletedUser";
 import { joinNameParts } from "./nameFormatters";
+import { currentNameFromLookup } from "./mentions";
 
 /**
  * Every participant slot in the parser's output is a `<role>Name` / `<role>Id`
@@ -84,9 +85,45 @@ const isViewerPerson = (id, name, viewer, viewerName) => {
   return normalizeNameForMatch(name) === normalizeNameForMatch(viewerName);
 };
 
-const buildPerson = (id, rawName, viewer, viewerName, blockedIds, blockedNames) => {
-  const name = typeof rawName === "string" ? joinNameParts(rawName) || null : null;
-  const isDeleted = name === DELETED_USER_DISPLAY_NAME;
+/**
+ * 🟢 `names` is the id -> person lookup (MentionNamesContext). When it
+ * has an answer for this id, the CURRENT name wins over the one frozen into
+ * the message at write time — the rename rule decided 2026-09-30, applied at
+ * the ONE place all four render paths go through, so the transcript, the
+ * quoted reply, the conversation-list preview and the search index cannot
+ * disagree about who a banner names.
+ *
+ * ⚠️ `has` before `get`: a Map returns undefined both for "never asked"
+ * and for a stored undefined, and those two must not collapse. Never asked
+ * means keep the stored name; asked and `null` means the person is gone, which
+ * is recorded as `isDeleted` so the SENTENCE switches to its former-user
+ * wording rather than having a placeholder substituted into a named one.
+ *
+ * 🔴 No i18n here, deliberately: this module is pure, and `isDeleted` is
+ * data. The render layer turns it into `t("user.formerUser")`.
+ */
+const buildPerson = (
+  id,
+  rawName,
+  viewer,
+  viewerName,
+  blockedIds,
+  blockedNames,
+  names = null,
+) => {
+  const stored = typeof rawName === "string" ? joinNameParts(rawName) || null : null;
+
+  const key = id == null ? null : String(id);
+  const lookedUp = key != null && Boolean(names?.has?.(key));
+  const found = lookedUp ? names.get(key) : null;
+
+  const name = lookedUp
+    ? found
+      ? joinNameParts(currentNameFromLookup(found, stored || "")) || null
+      : null
+    : stored;
+
+  const isDeleted = (lookedUp && !found) || name === DELETED_USER_DISPLAY_NAME;
   const isViewer = isViewerPerson(id, name, viewer, viewerName);
   // A block in either direction anonymizes the person the same way a
   // deleted account does (F12) — the reader cannot tell blocked apart from
@@ -130,11 +167,29 @@ const buildEntity = (id, rawName) => {
  *   the id-less legacy formats
  * @returns {object|null} descriptor, or null when the content is not an event
  */
+/**
+ * The person ids an event names, for a surface to request from the lookup
+ * before rendering. Shared so the transcript, the quoted reply, the
+ * conversation list and the search index ask for the same set — a surface
+ * that forgets to ask does not break, it simply keeps the stored name, which
+ * is indistinguishable from the fix not being there.
+ */
+export const collectEventPersonIds = (content) => {
+  const event = describeEvent(content, null, null, null, null);
+  if (!event) return [];
+  const ids = [];
+  for (const person of Object.values(event.people || {})) {
+    if (person?.id != null) ids.push(String(person.id));
+  }
+  return ids;
+};
+
 export const describeEvent = (
   source,
   viewer = null,
   blockedIds = null,
   blockedNames = null,
+  names = null,
 ) => {
   const parsed =
     typeof source === "string" || source == null
@@ -156,6 +211,7 @@ export const describeEvent = (
       viewerName,
       blockedIds,
       blockedNames,
+      names,
     );
   }
 
