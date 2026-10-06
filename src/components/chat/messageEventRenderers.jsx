@@ -211,43 +211,61 @@ export const createEventRenderers = (ctx) => {
     <RoleMentionById roleId={parsedMessage.roleId} name={parsedMessage.roleName} />
   );
 
-  const renderRoleApplicationApprovedMessage = (message, parsedMessage) =>
-    renderRoleEventBanner(message, {
-      sentence: getEventSentence(t, eventOf(parsedMessage)),
+  // ⚠️ `filledUserName` below is NOT banner text — it reaches `openRoleModal`,
+  // which uses it twice: to match the role when no `roleId` was stored, and as
+  // the name the modal shows if the API returns no role. Both want the
+  // person's CURRENT name, so it comes from the descriptor rather than from
+  // the parser: the stored token freezes the name at write time, and the
+  // modal's match target (`getRoleFilledUserName`) is live data, which a
+  // renamed person's stored name no longer equals. A deleted or blocked
+  // person resolves to `null`, which is the value the modal already defaults
+  // to. `roleName` stays raw on purpose — a role is not a person.
+
+  const renderRoleApplicationApprovedMessage = (message, parsedMessage) => {
+    const event = eventOf(parsedMessage);
+
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
       roleElements: {
         role: (
           <RoleMentionById
             roleId={parsedMessage.roleId}
             name={parsedMessage.roleName}
             filledUserId={parsedMessage.applicantId}
-            filledUserName={parsedMessage.applicantName}
+            filledUserName={personOf(event, "applicant").name}
             filledAt={message.createdAt}
           />
         ),
       },
       Icon: UserCheck,
     });
+  };
 
-  const renderRoleApplicationFilledMessage = (message, parsedMessage) =>
-    renderRoleEventBanner(message, {
-      sentence: getEventSentence(t, eventOf(parsedMessage)),
+  const renderRoleApplicationFilledMessage = (message, parsedMessage) => {
+    const event = eventOf(parsedMessage);
+
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
       roleElements: {
         role: (
           <RoleMentionById
             roleId={parsedMessage.roleId}
             name={parsedMessage.roleName}
             filledUserId={parsedMessage.applicantId}
-            filledUserName={parsedMessage.applicantName}
+            filledUserName={personOf(event, "applicant").name}
             filledAt={message.createdAt}
           />
         ),
       },
       Icon: UserCheck,
     });
+  };
 
-  const renderRoleApplicationDeferredInviteMessage = (message, parsedMessage) =>
-    renderRoleEventBanner(message, {
-      sentence: getEventSentence(t, eventOf(parsedMessage)),
+  const renderRoleApplicationDeferredInviteMessage = (message, parsedMessage) => {
+    const event = eventOf(parsedMessage);
+
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
       roleElements: {
         role: plainRoleMention(parsedMessage),
         currentRole: (
@@ -255,33 +273,36 @@ export const createEventRenderers = (ctx) => {
             roleId={parsedMessage.currentRoleId}
             name={parsedMessage.currentRoleName}
             filledUserId={parsedMessage.applicantId}
-            filledUserName={parsedMessage.applicantName}
+            filledUserName={personOf(event, "applicant").name}
           />
         ),
       },
       Icon: UserSearch,
     });
+  };
 
-  const renderRoleInvitationFilledMessage = (message, parsedMessage) =>
-    renderRoleEventBanner(message, {
-      sentence: getEventSentence(t, eventOf(parsedMessage)),
+  const renderRoleInvitationFilledMessage = (message, parsedMessage) => {
+    const event = eventOf(parsedMessage);
+
+    return renderRoleEventBanner(message, {
+      sentence: getEventSentence(t, event),
       roleElements: {
         role: (
           <RoleMentionById
             roleId={parsedMessage.roleId}
             name={parsedMessage.roleName}
             filledUserId={parsedMessage.inviteeId}
-            filledUserName={parsedMessage.inviteeName}
+            filledUserName={personOf(event, "invitee").name}
             filledAt={message.createdAt}
           />
         ),
       },
       Icon: UserCheck,
     });
+  };
 
   const renderRoleInvitationAcceptedMessage = (message, parsedMessage) => {
     const event = eventOf(parsedMessage);
-    const hasInvitee = personOf(event, "invitee").isKnown;
 
     return renderRoleEventBanner(message, {
       sentence: getEventSentence(t, event),
@@ -292,7 +313,7 @@ export const createEventRenderers = (ctx) => {
             name={parsedMessage.roleName}
             filledUserId={parsedMessage.fillRole ? parsedMessage.inviteeId : null}
             filledUserName={
-              parsedMessage.fillRole && hasInvitee ? parsedMessage.inviteeName : null
+              parsedMessage.fillRole ? personOf(event, "invitee").name : null
             }
             filledAt={parsedMessage.fillRole ? message.createdAt : null}
           />
@@ -431,7 +452,6 @@ export const createEventRenderers = (ctx) => {
 
   const renderRoleFilledMessage = (message, parsedMessage) => {
     const event = eventOf(parsedMessage);
-    const hasKnownFilledUser = personOf(event, "user").isKnown;
 
     return renderRoleEventBanner(message, {
       sentence: getEventSentence(t, event),
@@ -441,7 +461,7 @@ export const createEventRenderers = (ctx) => {
             roleId={parsedMessage.roleId}
             name={parsedMessage.roleName}
             filledUserId={parsedMessage.userId}
-            filledUserName={hasKnownFilledUser ? parsedMessage.userName : null}
+            filledUserName={personOf(event, "user").name}
             filledAt={message.createdAt}
           />
         ),
