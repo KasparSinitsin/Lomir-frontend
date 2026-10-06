@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
+import { useMentionNames } from "../contexts/MentionNamesContext";
+import { collectEventPersonIds } from "../utils/describeEvent";
 import { messageService } from "../services/messageService";
 import { getConversationUpdatedAt } from "../utils/chatHelpers";
 import {
@@ -37,6 +39,12 @@ const useChatSearchState = ({
   // changes, the index is dropped and rebuilt rather than left stale.
   const { t, i18n } = useTranslation();
   const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  // 🔴 Why the index needs this at all: an event's stored text carries the name
+  // the person had when it was WRITTEN. The four paths that render an event
+  // resolve that from the id (FE #664) — this one did not, so a rename made the
+  // index disagree with the banner above it: the current name found nothing,
+  // the old one found a banner that no longer showed it.
+  const { resolveIds } = useMentionNames();
   const searchOptions = useMemo(
     () => ({
       viewer: user,
@@ -54,6 +62,18 @@ const useChatSearchState = ({
     // as a language switch — a cached index built before it would keep
     // showing the now-anonymized person's real name.
   }, [i18n.language, user?.id, blockedRelationshipIds, blockedRelationshipNames]);
+
+  // Both index paths need the same set, so it is collected the same way. The
+  // Set matters: a transcript names the same few people over and over.
+  const eventPersonIdsOf = useCallback((list) => {
+    const ids = new Set();
+    for (const message of list ?? []) {
+      for (const id of collectEventPersonIds(message?.content ?? null)) {
+        ids.add(id);
+      }
+    }
+    return [...ids];
+  }, []);
 
   const normalizedChatSearchQuery = useMemo(
     () => normalizeChatSearchText(chatSearchQuery.trim()),
@@ -96,32 +116,76 @@ const useChatSearchState = ({
       }
     }
 
+    // ⚠️ Awaited, not fired off. This string is cached per conversation and
+    // nothing rebuilds it when the names arrive, so resolving after the build
+    // would bake the stored name in for the rest of the session. The map comes
+    // back FROM `resolveIds` rather than being read from the hook: this resumes
+    // on a microtask, before React has committed the render that carries the
+    // resolution, so anything read from a render would be one batch behind.
+    const resolvedNames = await resolveIds(eventPersonIdsOf(allMessages));
+    const options = { ...searchOptions, names: resolvedNames };
+
     return {
-      text: buildMessagesSearchText(allMessages, searchOptions),
-      snippets: buildMessageSearchSnippets(allMessages, searchOptions),
+      text: buildMessagesSearchText(allMessages, options),
+      snippets: buildMessageSearchSnippets(allMessages, options),
     };
-  }, [searchOptions]);
+  }, [eventPersonIdsOf, resolveIds, searchOptions]);
 
   useEffect(() => {
-    if (!conversationId || messages.length === 0) return;
+    if (!conversationId || messages.length === 0) return undefined;
 
     const key = `${conversationType}:${conversationId}`;
-    const activeMessagesSearchText = buildMessagesSearchText(
-      messages,
-      searchOptions,
-    );
+    // Guards against a superseded run landing last: `messages` changes as
+    // history pages in, and the older build must not overwrite the newer one.
+    let cancelled = false;
 
-    setChatMessageSearchIndex((prev) => ({
-      ...prev,
-      [key]: normalizeChatSearchText(
-        `${prev[key] || ""} ${activeMessagesSearchText}`,
-      ),
-    }));
-    setChatMessageSearchSnippets((prev) => ({
-      ...prev,
-      [key]: buildMessageSearchSnippets(messages, searchOptions),
-    }));
-  }, [conversationId, conversationType, messages, searchOptions]);
+    // 🔴 AWAITED, and `names` is deliberately NOT a dependency — rebuilding on
+    // every resolution batch would make the match counter MOVE as names land,
+    // and this file already rejected exactly that for @-mentions:
+    // "a partial result looks exactly like a final one" (see
+    // `sanitizeMentionsForSearch` in chatSearch.js, and `STATUS.md`). It cost
+    // two withdrawn conclusions on 2026-10-01. One build, after the ids this
+    // conversation needs have been looked up, is the same shape the
+    // cross-conversation path uses — so neither index drifts.
+    const buildIndex = async () => {
+      const resolvedNames = await resolveIds(eventPersonIdsOf(messages));
+      if (cancelled) return;
+
+      const options = { ...searchOptions, names: resolvedNames };
+      // ⚠️ REPLACES, where this appended to `prev[key]` until 2026-10-06. The
+      // string is built from the whole `messages` array every time, so
+      // appending added a second copy of everything already indexed on each
+      // new message or page of history — inflating `countChatSearchMatches`,
+      // the number that orders the conversation list. Its snippet sibling
+      // below always replaced; that disagreement is what gave it away.
+      const activeMessagesSearchText = buildMessagesSearchText(
+        messages,
+        options,
+      );
+
+      setChatMessageSearchIndex((prev) => ({
+        ...prev,
+        [key]: activeMessagesSearchText,
+      }));
+      setChatMessageSearchSnippets((prev) => ({
+        ...prev,
+        [key]: buildMessageSearchSnippets(messages, options),
+      }));
+    };
+
+    buildIndex();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    conversationId,
+    conversationType,
+    eventPersonIdsOf,
+    messages,
+    resolveIds,
+    searchOptions,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated || !isChatSearchActive || conversations.length === 0) {
