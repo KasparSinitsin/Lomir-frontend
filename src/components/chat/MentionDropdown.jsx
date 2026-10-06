@@ -1,5 +1,6 @@
 import React from "react";
 import { getUserInitials } from "../../utils/userHelpers";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const MentionDropdown = ({ participants, query, onSelect }) => {
   const filtered = participants.filter((p) => {
@@ -35,7 +36,7 @@ const MentionDropdown = ({ participants, query, onSelect }) => {
           );
         }
 
-        const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+        const fullName = joinNameParts(p.firstName, p.lastName);
         const initials = getUserInitials(p);
         return (
           <button

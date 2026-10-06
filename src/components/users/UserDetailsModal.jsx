@@ -40,6 +40,7 @@ import {
   calculateDistanceKm,
   locationsHaveDifferentKnownParts,
 } from "../../utils/locationUtils";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const normalizeNumericSet = (values) => {
   if (values == null) return null;
@@ -670,7 +671,7 @@ const UserDetailsModal = ({
 
   const getUserDisplayName = () => {
     if (user?.first_name && user?.last_name) {
-      return `${user.first_name} ${user.last_name}`;
+      return joinNameParts(user.first_name, user.last_name);
     }
     return user?.username || t("user.fallbackName");
   };

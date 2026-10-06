@@ -11,6 +11,9 @@
  * Never enable this for a deployed build. The markers are what tells a real
  * visitor that a profile is not a real person.
  */
+
+import { joinNameParts } from "./nameFormatters";
+
 const HIDE_DEMO_MARKERS =
   import.meta.env?.VITE_HIDE_DEMO_MARKERS === "true";
 
@@ -84,7 +87,7 @@ export const getDisplayName = (user) => {
 
   const firstName = user.first_name || user.firstName || "";
   const lastName = user.last_name || user.lastName || "";
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = joinNameParts(firstName, lastName);
 
   if (fullName.length > 0) return fullName;
   return user.username || "Unknown";

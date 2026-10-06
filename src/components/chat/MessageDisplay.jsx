@@ -39,6 +39,7 @@ import {
 import { parseSystemMessage } from "../../utils/messageSystemParser";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const MessageDisplay = ({
   messages,
@@ -237,7 +238,7 @@ const MessageDisplay = ({
     if (!userData) return "";
     const first = userData.firstName ?? userData.first_name;
     const last = userData.lastName ?? userData.last_name;
-    if (first && last) return `${first} ${last}`;
+    if (first && last) return joinNameParts(first, last);
     if (first) return first;
     return userData.username ?? "";
   };
@@ -528,7 +529,7 @@ const MessageDisplay = ({
   const getTeamMemberFullName = (m) => {
     const first = m.first_name ?? m.firstName;
     const last = m.last_name ?? m.lastName;
-    if (first && last) return `${first} ${last}`;
+    if (first && last) return joinNameParts(first, last);
     if (first) return first;
     return m.username ?? "";
   };
@@ -725,7 +726,7 @@ const MessageDisplay = ({
       user.firstName ?? user.first_name ?? role?.filledByUserFirstName ?? role?.filled_by_user_first_name ?? "";
     const lastName =
       user.lastName ?? user.last_name ?? role?.filledByUserLastName ?? role?.filled_by_user_last_name ?? "";
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = joinNameParts(firstName, lastName);
     return (
       fullName ||
       user.username ||
@@ -1296,7 +1297,10 @@ const MessageDisplay = ({
                 >
                   {resolvedConversationPartner.firstName &&
                   resolvedConversationPartner.lastName
-                    ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                    ? joinNameParts(
+                        resolvedConversationPartner.firstName,
+                        resolvedConversationPartner.lastName,
+                      )
                     : resolvedConversationPartner.username}
                 </h3>
               </Tooltip>
@@ -1416,7 +1420,10 @@ const MessageDisplay = ({
               >
                 {resolvedConversationPartner.firstName &&
                 resolvedConversationPartner.lastName
-                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                  ? joinNameParts(
+                      resolvedConversationPartner.firstName,
+                      resolvedConversationPartner.lastName,
+                    )
                   : resolvedConversationPartner.username}
               </h3>
             </Tooltip>

@@ -9,6 +9,7 @@ import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
 import UserAvatar from "../components/users/UserAvatar";
 import DeletedUserProfilePlaceholder from "../components/users/DeletedUserProfilePlaceholder";
 import { useUserProfile } from "../hooks/useUserQueries";
+import { joinNameParts } from "../utils/nameFormatters";
 
 // ⚠️ The fallback is resolved by the caller, not here: a name built outside
 // render keeps the old language after a language switch. It also means "no name
@@ -17,7 +18,7 @@ import { useUserProfile } from "../hooks/useUserQueries";
 const getUserDisplayName = (user, fallbackName) => {
   const firstName = user?.firstName || user?.first_name || "";
   const lastName = user?.lastName || user?.last_name || "";
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = joinNameParts(firstName, lastName);
 
   return fullName || user?.username || fallbackName;
 };

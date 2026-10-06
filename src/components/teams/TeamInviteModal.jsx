@@ -49,6 +49,7 @@ import { formatDateMedium } from "../../utils/dateHelpers";
 import { formatListLocation } from "../../utils/locationUtils";
 import { getTeamErrorText } from "../../utils/teamErrorText";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const normalizeId = normalizeNumericId;
 const idsMatch = numericIdsMatch;
@@ -512,7 +513,7 @@ const TeamInviteModal = ({
   const getInviteeDisplayName = () => {
     const first = inviteeFirstName || "";
     const last = inviteeLastName || "";
-    const fullName = `${first} ${last}`.trim();
+    const fullName = joinNameParts(first, last);
 
     if (fullName.length > 0) {
       return fullName;
@@ -811,7 +812,7 @@ const TeamInviteModal = ({
     const update = () => {
       const first = inviteeFirstName || "";
       const last = inviteeLastName || "";
-      const full = `${first} ${last}`.trim();
+      const full = joinNameParts(first, last);
       const displayName = inviteeIsPrivateProfile
         ? t("user.privateProfile")
         : full || inviteeName || inviteeUsername || t("requestList.unknownUser");

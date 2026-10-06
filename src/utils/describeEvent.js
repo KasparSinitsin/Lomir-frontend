@@ -20,6 +20,7 @@
 import { parseSystemMessage } from "./messageSystemParser";
 import { getDisplayName } from "./userHelpers";
 import { DELETED_USER_DISPLAY_NAME } from "./deletedUser";
+import { joinNameParts } from "./nameFormatters";
 
 /**
  * Every participant slot in the parser's output is a `<role>Name` / `<role>Id`
@@ -84,7 +85,7 @@ const isViewerPerson = (id, name, viewer, viewerName) => {
 };
 
 const buildPerson = (id, rawName, viewer, viewerName, blockedIds, blockedNames) => {
-  const name = typeof rawName === "string" ? rawName.trim() || null : null;
+  const name = typeof rawName === "string" ? joinNameParts(rawName) || null : null;
   const isDeleted = name === DELETED_USER_DISPLAY_NAME;
   const isViewer = isViewerPerson(id, name, viewer, viewerName);
   // A block in either direction anonymizes the person the same way a
@@ -115,7 +116,7 @@ const buildPerson = (id, rawName, viewer, viewerName, blockedIds, blockedNames) 
 };
 
 const buildEntity = (id, rawName) => {
-  const name = typeof rawName === "string" ? rawName.trim() || null : null;
+  const name = typeof rawName === "string" ? joinNameParts(rawName) || null : null;
   return { id: id ?? null, name, isKnown: Boolean(name) };
 };
 

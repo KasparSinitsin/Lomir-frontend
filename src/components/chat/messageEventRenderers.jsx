@@ -19,6 +19,7 @@ import { getEventSentence, splitEventSentence } from "../../utils/eventSentences
 import { formatLocalTime } from "../../utils/dateHelpers";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import ReadReceipt from "./ReadReceipt";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 // Event/system message renderers extracted from MessageDisplay.jsx (Stage 4b).
 // createEventRenderers receives a `ctx` bag of the parent-owned mention
@@ -119,12 +120,10 @@ export const createEventRenderers = (ctx) => {
     if (person.isKnown || person.isDeleted || !senderInfo) return person;
 
     const name =
-      [
+      joinNameParts(
         senderInfo.firstName || senderInfo.first_name,
         senderInfo.lastName || senderInfo.last_name,
-      ]
-        .filter(Boolean)
-        .join(" ") ||
+      ) ||
       senderInfo.username ||
       senderInfo.userName ||
       null;

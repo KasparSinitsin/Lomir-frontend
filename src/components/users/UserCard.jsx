@@ -34,6 +34,7 @@ import {
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 /**
  * UserCard Component
@@ -68,7 +69,7 @@ const UserCard = ({
     const lastName = user.last_name || user.lastName || "";
 
     if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
+      return joinNameParts(firstName, lastName);
     } else if (firstName) {
       return firstName;
     } else if (lastName) {

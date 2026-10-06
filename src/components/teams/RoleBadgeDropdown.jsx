@@ -4,6 +4,7 @@ import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
 import RoleBadgePill from "../common/RoleBadgePill";
 import ConfirmModal from "../common/ConfirmModal";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const RoleBadgeDropdown = ({
   member,
@@ -60,7 +61,7 @@ const RoleBadgeDropdown = ({
   const getMemberName = () => {
     const first = member.first_name || member.firstName;
     const last = member.last_name || member.lastName;
-    if (first && last) return `${first} ${last}`;
+    if (first && last) return joinNameParts(first, last);
     return first || member.username || t("roleManagement.thisMember");
   };
 

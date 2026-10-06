@@ -44,6 +44,7 @@ import {
 } from '../../utils/messageNotificationUtils';
 import { hasMention, resolveMentionLabel, splitMentions } from '../../utils/mentions';
 import { useMentionNames } from '../../contexts/MentionNamesContext';
+import { joinNameParts } from '../../utils/nameFormatters';
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -457,7 +458,7 @@ const getNotificationSenderName = (message) => {
     sender?.lastName ??
     sender?.last_name ??
     "";
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = joinNameParts(firstName, lastName);
 
   return [
     message?.senderDisplayName ??

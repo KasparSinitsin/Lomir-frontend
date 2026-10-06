@@ -46,6 +46,7 @@ import {
   getBadgeName,
   getCategoryLabel,
 } from "../../utils/badgeLabels";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 /**
  * BadgeAwardModal Component
@@ -192,7 +193,7 @@ const BadgeAwardModal = ({
   const getDisplayName = () => {
     const first = awardeeFirstName || "";
     const last = awardeeLastName || "";
-    const full = `${first} ${last}`.trim();
+    const full = joinNameParts(first, last);
     return full || awardeeUsername || t("badges.award.modal.unknownPerson");
   };
 
@@ -207,7 +208,7 @@ const BadgeAwardModal = ({
    */
   const getAbbreviatedName = () => {
     return (
-      (awardeeFirstName || "").split(" ")[0] ||
+      joinNameParts(awardeeFirstName).split(" ")[0] ||
       awardeeUsername ||
       t("badges.award.modal.unknownPerson")
     );
@@ -340,7 +341,7 @@ const BadgeAwardModal = ({
     const update = () => {
       const first = awardeeFirstName || "";
       const last = awardeeLastName || "";
-      const full = `${first} ${last}`.trim();
+      const full = joinNameParts(first, last);
       const displayName =
         full || awardeeUsername || t("badges.award.modal.unknownPerson");
       const dateEl = dateRef.current;

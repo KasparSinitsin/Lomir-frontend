@@ -25,6 +25,7 @@ import MentionDropdown from "./MentionDropdown";
 import { getEventPreview } from "../../utils/eventPreview";
 import { getFileExpirationStatus } from "../../utils/fileExpiration";
 import { useFileExpirationText } from "../../hooks/useFileExpirationText";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -205,7 +206,7 @@ const MessageInput = ({
   };
 
   const handleMentionSelect = (participant) => {
-    const fullName = `${participant.firstName || ""} ${participant.lastName || ""}`.trim();
+    const fullName = joinNameParts(participant.firstName, participant.lastName);
     const cursorPos = inputRef.current?.selectionStart ?? message.length;
     const before = message.slice(0, mentionStart);
     const after = message.slice(cursorPos);
