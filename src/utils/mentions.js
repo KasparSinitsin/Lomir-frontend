@@ -126,6 +126,36 @@ export const collectMentionIds = (input) => {
  * @param {Function|null} options.t
  * @returns {{ label: string, isAnonymized: boolean, isDeleted: boolean }}
  */
+/**
+ * The CURRENT display name for a person the lookup has returned, falling back
+ * to `stored` when the row carries no name at all.
+ *
+ * 🔴 Runs of whitespace are COLLAPSED, not just trimmed, and that is
+ * measured rather than tidy: `deletion-audit/14` section F found 10 of 90
+ * stored mention tokens differing from the current name by spacing ALONE, and
+ * F3 located the extra space on both sides — some in the token, some in the
+ * `users` row itself. Resolving from the id renders the users row, so without
+ * this collapse the fix would START printing "Anna  Kowalski" into transcripts
+ * where the stored token read correctly. `.trim()` alone does not reach an
+ * internal double space.
+ *
+ * ⚠️ `formatDisplayName` (utils/nameFormatters.js) is deliberately NOT
+ * used here. It abbreviates middle names to initials once the name passes 18
+ * characters, so a resolved name would read "Anna M. Kowalski" where the
+ * person typed "@Anna Maria Kowalski" — a resolution that renames people is
+ * worse than a stale name.
+ *
+ * 🟢 Extracted so `describeEvent` can use the identical rule: it
+ * resolves the people in EVENT sentences, and the four paths that render an
+ * event must not disagree with the mention beside them.
+ */
+export const currentNameFromLookup = (person, stored = "") => {
+  const current = `${person?.firstName || ""} ${person?.lastName || ""}`
+    .replace(/\s+/g, " ")
+    .trim();
+  return current || person?.username || stored;
+};
+
 export const resolveMentionLabel = (
   mention,
   { blockedIds = null, names = null, t = null } = {},
@@ -176,10 +206,7 @@ export const resolveMentionLabel = (
     // worse than a stale name. (It used to mangle a double-spaced long name
     // into "Anna . Kowalski" by splitting on a single space; FE #662 fixed
     // that at the helper. The abbreviation itself is still why this stays.)
-    const current = `${person.firstName || ""} ${person.lastName || ""}`
-      .replace(/\s+/g, " ")
-      .trim();
-    const label = current || person.username || stored;
+    const label = currentNameFromLookup(person, stored);
     return { label, isAnonymized: false, isDeleted: false };
   }
 

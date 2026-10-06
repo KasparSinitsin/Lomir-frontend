@@ -5,6 +5,22 @@
 // callers (eventPreview, MessageNotifications) can share it without importing
 // the component.
 
+/**
+ * `"157:Anna Kowalski"` -> `{ id: 157, name: "Anna Kowalski" }`, and a token
+ * with no id prefix -> `{ id: null, name: token }`.
+ *
+ * ⚠️ That fallback is the whole compatibility story for the five PROSE
+ * formats (👋 / 🎉 / 🎯). They are the ones the backend
+ * wrote with a bare name, so every row already stored keeps parsing unchanged
+ * while new rows carry an id. The tolerance is structural, not a timed window
+ * like `LEGACY_REPORT_TOPIC` — there is nothing here to remove later, because
+ * rows written years apart stay readable side by side.
+ *
+ * 🔴 Deploy order follows from this, in one direction only: the FRONTEND
+ * must ship before the backend starts writing tokens. Until the person slots
+ * below go through this function, a captured `"157:Anna Kowalski"` is rendered
+ * verbatim as the person's name, so an id would appear in the sentence.
+ */
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
   const m = t.match(/^(\d+)\s*:(.+)$/);
@@ -28,9 +44,11 @@ const parseSystemMessageRaw = (content) => {
     /^👋\s+(.+?)\s+joined the team as (.+?)!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinWithRoleMatch) {
+    const user = parseIdNameToken(joinWithRoleMatch[1]);
     return {
       type: "team_join",
-      userName: joinWithRoleMatch[1].trim(),
+      userId: user.id,
+      userName: user.name,
       roleName: joinWithRoleMatch[2].trim(),
       personalMessage: joinWithRoleMatch[3]?.trim() ?? null,
     };
@@ -40,9 +58,11 @@ const parseSystemMessageRaw = (content) => {
     /^👋\s+(.+?)\s+joined the team!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinMatch) {
+    const user = parseIdNameToken(joinMatch[1]);
     return {
       type: "team_join",
-      userName: joinMatch[1].trim(),
+      userId: user.id,
+      userName: user.name,
       personalMessage: joinMatch[2]?.trim() ?? null,
     };
   }
@@ -67,10 +87,14 @@ const parseSystemMessageRaw = (content) => {
   );
 
   if (applicationApprovedMatch) {
+    const applicant = parseIdNameToken(applicationApprovedMatch[1]);
+    const approver = parseIdNameToken(applicationApprovedMatch[2]);
     return {
       type: "application_approved",
-      applicantName: applicationApprovedMatch[1].trim(),
-      approverName: applicationApprovedMatch[2].trim(),
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      approverId: approver.id,
+      approverName: approver.name,
     };
   }
 
@@ -388,9 +412,11 @@ const parseSystemMessageRaw = (content) => {
     /^🎯\s+(.+?)\s+was assigned the role\s+(.+?)!(?:\s*\n+"(.+)")?$/s,
   );
   if (roleInvitationAssignedMatch) {
+    const invitee = parseIdNameToken(roleInvitationAssignedMatch[1]);
     return {
       type: "role_invitation_assigned_legacy",
-      inviteeName: roleInvitationAssignedMatch[1].trim(),
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
       roleName: roleInvitationAssignedMatch[2].trim(),
       personalMessage: roleInvitationAssignedMatch[3]?.trim() ?? null,
     };
@@ -409,9 +435,11 @@ const parseSystemMessageRaw = (content) => {
     /^🎯\s+(.+?)\s+accepted a role invitation!(?:\s*\n+"(.+)")?$/s,
   );
   if (roleInvitationAcceptedLegacyMatch) {
+    const invitee = parseIdNameToken(roleInvitationAcceptedLegacyMatch[1]);
     return {
       type: "role_invitation_accepted_legacy",
-      inviteeName: roleInvitationAcceptedLegacyMatch[1].trim(),
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
       personalMessage: roleInvitationAcceptedLegacyMatch[2]?.trim() ?? null,
     };
   }

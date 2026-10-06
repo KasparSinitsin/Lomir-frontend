@@ -64,8 +64,9 @@ export const getEventReactionPreview = (
   t = null,
   blockedIds = null,
   blockedNames = null,
+  names = null,
 ) => {
-  const event = describeEvent(content, viewer, blockedIds, blockedNames);
+  const event = describeEvent(content, viewer, blockedIds, blockedNames, names);
   if (!event) return null;
 
   switch (event.type) {

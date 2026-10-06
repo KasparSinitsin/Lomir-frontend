@@ -27,6 +27,7 @@ import { joinNameParts } from "../../utils/nameFormatters";
 // functions with their bodies kept verbatim.
 export const createEventRenderers = (ctx) => {
   const {
+    mentionNames,
     Mention,
     MentionById,
     TeamMentionById,
@@ -52,6 +53,9 @@ export const createEventRenderers = (ctx) => {
     describeEvent(
       parsedMessage,
       currentUser ?? (currentUserId != null ? { id: currentUserId } : null),
+      null,
+      null,
+      mentionNames,
     );
 
   // =============================================================================
