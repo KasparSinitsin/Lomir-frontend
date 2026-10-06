@@ -1,12 +1,18 @@
 import React from "react";
 import { getUserInitials } from "../../utils/userHelpers";
 import { joinNameParts } from "../../utils/nameFormatters";
+import { normalizeNameForMatch } from "../../utils/describeEvent";
 
 const MentionDropdown = ({ participants, query, onSelect }) => {
   const filtered = participants.filter((p) => {
     if (p.id === "all") return "all".includes(query.toLowerCase().trim());
-    const fullName = `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().trim();
-    return fullName.includes(query.toLowerCase().trim());
+    // Both sides go through the project's canonical matcher. A stored name can
+    // carry a stray space of its own, and comparing a correctly typed query
+    // against the raw spelling stops matching the moment the surname begins:
+    // "@Anna" hit, "@Anna " hit, "@Anna K" missed, so the person could not be
+    // mentioned at all.
+    const fullName = normalizeNameForMatch(joinNameParts(p.firstName, p.lastName));
+    return fullName.includes(normalizeNameForMatch(query || ""));
   });
 
   if (filtered.length === 0) return null;
