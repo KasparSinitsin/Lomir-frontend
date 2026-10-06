@@ -45,6 +45,7 @@ import {
 import { hasMention, resolveMentionLabel, splitMentions } from '../../utils/mentions';
 import { useMentionNames } from '../../contexts/MentionNamesContext';
 import { joinNameParts } from '../../utils/nameFormatters';
+import { normalizeNameForMatch } from '../../utils/describeEvent';
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -353,16 +354,24 @@ const getRoleEventUserIdFromPayload = (payload) =>
   null;
 
 const isCurrentUserName = (name, user) => {
-  const normalizedName = String(name || '').trim().toLowerCase();
+  // The canonical matcher, which collapses interior whitespace as well as the
+  // edges. This site used to trim only, while its two siblings
+  // (describeEvent's normalizeNameForMatch, MessageDisplay's normalizeName)
+  // collapse — so a stored name carrying a stray space made the viewer's OWN
+  // name go unrecognised here and nowhere else.
+  const normalizedName = normalizeNameForMatch(String(name || ''));
   if (!normalizedName) return false;
 
-  const userFullName = `${user?.firstName || user?.first_name || ''} ${user?.lastName || user?.last_name || ''}`
-    .trim()
-    .toLowerCase();
+  const userFullName = normalizeNameForMatch(
+    joinNameParts(
+      user?.firstName || user?.first_name,
+      user?.lastName || user?.last_name,
+    ),
+  );
 
   return (
     normalizedName === userFullName ||
-    normalizedName === String(user?.username || '').trim().toLowerCase()
+    normalizedName === normalizeNameForMatch(String(user?.username || ''))
   );
 };
 

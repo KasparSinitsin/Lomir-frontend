@@ -173,9 +173,9 @@ export const resolveMentionLabel = (
     // here. It abbreviates middle names to initials once the name passes 18
     // characters, so a resolved mention would read "Anna M. Kowalski" where the
     // person typed "@Anna Maria Kowalski" - a resolution that renames people is
-    // worse than a stale name. It also mangles a double-spaced long name into
-    // "Anna . Kowalski", because it splits on a single space; that is its own
-    // finding, not fixed here, since the helper has call sites everywhere.
+    // worse than a stale name. (It used to mangle a double-spaced long name
+    // into "Anna . Kowalski" by splitting on a single space; FE #662 fixed
+    // that at the helper. The abbreviation itself is still why this stays.)
     const current = `${person.firstName || ""} ${person.lastName || ""}`
       .replace(/\s+/g, " ")
       .trim();
