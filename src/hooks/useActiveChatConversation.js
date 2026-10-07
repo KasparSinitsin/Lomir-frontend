@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
+import { useMentionNames } from "../contexts/MentionNamesContext";
+import { collectEventPersonIds } from "../utils/describeEvent";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
@@ -43,6 +45,15 @@ const useActiveChatConversation = ({
   const dedupeMessagesRef = useRef(dedupeMessages);
   const { t } = useTranslation();
   const { blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  // The highlight set must be computed from the SAME text the index matched,
+  // so this resolves names too — see `useChatSearchState`. Without it a search
+  // for a renamed person's current name produced hits whose highlights the
+  // revealed conversation then failed to reproduce.
+  const { resolveIds } = useMentionNames();
+  // Behind a ref for the reason `searchOptionsRef` is: this feeds the fetch
+  // effect, and a new identity there would refetch the conversation rather than
+  // re-match it.
+  const resolveIdsRef = useRef(resolveIds);
   // Read through a ref like dedupeMessages: a language switch must re-match
   // the search target, not refetch the conversation.
   const searchOptionsRef = useRef({
@@ -55,6 +66,10 @@ const useActiveChatConversation = ({
   useEffect(() => {
     dedupeMessagesRef.current = dedupeMessages;
   }, [dedupeMessages]);
+
+  useEffect(() => {
+    resolveIdsRef.current = resolveIds;
+  }, [resolveIds]);
 
   useEffect(() => {
     searchOptionsRef.current = {
@@ -319,14 +334,31 @@ const useActiveChatConversation = ({
             )
           ) {
             const query = searchTarget.query;
-            const allMatchingIds = query
-              ? fetchedMessages
-                  .filter((msg) =>
-                    buildMessageSearchText(msg, searchOptionsRef.current).includes(query),
-                  )
-                  .map((msg) => msg.id)
-                  .filter(Boolean)
-              : [];
+            let allMatchingIds = [];
+
+            if (query) {
+              const eventPersonIds = new Set();
+              for (const msg of fetchedMessages) {
+                for (const id of collectEventPersonIds(msg?.content ?? null)) {
+                  eventPersonIds.add(id);
+                }
+              }
+              // Awaited for the same reason the index awaits: this runs once
+              // per reveal and nothing recomputes it, so an unresolved name
+              // here is a highlight that never appears.
+              const resolvedNames = await resolveIdsRef.current([...eventPersonIds]);
+              const matchOptions = {
+                ...searchOptionsRef.current,
+                names: resolvedNames,
+              };
+
+              allMatchingIds = fetchedMessages
+                .filter((msg) =>
+                  buildMessageSearchText(msg, matchOptions).includes(query),
+                )
+                .map((msg) => msg.id)
+                .filter(Boolean);
+            }
             const highlightIds = [
               searchTarget.messageId,
               ...allMatchingIds.filter(
