@@ -670,9 +670,8 @@ const MessageDisplay = ({
    * is defined inside `MessageDisplay` and React remounts it each time.
    *
    * ⚠️ Without an id there is nothing to resolve from, and the stored
-   * name is all there is: `👑 OWNERSHIP_TEAM` and
-   * `🗑️ TEAM_DELETED` carry none at all, and prose rows written
-   * before the writers emitted tokens carry none either.
+   * name is all there is for legacy ownership, team-deletion and prose rows
+   * written before their writers emitted tokens.
    */
   const MentionById = ({ userId, name }) => {
     const safeName = (name || "").trim() || t("user.fallbackName");
@@ -1303,7 +1302,7 @@ const MessageDisplay = ({
     getReadByTooltip,
     currentUserId,
     // The id alone cannot decide "is this me?" for the wire formats that carry
-    // names only — OWNERSHIP_TEAM has no ids at all.
+    // names only, including legacy OWNERSHIP_TEAM rows.
     currentUser,
     conversationType,
     teamMembers,

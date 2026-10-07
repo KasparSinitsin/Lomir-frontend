@@ -730,10 +730,14 @@ const parseSystemMessageRaw = (content) => {
     /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (ownershipTeamMatch) {
+    const prev = parseIdNameToken(ownershipTeamMatch[1]);
+    const next = parseIdNameToken(ownershipTeamMatch[2]);
     return {
       type: "ownership_team",
-      prevOwnerName: ownershipTeamMatch[1].trim(),
-      newOwnerName: ownershipTeamMatch[2].trim(),
+      prevOwnerId: prev.id,
+      prevOwnerName: prev.name,
+      newOwnerId: next.id,
+      newOwnerName: next.name,
     };
   }
 

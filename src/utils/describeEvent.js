@@ -45,7 +45,7 @@ const sameId = (a, b) =>
 
 /**
  * ⚠️ The name comparison is the fallback for legacy messages that carry a name
- * but no id (the 👋 / 🎯 / prose formats the backend still writes). It is kept
+ * but no id (older 👋 / 🎯 / prose and ownership rows). It is kept
  * from `eventPreview.getActorLabel`, where it was the only way "You" could be
  * decided for those. Id first, always.
  */
@@ -62,8 +62,8 @@ export const normalizeNameForMatch = (value) =>
 
 /**
  * Exported because the transcript's mention helpers need the identical rule:
- * six stored formats carry names but no ids at all (the 👋 / 🎯 / prose
- * messages, OWNERSHIP_TEAM, the legacy leave and reopen lines). An id-only
+ * legacy rows carry names but no ids (older 👋 / 🎯 / prose and OWNERSHIP_TEAM
+ * messages, plus the legacy leave and reopen lines). An id-only
  * check silently fails on every one of them.
  */
 export const matchesViewer = (id, name, viewer) =>
