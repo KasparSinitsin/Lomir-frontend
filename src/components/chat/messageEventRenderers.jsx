@@ -990,8 +990,7 @@ export const createEventRenderers = (ctx) => {
   // renderOwnershipTeamMessage - Pink owner theme (team chat)
   // =============================================================================
   const renderOwnershipTeamMessage = (message, parsedMessage) => {
-    // ⚠️ OWNERSHIP_TEAM carries names only — no ids (messageSystemParser
-    // "Pattern 14"), so the reader is recognised by name in describeEvent.
+    // describeEvent uses the owner ids, with a name fallback for legacy rows.
     const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (
