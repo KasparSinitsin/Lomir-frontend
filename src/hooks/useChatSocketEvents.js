@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { parseSystemMessage } from "../utils/messageSystemParser";
 import { messageService } from "../services/messageService";
@@ -70,6 +71,59 @@ const useChatSocketEvents = ({
   user,
 }) => {
   const { t } = useTranslation();
+
+  // Emits sent while the socket was down never arrive, so after a reconnect
+  // the open conversation pulls its latest page and adds only what is missing.
+  // Merging, not replacing, keeps the earlier pages the reader had loaded. The
+  // server-side socket is new, so the conversation room is joined again too.
+  useEffect(() => {
+    if (!isAuthenticated || !conversationId) return undefined;
+
+    let isCurrent = true;
+
+    const catchUpAfterReconnect = async () => {
+      const currentType =
+        new URLSearchParams(window.location.search).get("type") || "direct";
+
+      socketService.joinConversation(conversationId, currentType);
+      refreshConversationList();
+
+      try {
+        const response = await messageService.getMessages(
+          conversationId,
+          currentType,
+        );
+        if (!isCurrent) return;
+        const latestMessages = response.data || [];
+
+        setMessages((prev) => {
+          const knownIds = new Set(prev.map((msg) => String(msg.id)));
+          const missedMessages = latestMessages.filter(
+            (msg) => !knownIds.has(String(msg.id)),
+          );
+          return missedMessages.length > 0
+            ? dedupeMessages([...prev, ...missedMessages])
+            : prev;
+        });
+        socketService.markMessagesAsRead(conversationId, currentType);
+      } catch (err) {
+        console.error("Error catching up on messages after reconnect:", err);
+      }
+    };
+
+    const unsubscribe = socketService.onSocketReconnected(catchUpAfterReconnect);
+
+    return () => {
+      isCurrent = false;
+      unsubscribe();
+    };
+  }, [
+    conversationId,
+    dedupeMessages,
+    isAuthenticated,
+    refreshConversationList,
+    setMessages,
+  ]);
 
   useSocketEvents((socket) => {
     if (!socket || !isAuthenticated) {
