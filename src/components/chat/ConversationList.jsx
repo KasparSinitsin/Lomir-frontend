@@ -266,7 +266,7 @@ const getConversationAttachmentPreview = (conversation, t) => {
 // One mention in a preview, resolving its own id. A component because asking
 // for the name is a side effect and the list does not otherwise know which ids
 // its previews mention - same shape as NotificationMention and MentionChip.
-const PreviewMention = ({ segment, blockedIds, t }) => {
+const PreviewMention = ({ segment, query, blockedIds, t }) => {
   const { names, requestIds } = useMentionNames();
 
   useEffect(() => {
@@ -287,7 +287,8 @@ const PreviewMention = ({ segment, blockedIds, t }) => {
           : "text-primary font-medium"
       }
     >
-      @{label}
+      {/* Same string the search index holds for a mention, as in MentionChip. */}
+      {renderHighlightedText(`@${label}`, query)}
     </span>
   );
 };
@@ -313,6 +314,7 @@ const renderPreviewWithMentions = (
       <PreviewMention
         key={index}
         segment={segment}
+        query={query}
         blockedIds={blockedIds}
         t={t}
       />

@@ -151,7 +151,7 @@ const LinkChip = ({ href }) => {
   );
 };
 
-const MentionChip = ({ name, userId, onUserClick }) => {
+const MentionChip = ({ name, userId, searchQuery, onUserClick }) => {
   const { t } = useTranslation();
   const { blockedRelationshipIds } = useAuth();
   const { names, requestIds } = useMentionNames();
@@ -172,14 +172,19 @@ const MentionChip = ({ name, userId, onUserClick }) => {
     { blockedIds: blockedRelationshipIds, names, t },
   );
 
+  // The search index holds a mention as `@<resolved label>` (see
+  // sanitizeMentionsForSearch in chatSearch.js), so the highlight runs over
+  // that same string - the label the reader sees, never the stored one.
+  const visible = renderHighlightedText(`@${label}`, searchQuery);
+
   if (userId === "all" || !onUserClick) {
-    return <span className="font-medium text-primary">@{label}</span>;
+    return <span className="font-medium text-primary">{visible}</span>;
   }
   // Anonymized either way - blocked (F12) or deleted - gets no click, since
   // there is nothing to open and the reader must not tell the two apart.
   if (isAnonymized) {
     return (
-      <span className="font-medium text-base-content/50">@{label}</span>
+      <span className="font-medium text-base-content/50">{visible}</span>
     );
   }
   return (
@@ -188,7 +193,7 @@ const MentionChip = ({ name, userId, onUserClick }) => {
       className="font-medium text-primary underline underline-offset-2 hover:no-underline transition-colors"
       onClick={() => onUserClick(userId, label)}
     >
-      @{label}
+      {visible}
     </button>
   );
 };
@@ -278,6 +283,7 @@ export default function MessageText({ content, searchQuery = "", onUserClick }) 
               key={idx}
               name={p.name}
               userId={p.userId}
+              searchQuery={searchQuery}
               onUserClick={onUserClick}
             />
           );
