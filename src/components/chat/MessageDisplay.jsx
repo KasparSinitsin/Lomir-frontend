@@ -44,6 +44,7 @@ import { parseSystemMessage } from "../../utils/messageSystemParser";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 import { joinNameParts } from "../../utils/nameFormatters";
+import { isArchivedTeamData } from "../../utils/chatHelpers";
 
 const MessageDisplay = ({
   messages,
@@ -534,6 +535,63 @@ const MessageDisplay = ({
     teamData?.id != null ? resolvedChatTeams[String(teamData.id)] : null,
   );
 
+  // Role ids named by this chat's events whose role has been deleted, so their
+  // names render as text, not as links. Two sources: a 🗑️ ROLE_DELETED event
+  // proves it anywhere; the bulk lookup only in a live team chat, whose reader
+  // is a member, so an id it leaves out was deleted. Anywhere else absence can
+  // also mean "not visible to you", and nothing is marked from it.
+  const roleLookupTeamId =
+    conversationType === "team" && !isArchivedTeamData(teamData)
+      ? teamData?.id ?? null
+      : null;
+  const { eventRoleIdsKey, roleIdsDeletedByEvent } = useMemo(() => {
+    const ids = new Set();
+    const deletedByEvent = new Set();
+    for (const message of messages) {
+      const parsed = parseSystemMessage(message?.content);
+      const roleId = parsed?.roleId;
+      if (roleId == null || roleId === "") continue;
+      ids.add(String(roleId));
+      if (parsed.type === "role_deleted") deletedByEvent.add(String(roleId));
+    }
+    return {
+      eventRoleIdsKey:
+        roleLookupTeamId == null ? "" : [...ids].sort().join(","),
+      roleIdsDeletedByEvent: deletedByEvent,
+    };
+  }, [messages, roleLookupTeamId]);
+  const [deletedRoleIds, setDeletedRoleIds] = useState(() => new Set());
+  const isRoleDeleted = (roleId) =>
+    roleId != null &&
+    (roleIdsDeletedByEvent.has(String(roleId)) ||
+      deletedRoleIds.has(String(roleId)));
+
+  useEffect(() => {
+    if (!eventRoleIdsKey) {
+      setDeletedRoleIds(new Set());
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const roleIds = eventRoleIdsKey.split(",");
+
+    vacantRoleService
+      .getVacantRolesByIds(roleLookupTeamId, roleIds)
+      .then((response) => {
+        if (isCancelled) return;
+        const roles = response?.data ?? response;
+        if (!Array.isArray(roles)) return;
+        const livingIds = new Set(roles.map((role) => String(role?.id)));
+        setDeletedRoleIds(new Set(roleIds.filter((id) => !livingIds.has(id))));
+      })
+      // A failed lookup keeps every link: a living role must never lose its own.
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventRoleIdsKey, roleLookupTeamId]);
+
   const getResolvedUserData = (userData, userId = null) =>
     mergeResolvedUserData(
       userData,
@@ -909,6 +967,8 @@ const MessageDisplay = ({
         }
       } catch (error) {
         if (roleId && error?.response?.status === 404) {
+          // Deleted while this chat was open: unlink it now, not on reload.
+          setDeletedRoleIds((prev) => new Set(prev).add(String(roleId)));
           setRoleNotFound(true);
           return;
         }
@@ -935,6 +995,15 @@ const MessageDisplay = ({
     // a non-empty name. Not "Open Role" either (nor the older "Vacant Role")
     // — those are saved names.
     const safeName = (name || "").trim() || "Role";
+
+    // A deleted role keeps its name as text, like the 🗑️ banner shows it.
+    if (isRoleDeleted(roleId)) {
+      return (
+        <span className="font-medium">
+          {renderHighlightedSearchText(safeName, searchQuery)}
+        </span>
+      );
+    }
 
     return (
       <Tooltip content={detailsTooltip(safeName)} position="top">
