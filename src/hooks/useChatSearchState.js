@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useMentionNames } from "../contexts/MentionNamesContext";
 import { messageService } from "../services/messageService";
+import { resolveTeamNames } from "../utils/chatEntityResolvers";
 import { getConversationUpdatedAt } from "../utils/chatHelpers";
 import {
   collectMessageSearchPersonIds,
+  collectMessageSearchTeamIds,
   CHAT_SEARCH_PAGE_SIZE,
   CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION,
   getConversationSearchKey,
@@ -110,13 +112,17 @@ const useChatSearchState = ({
     // back FROM `resolveIds` rather than being read from the hook: this resumes
     // on a microtask, before React has committed the render that carries the
     // resolution, so anything read from a render would be one batch behind.
-    const resolvedNames = await resolveIds(
-      collectMessageSearchPersonIds([
-        ...allMessages,
-        { content: conversation?.lastMessage?.content ?? conversation?.lastMessage },
-        { content: conversation?.last_message?.content ?? conversation?.last_message },
-      ]),
-    );
+    const indexedMessages = [
+      ...allMessages,
+      { content: conversation?.lastMessage?.content ?? conversation?.lastMessage },
+      { content: conversation?.last_message?.content ?? conversation?.last_message },
+    ];
+    // Team names the same way: awaited, so the cached string carries the
+    // team's current name (describeEvent reads it from teamNameRegistry).
+    const [resolvedNames] = await Promise.all([
+      resolveIds(collectMessageSearchPersonIds(indexedMessages)),
+      resolveTeamNames(collectMessageSearchTeamIds(indexedMessages)),
+    ]);
     const options = { ...searchOptions, names: resolvedNames };
 
     return {
@@ -138,9 +144,10 @@ const useChatSearchState = ({
     // Names are not a dependency: later lookup batches must not rebuild a
     // conversation that has already finished indexing.
     const buildIndex = async () => {
-      const resolvedNames = await resolveIds(
-        collectMessageSearchPersonIds(messages),
-      );
+      const [resolvedNames] = await Promise.all([
+        resolveIds(collectMessageSearchPersonIds(messages)),
+        resolveTeamNames(collectMessageSearchTeamIds(messages)),
+      ]);
       if (cancelled) return;
 
       const options = { ...searchOptions, names: resolvedNames };

@@ -22,6 +22,7 @@ import { getDisplayName } from "./userHelpers";
 import { DELETED_USER_DISPLAY_NAME } from "./deletedUser";
 import { joinNameParts } from "./nameFormatters";
 import { currentNameFromLookup } from "./mentions";
+import { getCurrentTeamName } from "./teamNameRegistry";
 
 /**
  * Every participant slot in the parser's output is a `<role>Name` / `<role>Id`
@@ -174,6 +175,11 @@ const buildEntity = (id, rawName) => {
  * that forgets to ask does not break, it simply keeps the stored name, which
  * is indistinguishable from the fix not being there.
  */
+export const collectEventTeamIds = (content) => {
+  const event = describeEvent(content, null, null, null, null);
+  return event?.team?.id != null ? [String(event.team.id)] : [];
+};
+
 export const collectEventPersonIds = (content) => {
   const event = describeEvent(content, null, null, null, null);
   if (!event) return [];
@@ -218,7 +224,10 @@ export const describeEvent = (
   return {
     type: parsed.type,
     people,
-    team: buildEntity(parsed.teamId, parsed.teamName),
+    // A team is named as it is called NOW once a surface has fetched it
+    // (teamNameRegistry.js); until then, and for a team that cannot be
+    // fetched, the stored name stands.
+    team: buildEntity(parsed.teamId, getCurrentTeamName(parsed.teamId) ?? parsed.teamName),
     role: buildEntity(parsed.roleId, parsed.roleName),
     currentRole: buildEntity(parsed.currentRoleId, parsed.currentRoleName),
     // Flags and free text the sentences branch on. Kept verbatim; they are

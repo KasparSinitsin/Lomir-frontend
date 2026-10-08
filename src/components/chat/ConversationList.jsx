@@ -42,7 +42,11 @@ import { splitChatSearchMatches } from "../../utils/chatSearch";
 import { useAuth } from "../../contexts/AuthContext";
 import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
 import { useMentionNames } from "../../contexts/MentionNamesContext";
-import { collectEventPersonIds } from "../../utils/describeEvent";
+import {
+  collectEventPersonIds,
+  collectEventTeamIds,
+} from "../../utils/describeEvent";
+import { resolveTeamNames } from "../../utils/chatEntityResolvers";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -357,6 +361,30 @@ const ConversationList = ({
     }
     if (ids.size > 0) requestEventPersonIds([...ids]);
   }, [conversations, requestEventPersonIds]);
+
+  // Team names too: the preview text comes from describeEvent, which uses a
+  // team's current name once it has been fetched. The counter re-renders the
+  // list when the names have arrived.
+  const [, setTeamNamesResolved] = useState(0);
+  useEffect(() => {
+    const ids = new Set();
+    for (const conversation of conversations || []) {
+      for (const id of collectEventTeamIds(
+        getConversationLastMessageText(conversation),
+      )) {
+        ids.add(id);
+      }
+    }
+    if (ids.size === 0) return undefined;
+
+    let isCurrent = true;
+    resolveTeamNames([...ids]).then(() => {
+      if (isCurrent) setTeamNamesResolved((count) => count + 1);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [conversations]);
 
 
   /**
