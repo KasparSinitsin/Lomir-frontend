@@ -403,6 +403,8 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - Type `@` in the message input to open a dropdown of conversation participants
 - Select a person or "All members" to insert a mention token
 - Mention tokens render as styled `@Name` chips in message bubbles, reply previews, and notification toasts
+- Chat search resolves person mentions to their current display names before indexing them, including result snippets and last-message previews. Blocked and deleted accounts use the same labels as the message display; unresolved lookups retain the stored label. Names typed as ordinary text remain searchable as written. Reload the page to refresh name lookups after a rename during an open session.
+- Event messages in last-message previews use the same translated, resolved text as the message search index.
 - Unread @mention count is tracked separately and shown in the navbar badge
 
 **File & image sharing**

@@ -1,9 +1,14 @@
-import { describeEvent } from "../utils/describeEvent";
+import { collectEventPersonIds, describeEvent } from "../utils/describeEvent";
 import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
 import { messageService } from "../services/messageService";
-import { hasMention, resolveMentionLabel, splitMentions } from "./mentions";
+import {
+  collectMentionIds,
+  hasMention,
+  resolveMentionLabel,
+  splitMentions,
+} from "./mentions";
 import {
   getConversationPartnerId,
   isDirectConversationForPartner,
@@ -17,40 +22,34 @@ import {
 export const CHAT_SEARCH_PAGE_SIZE = 100;
 export const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
 
-// A regular message's raw content still carries `@[Name](id)` for its
-// mentions — fine for the display renderers (they resolve it per-render, see
-// MessageText.jsx), but this text also feeds the search index, and a block
-// happening after the message was sent must still stop a search for the
-// blocked person's real name from matching (F12). Blocked mentions collapse
-// to the anonymized phrase like every other renderer; a non-blocked mention
-// keeps its plain name, same as before.
-//
-// 🔴 DELIBERATELY NOT id-resolved, and this is the one mention surface that is
-// not. The five DISPLAY surfaces now show the name an id carries today, so a
-// deleted person's name is gone from the screen - but it is still inside the
-// stored text this index is built from, so searching the old name still finds
-// the message. That residual is known and it is NOT fixed here, for a reason
-// that is about the search rather than about the name:
-//
-//   the index would then depend on a map that fills ASYNCHRONOUSLY, so the
-//   match counter would move as names land. That is precisely the trap
-//   `STATUS.md` records - "a partial result looks exactly like a final one" -
-//   and it cost two withdrawn conclusions on 2026-10-01. Making the counter
-//   drift again, inside the PR that is supposed to make names trustworthy, is
-//   a bad trade.
-//
-// What it DOES take from the shared module is the pattern, so there is no
-// sixth private copy of the regex left to drift. Julia's call on the search
-// semantics; see the handover note.
-const sanitizeMentionsForSearch = (content, blockedIds, t) => {
+// Resolve mention labels with the same snapshot the index awaited for events.
+// Blocked/deleted people and @all follow the display renderer's precedence;
+// unresolved ids retain their stored label after a failed or timed-out lookup.
+const sanitizeMentionsForSearch = (content, options = {}) => {
   if (!hasMention(content)) return content;
   return splitMentions(content)
     .map((segment) =>
       segment.isMention
-        ? `@${resolveMentionLabel(segment, { blockedIds, t }).label}`
+        ? `@${resolveMentionLabel(segment, options).label}`
         : segment.text,
     )
     .join("");
+};
+
+// Shared by both index builds and the search-target reveal. Include mentions
+// inside personal event text as well as the event's person slots.
+export const collectMessageSearchPersonIds = (messages) => {
+  const ids = new Set();
+  for (const message of messages ?? []) {
+    const content = message?.content ?? null;
+    for (const id of [
+      ...collectEventPersonIds(content),
+      ...collectMentionIds(content),
+    ]) {
+      ids.add(id);
+    }
+  }
+  return [...ids];
 };
 
 export const dedupeConversations = (list) =>
@@ -253,23 +252,27 @@ const getTranslatedEventSearchParts = (
   const full = getEventSentenceText(t, event, "full");
   if (full == null) return null;
   // What the member typed is shown beside the banner, so it stays searchable.
-  return event.personalMessage ? [full, event.personalMessage] : [full];
+  return event.personalMessage
+    ? [
+        full,
+        sanitizeMentionsForSearch(event.personalMessage, { blockedIds, names, t }),
+      ]
+    : [full];
 };
 
 /**
  * @param {object} message
- * @param {{ viewer?: object|null, t?: Function|null, blockedIds?: Set|null }} [options]
+ * @param {{ viewer?: object|null, t?: Function|null, blockedIds?: Set|null, names?: Map|null }} [options]
  *   the reader, the active `t`, and their block relationships — required for
  *   event messages
  */
 export const buildMessageSearchText = (message, options = {}) => {
   const parts = [];
   const eventParts = getTranslatedEventSearchParts(message, options);
-  const { blockedIds = null, t = null } = options;
 
   addSearchPart(parts, [
     ...(eventParts ?? [
-      sanitizeMentionsForSearch(message?.content, blockedIds, t),
+      sanitizeMentionsForSearch(message?.content, options),
     ]),
     message?.fileName,
     message?.file_name,
@@ -289,7 +292,7 @@ export const buildMessageSearchText = (message, options = {}) => {
 };
 
 const buildMessageSearchSnippet = (message, options = {}) => {
-  const systemMessageText = getTranslatedEventSearchParts(message, options)?.[0];
+  const systemMessageText = getTranslatedEventSearchParts(message, options)?.join(" ");
   const senderName = [
     message?.senderFirstName || message?.sender_first_name,
     message?.senderLastName || message?.sender_last_name,
@@ -306,7 +309,7 @@ const buildMessageSearchSnippet = (message, options = {}) => {
   const { t } = options;
   const body =
     systemMessageText ||
-    message?.content ||
+    sanitizeMentionsForSearch(message?.content, options) ||
     message?.fileName ||
     message?.file_name ||
     (message?.imageUrl || message?.image_url
@@ -579,16 +582,26 @@ export const buildMessagesSearchText = (messages, options = {}) =>
       .join(" "),
   );
 
-export const buildConversationSearchText = (conversation) => {
+export const buildConversationSearchText = (conversation, options = {}) => {
+  // Last-message metadata is searched too. Events and mentions must use the
+  // same resolved text as the message index, or their stored labels reintroduce
+  // old-name hits. Defer these previews until the conversation's lookup settles.
+  const previewText = (value) => {
+    if (typeof value !== "string") return value;
+    const eventParts = getTranslatedEventSearchParts({ content: value }, options);
+    if (eventParts) return options.names ? eventParts.join(" ") : null;
+    if (!hasMention(value)) return value;
+    return options.names ? sanitizeMentionsForSearch(value, options) : null;
+  };
   const parts = [];
   const isTeam = conversation?.type === "team";
 
   addSearchPart(parts, [
     conversation?.type,
-    conversation?.lastMessage,
-    conversation?.last_message,
-    conversation?.lastMessage?.content,
-    conversation?.last_message?.content,
+    previewText(conversation?.lastMessage),
+    previewText(conversation?.last_message),
+    previewText(conversation?.lastMessage?.content),
+    previewText(conversation?.last_message?.content),
     // An attachment preview is data (buildConversationLastMessagePreview);
     // its file name stays findable.
     conversation?.lastMessage?.fileName,
