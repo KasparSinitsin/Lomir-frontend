@@ -592,6 +592,46 @@ const MessageDisplay = ({
     };
   }, [eventRoleIdsKey, roleLookupTeamId]);
 
+  // Current team names for the teams named by this chat's events, so a link
+  // shows what the team is called now, as person links already do. Where a
+  // team cannot be fetched (deleted, or private/archived to this reader — the
+  // API answers 404 for all three) the stored name stays as it is.
+  const eventTeamIdsKey = useMemo(() => {
+    const ids = new Set();
+    for (const message of messages) {
+      const teamId = parseSystemMessage(message?.content)?.teamId;
+      if (teamId != null && teamId !== "") ids.add(String(teamId));
+    }
+    return [...ids].sort().join(",");
+  }, [messages]);
+  const [currentTeamNames, setCurrentTeamNames] = useState({});
+
+  useEffect(() => {
+    if (!eventTeamIdsKey) return undefined;
+
+    let isCancelled = false;
+    const teamIds = eventTeamIdsKey.split(",");
+
+    Promise.allSettled(
+      teamIds.map((teamId) => getCachedChatTeamProfile(teamId)),
+    ).then((results) => {
+      if (isCancelled) return;
+      const names = {};
+      results.forEach((result, index) => {
+        const name =
+          result.status === "fulfilled" ? (result.value?.name || "").trim() : "";
+        if (name) names[teamIds[index]] = name;
+      });
+      if (Object.keys(names).length > 0) {
+        setCurrentTeamNames((prev) => ({ ...prev, ...names }));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventTeamIdsKey]);
+
   const getResolvedUserData = (userData, userId = null) =>
     mergeResolvedUserData(
       userData,
@@ -798,7 +838,8 @@ const MessageDisplay = ({
   // No quotation marks here: the event sentences carry their own („…“ in
   // German, D6).
   const TeamMentionById = ({ teamId, name }) => {
-    const safeName = (name || "").trim() || t("team.unknownName");
+    const currentName = teamId ? currentTeamNames[String(teamId)] : null;
+    const safeName = (currentName || name || "").trim() || t("team.unknownName");
 
     // legacy / missing id => non-clickable fallback
     if (!teamId) {
