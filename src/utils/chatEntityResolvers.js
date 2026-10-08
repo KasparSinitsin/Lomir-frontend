@@ -1,5 +1,6 @@
 import { teamService } from "../services/teamService";
 import { userService } from "../services/userService";
+import { rememberTeamName } from "./teamNameRegistry";
 
 const chatUserProfileCache = new Map();
 const chatTeamProfileCache = new Map();
@@ -53,8 +54,18 @@ export const getCachedChatUserProfile = async (userId) =>
 export const getCachedChatTeamProfile = async (teamId) =>
   getCachedEntity(chatTeamProfileCache, String(teamId), async () => {
     const response = await teamService.getTeamById(teamId);
-    return extractEntityPayload(response);
+    const profile = extractEntityPayload(response);
+    rememberTeamName(teamId, profile?.name);
+    return profile;
   });
+
+// Fetches the given teams (each once per session) so `describeEvent` can use
+// their current names. Never rejects: a team that cannot be fetched (deleted,
+// or private/archived to this reader) keeps its stored name.
+export const resolveTeamNames = async (teamIds) => {
+  const ids = [...new Set((teamIds ?? []).filter((id) => id != null && id !== "").map(String))];
+  await Promise.allSettled(ids.map((id) => getCachedChatTeamProfile(id)));
+};
 
 export const getTeamAvatarUrl = (team) =>
   team?.avatarUrl ??

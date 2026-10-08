@@ -1,4 +1,8 @@
-import { collectEventPersonIds, describeEvent } from "../utils/describeEvent";
+import {
+  collectEventPersonIds,
+  collectEventTeamIds,
+  describeEvent,
+} from "../utils/describeEvent";
 import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
@@ -48,6 +52,16 @@ export const collectMessageSearchPersonIds = (messages) => {
     ]) {
       ids.add(id);
     }
+  }
+  return [...ids];
+};
+
+// The team ids the same messages name, so the index can await their current
+// names (resolveTeamNames) before it is built.
+export const collectMessageSearchTeamIds = (messages) => {
+  const ids = new Set();
+  for (const message of messages ?? []) {
+    for (const id of collectEventTeamIds(message?.content ?? null)) ids.add(id);
   }
   return [...ids];
 };
