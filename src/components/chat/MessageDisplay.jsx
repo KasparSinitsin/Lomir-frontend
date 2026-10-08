@@ -66,6 +66,9 @@ const MessageDisplay = ({
   searchQuery = "",
 }) => {
   const { t } = useTranslation();
+  // Loaded here so the deleted-role warning never renders as its raw key: the
+  // chat page does not otherwise guarantee the "teams" namespace.
+  const { t: tTeams } = useTranslation("teams");
   const { user: currentUser, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
   const { names: mentionNames, requestIds: requestMentionIds } = useMentionNames();
 
@@ -135,6 +138,21 @@ const MessageDisplay = ({
     : nameResolveError.code === "notFound"
       ? t("chatPage.mentionNotFound", { name: nameResolveError.name })
       : t("chatPage.mentionLookupFailed", { name: nameResolveError.name });
+  // A role link in an event whose role has been deleted since. Without this the
+  // modal opened on the event's name alone, as an open role you could apply to.
+  const [roleNotFound, setRoleNotFound] = useState(false);
+  const screenAlerts = [
+    {
+      type: "error",
+      message: nameResolveErrorText,
+      onClose: () => setNameResolveError(null),
+    },
+    {
+      type: "error",
+      message: roleNotFound ? tTeams("teamErrors.roleNotFound") : null,
+      onClose: () => setRoleNotFound(false),
+    },
+  ];
 
   const [nameToIdCache, setNameToIdCache] = useState({});
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
@@ -890,6 +908,10 @@ const MessageDisplay = ({
             }) ?? fallbackRole;
         }
       } catch (error) {
+        if (roleId && error?.response?.status === 404) {
+          setRoleNotFound(true);
+          return;
+        }
         console.warn("Could not fetch role details for chat event:", error);
       }
     }
@@ -1316,11 +1338,7 @@ const MessageDisplay = ({
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <>
-        <ScreenAlert
-          type="error"
-          message={nameResolveErrorText}
-          onClose={() => setNameResolveError(null)}
-        />
+        <ScreenAlert alerts={screenAlerts} />
         <div className="space-y-6">
 
           {resolvedConversationPartner && conversationType === "direct" && (
@@ -1438,11 +1456,7 @@ const MessageDisplay = ({
 
   return (
     <>
-      <ScreenAlert
-        type="error"
-        message={nameResolveErrorText}
-        onClose={() => setNameResolveError(null)}
-      />
+      <ScreenAlert alerts={screenAlerts} />
       <div className="space-y-6">
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}
