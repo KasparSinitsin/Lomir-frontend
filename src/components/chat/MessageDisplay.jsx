@@ -121,6 +121,13 @@ const MessageDisplay = ({
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  // A team link the reader clicked wins, in a team chat too: event messages
+  // there can name OTHER teams. Without a selection (the header) a team chat
+  // opens its own team, with the data it already has.
+  const teamModalId =
+    selectedTeamId ?? (conversationType === "team" ? teamData?.id : null);
+  const teamModalInitialData =
+    selectedTeamId == null && conversationType === "team" ? teamData : null;
   const [teamMembersRefreshKey, setTeamMembersRefreshKey] = useState(0);
 
   // State for user details modal
@@ -347,25 +354,16 @@ const MessageDisplay = ({
   }, [highlightMessageIds]);
 
   useEffect(() => {
-    const openTeamModalId =
-      conversationType === "team" ? teamData?.id : selectedTeamId;
-
     if (
       !teamMembersRefreshSignal?.teamId ||
       !isTeamModalOpen ||
-      String(openTeamModalId) !== String(teamMembersRefreshSignal.teamId)
+      String(teamModalId) !== String(teamMembersRefreshSignal.teamId)
     ) {
       return;
     }
 
     setTeamMembersRefreshKey((prev) => prev + 1);
-  }, [
-    conversationType,
-    isTeamModalOpen,
-    selectedTeamId,
-    teamData?.id,
-    teamMembersRefreshSignal,
-  ]);
+  }, [isTeamModalOpen, teamModalId, teamMembersRefreshSignal]);
 
   useEffect(() => {
     const userIdsToFetch = [];
@@ -1507,8 +1505,8 @@ const MessageDisplay = ({
 
         <TeamDetailsModal
           isOpen={isTeamModalOpen}
-          teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
-          initialTeamData={conversationType === "team" ? teamData : null}
+          teamId={teamModalId}
+          initialTeamData={teamModalInitialData}
           membersRefreshKey={teamMembersRefreshKey}
           hideMatchData
           onClose={handleTeamModalClose}
@@ -2150,8 +2148,8 @@ const MessageDisplay = ({
 
       <TeamDetailsModal
         isOpen={isTeamModalOpen}
-        teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
-        initialTeamData={conversationType === "team" ? teamData : null}
+        teamId={teamModalId}
+        initialTeamData={teamModalInitialData}
         membersRefreshKey={teamMembersRefreshKey}
         hideMatchData
         onClose={handleTeamModalClose}

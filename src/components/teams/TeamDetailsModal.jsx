@@ -165,6 +165,9 @@ const TeamDetailsModal = ({
     message: null,
   });
   const [team, setTeam] = useState(initialTeamData); // Initialize with passed data
+  // Read by the team-id effect, which must not re-run on every team update.
+  const teamRef = useRef(team);
+  teamRef.current = team;
   const [teamRoles, setTeamRoles] = useState([]);
 
   // Track if we've done the full fetch (initial data may be partial)
@@ -542,6 +545,19 @@ const TeamDetailsModal = ({
     setLocalPendingApplication(null);
     setIsApplicationDetailsOpen(false);
     setSelectedPendingApplication(null);
+    // A modal that stays mounted while its team id changes (a chat linking
+    // several teams) must not show the previous team for the new one: drop
+    // that team's data, and the effect below fetches the new team. `loading`
+    // goes up with it, because the body below renders `team` unguarded.
+    const current = teamRef.current;
+    if (
+      current?.id != null &&
+      effectiveTeamId != null &&
+      String(current.id) !== String(effectiveTeamId)
+    ) {
+      setTeam(null);
+      setLoading(true);
+    }
   }, [effectiveTeamId]);
 
   useEffect(() => {
@@ -1687,7 +1703,7 @@ const TeamDetailsModal = ({
           <div className="flex justify-center items-center py-12">
             <div className="loading loading-spinner loading-lg text-primary"></div>
           </div>
-        ) : (
+        ) : !team ? null : (
           <>
             {isEditing ? (
               <TeamEditForm
