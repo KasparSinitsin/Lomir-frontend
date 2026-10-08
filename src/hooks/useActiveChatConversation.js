@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useMentionNames } from "../contexts/MentionNamesContext";
-import { collectEventPersonIds } from "../utils/describeEvent";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { isQuietError } from "../services/api";
 import {
+  collectMessageSearchPersonIds,
   buildConversationLastMessagePreview,
   buildMessageSearchText,
   getNotificationEventHighlightIds,
@@ -337,16 +337,12 @@ const useActiveChatConversation = ({
             let allMatchingIds = [];
 
             if (query) {
-              const eventPersonIds = new Set();
-              for (const msg of fetchedMessages) {
-                for (const id of collectEventPersonIds(msg?.content ?? null)) {
-                  eventPersonIds.add(id);
-                }
-              }
               // Awaited for the same reason the index awaits: this runs once
               // per reveal and nothing recomputes it, so an unresolved name
               // here is a highlight that never appears.
-              const resolvedNames = await resolveIdsRef.current([...eventPersonIds]);
+              const resolvedNames = await resolveIdsRef.current(
+                collectMessageSearchPersonIds(fetchedMessages),
+              );
               const matchOptions = {
                 ...searchOptionsRef.current,
                 names: resolvedNames,

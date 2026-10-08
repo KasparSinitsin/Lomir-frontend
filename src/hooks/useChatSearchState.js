@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useMentionNames } from "../contexts/MentionNamesContext";
-import { collectEventPersonIds } from "../utils/describeEvent";
 import { messageService } from "../services/messageService";
 import { getConversationUpdatedAt } from "../utils/chatHelpers";
 import {
+  collectMessageSearchPersonIds,
   CHAT_SEARCH_PAGE_SIZE,
   CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION,
   getConversationSearchKey,
@@ -63,18 +63,6 @@ const useChatSearchState = ({
     // showing the now-anonymized person's real name.
   }, [i18n.language, user?.id, blockedRelationshipIds, blockedRelationshipNames]);
 
-  // Both index paths need the same set, so it is collected the same way. The
-  // Set matters: a transcript names the same few people over and over.
-  const eventPersonIdsOf = useCallback((list) => {
-    const ids = new Set();
-    for (const message of list ?? []) {
-      for (const id of collectEventPersonIds(message?.content ?? null)) {
-        ids.add(id);
-      }
-    }
-    return [...ids];
-  }, []);
-
   const normalizedChatSearchQuery = useMemo(
     () => normalizeChatSearchText(chatSearchQuery.trim()),
     [chatSearchQuery],
@@ -122,14 +110,21 @@ const useChatSearchState = ({
     // back FROM `resolveIds` rather than being read from the hook: this resumes
     // on a microtask, before React has committed the render that carries the
     // resolution, so anything read from a render would be one batch behind.
-    const resolvedNames = await resolveIds(eventPersonIdsOf(allMessages));
+    const resolvedNames = await resolveIds(
+      collectMessageSearchPersonIds([
+        ...allMessages,
+        { content: conversation?.lastMessage?.content ?? conversation?.lastMessage },
+        { content: conversation?.last_message?.content ?? conversation?.last_message },
+      ]),
+    );
     const options = { ...searchOptions, names: resolvedNames };
 
     return {
       text: buildMessagesSearchText(allMessages, options),
+      names: resolvedNames,
       snippets: buildMessageSearchSnippets(allMessages, options),
     };
-  }, [eventPersonIdsOf, resolveIds, searchOptions]);
+  }, [resolveIds, searchOptions]);
 
   useEffect(() => {
     if (!conversationId || messages.length === 0) return undefined;
@@ -139,16 +134,13 @@ const useChatSearchState = ({
     // history pages in, and the older build must not overwrite the newer one.
     let cancelled = false;
 
-    // 🔴 AWAITED, and `names` is deliberately NOT a dependency — rebuilding on
-    // every resolution batch would make the match counter MOVE as names land,
-    // and this file already rejected exactly that for @-mentions:
-    // "a partial result looks exactly like a final one" (see
-    // `sanitizeMentionsForSearch` in chatSearch.js, and `STATUS.md`). It cost
-    // two withdrawn conclusions on 2026-10-01. One build, after the ids this
-    // conversation needs have been looked up, is the same shape the
-    // cross-conversation path uses — so neither index drifts.
+    // Resolve all event and mention ids before publishing a single snapshot.
+    // Names are not a dependency: later lookup batches must not rebuild a
+    // conversation that has already finished indexing.
     const buildIndex = async () => {
-      const resolvedNames = await resolveIds(eventPersonIdsOf(messages));
+      const resolvedNames = await resolveIds(
+        collectMessageSearchPersonIds(messages),
+      );
       if (cancelled) return;
 
       const options = { ...searchOptions, names: resolvedNames };
@@ -165,7 +157,7 @@ const useChatSearchState = ({
 
       setChatMessageSearchIndex((prev) => ({
         ...prev,
-        [key]: activeMessagesSearchText,
+        [key]: { text: activeMessagesSearchText, names: resolvedNames },
       }));
       setChatMessageSearchSnippets((prev) => ({
         ...prev,
@@ -181,7 +173,6 @@ const useChatSearchState = ({
   }, [
     conversationId,
     conversationType,
-    eventPersonIdsOf,
     messages,
     resolveIds,
     searchOptions,
@@ -222,11 +213,14 @@ const useChatSearchState = ({
 
         results.forEach((result, index) => {
           if (result.status === "fulfilled") {
-            next[result.value.key] = result.value.result.text || " ";
+            next[result.value.key] = {
+              text: result.value.result.text || " ",
+              names: result.value.result.names,
+            };
             return;
           }
 
-          next[getConversationSearchKey(missingConversations[index])] = " ";
+          next[getConversationSearchKey(missingConversations[index])] = { text: " " };
         });
 
         return next;
@@ -269,8 +263,12 @@ const useChatSearchState = ({
     return conversations
       .map((conversation) => {
         const key = getConversationSearchKey(conversation);
-        const conversationSearchText = buildConversationSearchText(conversation);
-        const messageSearchText = chatMessageSearchIndex[key] || "";
+        const entry = chatMessageSearchIndex[key];
+        const conversationSearchText = buildConversationSearchText(conversation, {
+          ...searchOptions,
+          names: entry?.names,
+        });
+        const messageSearchText = entry?.text || "";
         const searchMatchCount =
           countChatSearchMatches(
             conversationSearchText,
@@ -324,6 +322,7 @@ const useChatSearchState = ({
     conversations,
     isChatSearchActive,
     normalizedChatSearchQuery,
+    searchOptions,
   ]);
 
   useEffect(() => {
