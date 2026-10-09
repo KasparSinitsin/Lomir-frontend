@@ -340,9 +340,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     } catch (error) {
       console.error("Team creation error:", error);
       setSubmitError(
-        error.response?.data?.message ||
-          error.message ||
-          t("teams:teamForm.create.failed"),
+        t("teams:teamForm.create.failed"),
       );
     } finally {
       setLoading(false);

@@ -318,7 +318,8 @@
     "viewDetailsGeneric": "View details"
   },
   "chatMessage": {
-    "emptyError": "Message cannot be empty."
+    "emptyError": "Message cannot be empty.",
+    "saveEditFailed": "Could not save your edit."
   },
   "chatPage": {
     "conversationUnavailable": "This conversation is no longer available.",

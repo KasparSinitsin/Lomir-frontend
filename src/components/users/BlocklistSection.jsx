@@ -64,11 +64,11 @@ const BlocklistSection = ({ userId, onChange }) => {
       });
       setSelected(null);
       onChange?.();
-    } catch (error) {
+    } catch {
       setNotification({
         type: "error",
         message:
-          error.response?.data?.message || t("blocklist.errors.unblock"),
+          t("blocklist.errors.unblock"),
       });
     } finally {
       setUnblocking(false);

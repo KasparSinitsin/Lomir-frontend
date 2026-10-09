@@ -908,7 +908,6 @@ const TeamDetailsModal = ({
       setNotification({
         type: "error",
         message:
-          error.response?.data?.message ||
           t("teams:teamDetails.leaveFailed"),
       });
       setIsLeaveDialogOpen(false);

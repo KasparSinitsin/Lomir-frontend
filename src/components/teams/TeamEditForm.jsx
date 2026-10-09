@@ -251,9 +251,7 @@ const TeamEditForm = ({
     } catch (error) {
       console.error("Error deleting team avatar:", error);
       showToast(
-        error.response?.data?.message ||
-          error.message ||
-          t("teams:teamForm.avatarRemoveFailed"),
+        t("teams:teamForm.avatarRemoveFailed"),
         "error",
       );
     } finally {

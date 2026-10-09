@@ -276,12 +276,8 @@ const MessageDisplay = ({
       await onEditMessage(messageId, nextContent);
       setEditingMessageId(null);
       setEditingContent("");
-    } catch (err) {
-      setEditingError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Could not save your edit.",
-      );
+    } catch {
+      setEditingError(t("chatMessage.saveEditFailed"));
     } finally {
       setSavingEditMessageId(null);
     }
