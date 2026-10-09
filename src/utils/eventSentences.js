@@ -56,6 +56,7 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "ownership_transferred",
   "ownership_team",
   "team_deleted",
+  "request_void",
   "application_approved",
   "application_approved_dm",
   "application_declined",
@@ -77,6 +78,9 @@ export const perspectiveOf = (person) => {
 
 /** For the optional parts of a sentence: a team or role name that may be missing. */
 const presenceOf = (entity) => (entity?.name ? "named" : "other");
+
+// `application` is the select's `other` branch; the rest are spelled out.
+const REQUEST_VOID_KINDS = new Set(["application", "invitation", "role_application", "role_invitation"]);
 
 /** Whether a decision DM carries a personal message beside the banner. */
 const personalOf = (event) => (event.hasPersonalMessage ? "yes" : "other");
@@ -380,6 +384,27 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
         text: short
           ? t("chatEvents.teamDeleted.short", values)
           : t("chatEvents.teamDeleted.full", values),
+        slots: { owner: personSlot(owner), team },
+      };
+    }
+
+    // The owner deleted the team and this voids an open application or
+    // invitation (item 40b). `requestKind` and `deletionMode` are data, not
+    // names, so they pick the sentence like a perspective does.
+    case "request_void": {
+      const owner = person("owner");
+      const values = {
+        owner: perspectiveOf(owner),
+        kind: REQUEST_VOID_KINDS.has(event.parsed?.requestKind)
+          ? event.parsed.requestKind
+          : "application",
+        mode: event.parsed?.deletionMode === "deleted" ? "deleted" : "archived",
+        personal: personalOf(event),
+      };
+      return {
+        text: short
+          ? t("chatEvents.requestVoid.short", values)
+          : t("chatEvents.requestVoid.full", values),
         slots: { owner: personSlot(owner), team },
       };
     }

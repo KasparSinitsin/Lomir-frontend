@@ -158,6 +158,7 @@ export const getEventReactionPreview = (
     case "invitation_declined":
     case "invitation_cancelled":
     case "application_cancelled":
+    case "request_void":
       return {
         text: getEventSentenceText(t, event, "full"),
         Icon: CircleX,

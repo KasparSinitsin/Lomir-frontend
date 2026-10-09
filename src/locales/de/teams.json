@@ -208,6 +208,21 @@
     "deleteBody": "Dieses Team löschen? Wenn du das einzige Mitglied bist, werden Team und Chat sofort gelöscht. Wenn weitere Mitglieder bleiben, wird das Team zuerst archiviert und endgültig gelöscht, sobald sie es verlassen haben oder die Archivfrist abgelaufen ist - derzeit standardmäßig 14 Tage.",
     "serverError": "Serverfehler: {detail}"
   },
+  "teamDeleteDialog": {
+    "next": "Weiter",
+    "back": "Zurück",
+    "requestsTitle": "Benachrichtigung der Teambewerber und eingeladener Nutzer",
+    "requestsBoth": "Betroffen: {applications, plural, one {# offene Bewerbung} other {# offene Bewerbungen}} und {invitations, plural, one {# offene Einladung} other {# offene Einladungen}}.",
+    "requestsApplications": "Betroffen: {applications, plural, one {# offene Bewerbung} other {# offene Bewerbungen}}.",
+    "requestsInvitations": "Betroffen: {invitations, plural, one {# offene Einladung} other {# offene Einladungen}}.",
+    "noticeIntro": "Diese Nachricht geht per direkter Nachricht an alle Bewerber und Einladungsempfänger:",
+    "noticeArchived": "Das Team „{teamName}“ wurde von {ownerName} archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung oder Einladung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu {ownerName} aufnehmen.",
+    "noticeDeleted": "Das Team „{teamName}“ wurde von {ownerName} gelöscht. Deine Bewerbung oder Einladung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu {ownerName} aufnehmen.",
+    "messageAdd": "Persönliche Nachricht hinzufügen (optional)",
+    "messageLabel": "Deine persönliche Nachricht (optional):",
+    "messagePlaceholder": "Schreib eine persönliche Nachricht an alle Bewerber und Eingeladenen …",
+    "messageHint": "Sie wird jedem als eigene Nachricht in eurem Chat zugestellt."
+  },
   "vacantRoleCard": {
     "appliedForRole": "Du hast dich für diese Rolle beworben",
     "invitedToFillRole": "Du wurdest eingeladen, diese Rolle zu übernehmen",

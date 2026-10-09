@@ -117,8 +117,15 @@ export const teamService = {
       api.post(`/api/teams/${teamId}/apply`, applicationData),
     ),
 
-  deleteTeam: (teamId) =>
-    call(`deleting team ${teamId}`, () => api.delete(`/api/teams/${teamId}`)),
+  // `message` is the owner's optional note to everyone whose application or
+  // invitation the deletion voids; the backend sends it as a DM (item 40b).
+  deleteTeam: (teamId, { message } = {}) =>
+    call(`deleting team ${teamId}`, () =>
+      api.delete(
+        `/api/teams/${teamId}`,
+        message ? { data: { message } } : undefined,
+      ),
+    ),
 
   getAllTeams: (params = {}) =>
     call("fetching teams", () => api.get("/api/teams", { params })),

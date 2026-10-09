@@ -336,9 +336,9 @@ const MyTeams = () => {
   );
 
   const handleTeamDelete = useCallback(
-    async (teamId) => {
+    async (teamId, options) => {
       try {
-        await teamService.deleteTeam(teamId);
+        await teamService.deleteTeam(teamId, options);
         // Refetch to update pagination correctly
         invalidateUserTeams();
         return true;

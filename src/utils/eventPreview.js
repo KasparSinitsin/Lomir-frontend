@@ -120,6 +120,7 @@ export const getEventPreview = (
     case "application_declined":
     case "invitation_cancelled":
     case "application_cancelled":
+    case "request_void":
       return {
         text: getEventSentenceText(t, event, "short"),
         icon: "CircleX",
