@@ -542,13 +542,17 @@ const MessageDisplay = ({
     conversationType === "team" && !isArchivedTeamData(teamData)
       ? teamData?.id ?? null
       : null;
-  const { eventRoleIdsKey, roleIdsDeletedByEvent } = useMemo(() => {
+  const { eventRoleIdsKey, roleIdsDeletedByEvent, hasIdLessRoleNames } = useMemo(() => {
     const ids = new Set();
     const deletedByEvent = new Set();
+    let idLess = false;
     for (const message of messages) {
       const parsed = parseSystemMessage(message?.content);
       const roleId = parsed?.roleId;
-      if (roleId == null || roleId === "") continue;
+      if (roleId == null || roleId === "") {
+        if (parsed?.roleName) idLess = true;
+        continue;
+      }
       ids.add(String(roleId));
       if (parsed.type === "role_deleted") deletedByEvent.add(String(roleId));
     }
@@ -556,6 +560,7 @@ const MessageDisplay = ({
       eventRoleIdsKey:
         roleLookupTeamId == null ? "" : [...ids].sort().join(","),
       roleIdsDeletedByEvent: deletedByEvent,
+      hasIdLessRoleNames: idLess,
     };
   }, [messages, roleLookupTeamId]);
   const [deletedRoleIds, setDeletedRoleIds] = useState(() => new Set());
@@ -589,6 +594,47 @@ const MessageDisplay = ({
       isCancelled = true;
     };
   }, [eventRoleIdsKey, roleLookupTeamId]);
+
+  // Old events that name a role without its id (e.g. the 🔓 prose account
+  // deletion wrote until item 37) can only be matched by name. In a live team
+  // chat the reader sees every role of the team, so a name no living role
+  // carries is gone — deleted, or renamed, which cannot be told apart without
+  // an id — and renders as text. `null` = not known: every name stays a link.
+  // Keyed by team: names of another team's roles must never decide here, so a
+  // chat switch reads "not known" until this team's answer arrives.
+  const [livingRoleNames, setLivingRoleNames] = useState(null);
+  const isIdLessRoleGone = (roleId, roleName) =>
+    roleId == null &&
+    livingRoleNames != null &&
+    String(livingRoleNames.teamId) === String(roleLookupTeamId) &&
+    !livingRoleNames.names.has(normalizeRoleLookupValue(roleName));
+
+  useEffect(() => {
+    setLivingRoleNames(null);
+    if (roleLookupTeamId == null || !hasIdLessRoleNames) return undefined;
+
+    let isCancelled = false;
+
+    vacantRoleService
+      .getVacantRoles(roleLookupTeamId, "all")
+      .then((response) => {
+        if (isCancelled) return;
+        const roles = response?.data ?? response;
+        if (!Array.isArray(roles)) return;
+        setLivingRoleNames({
+          teamId: roleLookupTeamId,
+          names: new Set(
+            roles.map((role) => normalizeRoleLookupValue(getRoleName(role))),
+          ),
+        });
+      })
+      // A failed lookup keeps every link, as for the id lookup above.
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [roleLookupTeamId, hasIdLessRoleNames]);
 
   // Current team names for the teams named by this chat's events, so a link
   // shows what the team is called now, as person links already do. Where a
@@ -996,13 +1042,19 @@ const MessageDisplay = ({
         } else {
           const response = await vacantRoleService.getVacantRoles(teamId, "all");
           const roles = response?.data ?? response ?? [];
-          resolvedRole =
-            findMatchingRole(roles, {
-              roleId,
-              roleName: safeName,
-              filledUserId,
-              filledUserName: safeFilledUserName,
-            }) ?? fallbackRole;
+          const matchingRole = findMatchingRole(roles, {
+            roleId,
+            roleName: safeName,
+            filledUserId,
+            filledUserName: safeFilledUserName,
+          });
+          if (!matchingRole && Array.isArray(roles)) {
+            // No role of the team carries this name any more: say so instead
+            // of opening a modal built from the event alone (item 37).
+            setRoleNotFound(true);
+            return;
+          }
+          resolvedRole = matchingRole ?? fallbackRole;
         }
       } catch (error) {
         if (roleId && error?.response?.status === 404) {
@@ -1036,7 +1088,7 @@ const MessageDisplay = ({
     const safeName = (name || "").trim() || "Role";
 
     // A deleted role keeps its name as text, like the 🗑️ banner shows it.
-    if (isRoleDeleted(roleId)) {
+    if (isRoleDeleted(roleId) || isIdLessRoleGone(roleId, safeName)) {
       return (
         <span className="font-medium">
           {renderHighlightedSearchText(safeName, searchQuery)}
