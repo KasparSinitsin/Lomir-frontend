@@ -391,8 +391,10 @@ const useChatSearchState = ({
   const chatSearchEmptyState =
     isChatSearchActive && searchingChatMessages
       ? {
-          title: "Searching chats...",
-          description: `Looking through message history for "${chatSearchQuery.trim()}".`,
+          title: t("chatPage.searchLoadingTitle"),
+          description: t("chatPage.searchLoadingDescription", {
+            query: chatSearchQuery.trim(),
+          }),
           showActions: false,
         }
       : null;

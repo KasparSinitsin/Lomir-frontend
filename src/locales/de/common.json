@@ -364,6 +364,8 @@
     "searchCountSearching": "{filtered} von {total, plural, one {# Chat} other {# Chats}} · Nachrichten werden durchsucht …",
     "searchMatchesInConversation": "{count, plural, one {# Suchtreffer} other {# Suchtreffer}} für „{query}“",
     "searchNoResults": "Keine Personennamen, Teamnamen oder Nachrichten passen zu „{query}“. Versuche einen anderen Suchbegriff.",
+    "searchLoadingDescription": "Der Nachrichtenverlauf wird nach „{query}“ durchsucht.",
+    "searchLoadingTitle": "Chats werden durchsucht …",
     "searchPlaceholder": "Chats durchsuchen …",
     "title": "Chats",
     "attachmentPreview": {

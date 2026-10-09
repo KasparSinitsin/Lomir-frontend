@@ -364,6 +364,8 @@
     "searchCountSearching": "{filtered} of {total, plural, one {# chat} other {# chats}} · searching messages...",
     "searchMatchesInConversation": "{count, plural, one {# search match} other {# search matches}} for “{query}”",
     "searchNoResults": "No user names, team names, or messages match \"{query}\". Try a different search term.",
+    "searchLoadingDescription": "Looking through message history for \"{query}\".",
+    "searchLoadingTitle": "Searching chats...",
     "searchPlaceholder": "Search chats...",
     "title": "Chats",
     "attachmentPreview": {
