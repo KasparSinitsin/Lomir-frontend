@@ -107,6 +107,7 @@ import { useTeamModalSafe } from "../../contexts/TeamModalContext";
 import { useChildModalZIndex } from "../../contexts/ModalLayerContext";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 import { joinNameParts } from "../../utils/nameFormatters";
+import { isArchivedTeamData } from "../../utils/chatHelpers";
 
 const COLLAPSED_COUNT = 4;
 const EMPTY_TEAM_MEMBERS = [];
@@ -308,7 +309,7 @@ const VacantRoleDetailsModal = ({
   matchScore = null,
   matchDetails = null,
   showMatchScore = true,
-  canManage = false,
+  canManage: canManageProp = false,
   isTeamMember = false,
   viewAsUserId = null,
   viewAsUser = null,
@@ -319,6 +320,9 @@ const VacantRoleDetailsModal = ({
 }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  // An archived team is read-only (STATUS item 40): no role edits, no handling
+  // of applications or invitations, whichever caller opened this modal.
+  const canManage = canManageProp && !isArchivedTeamData(team);
   const userModal = useUserModalSafe();
   const teamModal = useTeamModalSafe();
   const childTeamModalZIndex = useChildModalZIndex();

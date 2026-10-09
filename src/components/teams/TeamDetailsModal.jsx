@@ -2160,7 +2160,10 @@ const TeamDetailsModal = ({
                   <VacantRolesSection
                     team={team}
                     teamId={effectiveTeamId}
-                    canManage={isOwner || effectiveUserRole === "admin"}
+                    canManage={
+                      (isOwner || effectiveUserRole === "admin") &&
+                      !isTeamArchived
+                    }
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
                     onRolesLoaded={setTeamRoles}
