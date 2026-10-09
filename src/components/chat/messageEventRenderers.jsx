@@ -614,7 +614,8 @@ export const createEventRenderers = (ctx) => {
         role: (
           <>
             <UserCheck size={16} className="event-inline-icon mx-1" />
-            <Mention name={parsedMessage.roleName} />
+            {/* A ROLE, not a person: `Mention` looked up a user of this name. */}
+            <RoleMentionById roleId={parsedMessage.roleId ?? null} name={parsedMessage.roleName} />
           </>
         ),
       },
