@@ -1006,14 +1006,21 @@ const TeamDetailsModal = ({
 
     if (!currentMember) return hidden;
 
-    if (currentMember.role === "owner") {
+    // In an archived team ownership can no longer be transferred, so the
+    // owner may leave like everyone else (STATUS item 43). The backend has
+    // always allowed it; only this guard stood in the way.
+    const teamIsArchived = Boolean(
+      team.archived_at || team.status === "inactive",
+    );
+
+    if (currentMember.role === "owner" && !teamIsArchived) {
       if (team.members.length <= 1) return hidden;
       return { show: true, enabled: false, ownerMustTransfer: true };
     }
 
     // Members and admins can always leave.
     return { show: true, enabled: true, ownerMustTransfer: false };
-  }, [user?.id, team?.members]);
+  }, [user?.id, team?.members, team?.archived_at, team?.status]);
 
   const validateForm = () => {
     const errors = {};
@@ -2160,7 +2167,10 @@ const TeamDetailsModal = ({
                   <VacantRolesSection
                     team={team}
                     teamId={effectiveTeamId}
-                    canManage={isOwner || effectiveUserRole === "admin"}
+                    canManage={
+                      (isOwner || effectiveUserRole === "admin") &&
+                      !isTeamArchived
+                    }
                     isTeamMember={isTeamMember}
                     isEditing={isEditing}
                     onRolesLoaded={setTeamRoles}
