@@ -73,10 +73,52 @@ const parseSystemMessageRaw = (content) => {
     /^📋\s+Response to your invitation for "(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (declineMatch) {
+    // The team may carry its id inside the quotes ("12:Chor") since item 35.
+    const team = parseIdNameToken(declineMatch[1].trim());
     return {
       type: "invitation_response",
-      teamName: declineMatch[1].trim(),
+      teamId: team.id,
+      teamName: team.name,
       personalMessage: declineMatch[2].trim(),
+    };
+  }
+
+  // Pattern 2b (legacy, Jan 2026; writer not found in either repo): an
+  // application decline DM, decliner (the sender) → applicant. Read as the
+  // marker's type; the applicant is the DM's receiver and not named.
+  // Format: 📋 Your application to "<team>" was declined by <decliner>.
+  const legacyApplicationDeclinedMatch = content.match(
+    /^📋\s+Your application to "(.+?)" was declined by (.+?)\.$/,
+  );
+  if (legacyApplicationDeclinedMatch) {
+    const team = parseIdNameToken(legacyApplicationDeclinedMatch[1].trim());
+    const approver = parseIdNameToken(legacyApplicationDeclinedMatch[2].trim());
+    return {
+      type: "application_declined",
+      teamId: team.id,
+      teamName: team.name,
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: null,
+      applicantName: null,
+      hasPersonalMessage: false,
+    };
+  }
+
+  // Pattern 2c (legacy, BE 68df287, Dec 2025): application decline response
+  // that names no applicant, DM decliner → applicant.
+  // Format: 📋 Response to your application for "<team>":\n\n"<message>"
+  const legacyApplicationResponseMatch = content.match(
+    /^📋\s+Response to your application for "(.+?)":\s*\n\n"(.+)"$/s,
+  );
+  if (legacyApplicationResponseMatch) {
+    const team = parseIdNameToken(legacyApplicationResponseMatch[1].trim());
+    return {
+      type: "application_response",
+      applicantName: null,
+      teamId: team.id,
+      teamName: team.name,
+      personalMessage: legacyApplicationResponseMatch[2].trim(),
     };
   }
 
@@ -450,10 +492,13 @@ const parseSystemMessageRaw = (content) => {
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (applicationDeclineMatch) {
+    // The team may carry its id inside the quotes ("12:Chor") since item 35.
+    const team = parseIdNameToken(applicationDeclineMatch[2].trim());
     return {
       type: "application_response",
       applicantName: applicationDeclineMatch[1].trim(),
-      teamName: applicationDeclineMatch[2].trim(),
+      teamId: team.id,
+      teamName: team.name,
       personalMessage: applicationDeclineMatch[3].trim(),
     };
   }
