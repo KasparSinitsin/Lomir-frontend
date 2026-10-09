@@ -1,10 +1,12 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import PageContainer from '../components/layout/PageContainer';
 import BadgeCategorySection from '../components/badges/BadgeCategorySection';
 import Alert from '../components/common/Alert';
 
 const BadgeOverview = () => {
+  const { t } = useTranslation();
   const [badgeCategories, setBadgeCategories] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,7 +34,7 @@ const BadgeOverview = () => {
         setBadgeCategories(groupedBadges);
         setLoading(false);
       } catch (err) {
-        setError('Failed to load badges');
+        setError(true);
         setLoading(false);
         console.error(err);
       }
@@ -54,7 +56,7 @@ const BadgeOverview = () => {
   if (error) {
     return (
       <PageContainer>
-        <Alert type="error" message={error} className="w-full shadow-sm" />
+        <Alert type="error" message={t("badgeOverview.loadError")} className="w-full shadow-sm" />
       </PageContainer>
     );
   }
@@ -62,10 +64,9 @@ const BadgeOverview = () => {
   return (
     <PageContainer>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Badge Overview</h1>
+        <h1 className="text-3xl font-bold mb-6">{t("badgeOverview.title")}</h1>
         <p className="mb-8 text-base-content/80">
-          Badges recognize skills, qualities, and contributions of team members in Lomir. 
-          They are awarded by peers and showcase strengths across different categories.
+          {t("badgeOverview.intro")}
         </p>
         
         {Object.entries(badgeCategories).map(([category, badges]) => (

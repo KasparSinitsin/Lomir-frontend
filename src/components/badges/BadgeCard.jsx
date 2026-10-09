@@ -1,8 +1,11 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
+import { getBadgeDescription, getBadgeName } from "../../utils/badgeLabels";
 import { getBadgeIcon } from "../../utils/badgeIconUtils";
 import Colors from "../../utils/Colors";
 
 const BadgeCard = ({ badge }) => {
+  const { t } = useTranslation();
   const {
     name,
     description,
@@ -36,7 +39,7 @@ const BadgeCard = ({ badge }) => {
           <div className="mr-3">{getBadgeIcon(name, badgeColor, 24)}</div>
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="card-title text-lg" style={{ color: badgeColor }}>
-              {name}
+              {getBadgeName(name, t)}
             </h3>
 
             {creditLabel && (
@@ -47,9 +50,13 @@ const BadgeCard = ({ badge }) => {
           </div>
         </div>
         {description ? (
-          <p className="text-sm text-base-content/80">{description}</p>
+          <p className="text-sm text-base-content/80">
+            {getBadgeDescription(name, description, t)}
+          </p>
         ) : (
-          <p className="text-sm text-base-content/60 italic">No description</p>
+          <p className="text-sm text-base-content/60 italic">
+            {t("badges.card.noDescription")}
+          </p>
         )}
       </div>
     </div>

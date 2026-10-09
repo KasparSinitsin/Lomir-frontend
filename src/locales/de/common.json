@@ -1,4 +1,9 @@
 {
+  "badgeOverview": {
+    "intro": "Badges würdigen die Fähigkeiten, Eigenschaften und Beiträge von Teammitgliedern in Lomir. Sie werden von anderen Mitgliedern verliehen und zeigen Stärken in verschiedenen Kategorien.",
+    "loadError": "Badges konnten nicht geladen werden",
+    "title": "Badge-Übersicht"
+  },
   "badges": {
     "award": {
       "generic": "Beitrag",
@@ -54,6 +59,7 @@
       "byShort": "von",
       "delete": "Badge-Auszeichnung löschen",
       "hide": "Badge vor anderen verbergen",
+      "noDescription": "Keine Beschreibung",
       "personal": "Persönlich",
       "privateProfile": "Privater Lomir-Nutzer",
       "project": "Projekt",
