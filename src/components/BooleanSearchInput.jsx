@@ -82,6 +82,30 @@ const getSuggestionQuery = (value, cursorIndex = value.length) => {
   return fallbackSegments[fallbackSegments.length - 1] || "";
 };
 
+// Removes the fragment a picked suggestion came from: the text between the last
+// operator before the cursor and the cursor, together with that operator. What
+// the user wrote around it stays, so `hiking AND art` becomes `hiking`.
+const removeSuggestionSegment = (value, cursorIndex = value.length) => {
+  const beforeCursor = value.slice(0, cursorIndex);
+  let afterCursor = value.slice(cursorIndex);
+
+  let lastOperator = null;
+  for (const match of beforeCursor.matchAll(/\b(?:AND|OR|NOT)\b/gi)) {
+    lastOperator = match;
+  }
+  const head = lastOperator ? beforeCursor.slice(0, lastOperator.index) : "";
+
+  // Nothing before the fragment: drop the operator that followed it instead.
+  if (!head.trim()) {
+    afterCursor = afterCursor.replace(/^\s*(?:AND|OR|NOT)\b\s*/i, "");
+  }
+
+  return `${head}${afterCursor}`
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\)/g, ")")
+    .trim();
+};
+
 const clamp = (value, min, max) => {
   const safeMax = Math.max(min, max);
   return Math.min(Math.max(value, min), safeMax);
@@ -752,36 +776,28 @@ const BooleanSearchInput = ({
     return () => observer.disconnect();
   }, [showStackedPills, measurePillsWrap]);
 
+  // A picked suggestion becomes a pill, so the text it was typed as is used up:
+  // remove it, close the list and keep the focus for the next term.
+  const finishSuggestionPick = () => {
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+    const value = inputRef.current?.value ?? query;
+    const cursorIndex = inputRef.current?.selectionStart ?? value.length;
+    const nextQuery = removeSuggestionSegment(value, cursorIndex);
+    setQuery(nextQuery);
+    setHasBooleanOperators(checkBooleanOperators(nextQuery));
+    setSuggestions({ tags: [], badges: [] });
+    setShowDropdown(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const handleSelectTag = (tag) => {
     onSelectTagSuggestion?.(tag);
-    const nextSuggestions = {
-      tags: suggestions.tags.filter((item) => Number(item.id) !== Number(tag.id)),
-      badges: suggestions.badges,
-    };
-    setSuggestions(nextSuggestions);
-    setShowDropdown(
-      (nextSuggestions.tags?.length || 0) +
-        (nextSuggestions.badges?.length || 0) >
-        0,
-    );
-    requestAnimationFrame(() => inputRef.current?.focus());
+    finishSuggestionPick();
   };
 
   const handleSelectBadge = (badge) => {
     onSelectBadgeSuggestion?.(badge);
-    const nextSuggestions = {
-      tags: suggestions.tags,
-      badges: suggestions.badges.filter(
-        (item) => Number(item.id) !== Number(badge.id),
-      ),
-    };
-    setSuggestions(nextSuggestions);
-    setShowDropdown(
-      (nextSuggestions.tags?.length || 0) +
-        (nextSuggestions.badges?.length || 0) >
-        0,
-    );
-    requestAnimationFrame(() => inputRef.current?.focus());
+    finishSuggestionPick();
   };
 
   const rootClassName = isCompactLayout
