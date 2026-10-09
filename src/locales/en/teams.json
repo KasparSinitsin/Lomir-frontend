@@ -208,6 +208,20 @@
     "deleteBody": "Delete this team? If you are the only member, the team and chat are deleted immediately. If other members remain, the team is archived first and permanently deleted after they leave or after the archive grace period, currently 14 days by default.",
     "serverError": "Server error: {detail}"
   },
+  "teamDeleteDialog": {
+    "next": "Next",
+    "back": "Back",
+    "requestsTitle": "Notifying applicants and invited users",
+    "requestsBoth": "Affected: {applications, plural, one {# open application} other {# open applications}} and {invitations, plural, one {# open invitation} other {# open invitations}}.",
+    "requestsApplications": "Affected: {applications, plural, one {# open application} other {# open applications}}.",
+    "requestsInvitations": "Affected: {invitations, plural, one {# open invitation} other {# open invitations}}.",
+    "noticeArchived": "The team \"{teamName}\" has just been archived and is scheduled for deletion. No applications and no pending invitations can be considered any more.",
+    "noticeDeleted": "The team \"{teamName}\" has just been deleted. No applications and no pending invitations can be considered any more.",
+    "messageAdd": "Add a personal message (optional)",
+    "messageLabel": "Your personal message (optional):",
+    "messagePlaceholder": "Write a personal message to all applicants and invitees …",
+    "messageHint": "Each of them receives it as a separate message in your chat."
+  },
   "vacantRoleCard": {
     "appliedForRole": "You applied for this role",
     "invitedToFillRole": "You were invited to fill this role",

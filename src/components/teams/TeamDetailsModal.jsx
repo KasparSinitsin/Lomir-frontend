@@ -68,6 +68,7 @@ import TeamFocusAreaSection from "./TeamFocusAreaSection";
 import VacantRolesSection from "./VacantRolesSection";
 import Modal from "../common/Modal";
 import ConfirmModal from "../common/ConfirmModal";
+import TeamDeleteDialog from "./TeamDeleteDialog";
 import LocationSection from "../common/LocationSection";
 import TagAwardsModal from "../badges/TagAwardsModal";
 import SupercategoryAwardsModal from "../badges/SupercategoryAwardsModal";
@@ -1207,15 +1208,15 @@ const TeamDetailsModal = ({
     setIsDeleteDialogOpen(false);
   };
 
-  const confirmDeleteTeam = async () => {
+  const confirmDeleteTeam = async (message = "") => {
     try {
       setLoading(true);
 
       let success = false;
       if (onDelete) {
-        success = await onDelete(effectiveTeamId);
+        success = await onDelete(effectiveTeamId, { message });
       } else {
-        await teamService.deleteTeam(effectiveTeamId);
+        await teamService.deleteTeam(effectiveTeamId, { message });
         success = true;
       }
 
@@ -2208,21 +2209,15 @@ const TeamDetailsModal = ({
         />
       )}
 
-      <ConfirmModal
+      <TeamDeleteDialog
         isOpen={isDeleteDialogOpen}
         onClose={closeDeleteTeamDialog}
         onConfirm={confirmDeleteTeam}
-        title={t("teams:teamDetails.deleteTitle")}
         loading={loading}
-        confirmLabel={t("teams:teamDetails.deleteConfirm")}
-        loadingLabel={t("teams:teamDetails.deleteLoading")}
-        confirmVariant="error"
-        confirmIcon={<Trash2 size={16} />}
-      >
-        <p className="text-sm text-base-content/80">
-          {t("teams:teamDetails.deleteBody")}
-        </p>
-      </ConfirmModal>
+        teamId={effectiveTeamId}
+        teamName={team?.name}
+        willBeDeletedAtOnce={(getTeamMemberCount(team) ?? 0) <= 1}
+      />
 
       {/* Leave Team Confirmation Dialog */}
       <ConfirmModal

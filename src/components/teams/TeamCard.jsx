@@ -41,6 +41,8 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
+import TeamDeleteDialog from "./TeamDeleteDialog";
+import { getTeamMemberCount } from "../../utils/teamCapacity";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
@@ -1844,10 +1846,10 @@ const TeamCard = ({
     setIsDeleteDialogOpen(false);
   };
 
-  const confirmDeleteTeam = async () => {
+  const confirmDeleteTeam = async (message = "") => {
     try {
       setIsDeleting(true);
-      await teamService.deleteTeam(teamData.id);
+      await teamService.deleteTeam(teamData.id, { message });
       setIsDeleteDialogOpen(false);
       if (onDelete) onDelete(teamData.id);
     } catch (err) {
@@ -2572,21 +2574,19 @@ const TeamCard = ({
         {renderActionButtons()}
       </Card>
 
-      <ConfirmModal
+      <TeamDeleteDialog
         isOpen={isDeleteDialogOpen}
         onClose={closeDeleteTeamDialog}
         onConfirm={confirmDeleteTeam}
-        title={t("teamCard.deleteDialog.title")}
         loading={isDeleting}
+        teamId={teamData?.id}
+        teamName={teamData?.name}
+        willBeDeletedAtOnce={(getTeamMemberCount(teamData) ?? 0) <= 1}
+        title={t("teamCard.deleteDialog.title")}
         confirmLabel={t("teamCard.deleteDialog.confirmLabel")}
         loadingLabel={t("teamCard.deleteDialog.loadingLabel")}
-        confirmVariant="error"
-        confirmIcon={<Trash2 size={16} />}
-      >
-        <p className="text-sm text-base-content/80">
-          {t("teamDetails.deleteBody")}
-        </p>
-      </ConfirmModal>
+        deleteBody={t("teamDetails.deleteBody")}
+      />
 
       <ConfirmModal
         isOpen={isCancelApplicationDialogOpen}
