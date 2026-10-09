@@ -837,6 +837,30 @@ export const createEventRenderers = (ctx) => {
   };
 
   // =============================================================================
+  // renderRequestVoidMessage - Neutral grey theme
+  // The owner deleted the team; this voids an open application or invitation.
+  // A personal message from the owner follows as an ordinary message.
+  // =============================================================================
+  const renderRequestVoidMessage = (message, parsedMessage) => {
+    const messageText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
+
+    return (
+      <div className="flex flex-col items-center w-full my-4">
+        <div className="event-banner event-banner--neutral mb-3">
+          <span className="text-sm font-medium event-message-text">
+            <CircleX size={16} className="event-inline-icon mr-1" />
+            {highlightEventContent(messageText)}
+          </span>
+        </div>
+
+        <div className="text-xs text-base-content/50">
+          {formatLocalTime(message.createdAt)}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================================================
   // renderInvitationResponseMessage - Info blue theme
   // =============================================================================
   const renderInvitationResponseMessage = (
@@ -1114,6 +1138,7 @@ export const createEventRenderers = (ctx) => {
     renderInvitationDeclinedMessage,
     renderApplicationResponseMessage,
     renderApplicationDeclinedMessage,
+    renderRequestVoidMessage,
     renderInvitationResponseMessage,
     renderApplicationCancelledMessage,
     renderRoleChangedMessage,

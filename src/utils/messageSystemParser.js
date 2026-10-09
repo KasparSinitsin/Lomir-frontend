@@ -803,6 +803,29 @@ const parseSystemMessageRaw = (content) => {
     };
   }
 
+  // Pattern 16: a deleted team voids an open application or invitation (DM,
+  // owner -> applicant/invitee). The recipient is the DM's receiver and is
+  // deliberately not named in the row.
+  // Format: 🗑️ REQUEST_VOID: teamId:teamName | ownerId:ownerName | application|invitation | archived|deleted | hasPersonalMessage
+  const requestVoidMatch = content.match(
+    /^🗑️\s+REQUEST_VOID:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(application|invitation)\s+\|\s+(archived|deleted)\s+\|\s+(true|false)$/,
+  );
+  if (requestVoidMatch) {
+    const team = parseIdNameToken(requestVoidMatch[1].trim());
+    const owner = parseIdNameToken(requestVoidMatch[2].trim());
+
+    return {
+      type: "request_void",
+      teamId: team.id,
+      teamName: team.name,
+      ownerId: owner.id,
+      ownerName: owner.name,
+      requestKind: requestVoidMatch[3],
+      deletionMode: requestVoidMatch[4],
+      hasPersonalMessage: requestVoidMatch[5] === "true",
+    };
+  }
+
   return null;
 };
 

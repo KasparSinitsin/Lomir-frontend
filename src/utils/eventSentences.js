@@ -56,6 +56,7 @@ export const TRANSLATED_EVENT_TYPES = new Set([
   "ownership_transferred",
   "ownership_team",
   "team_deleted",
+  "request_void",
   "application_approved",
   "application_approved_dm",
   "application_declined",
@@ -380,6 +381,25 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
         text: short
           ? t("chatEvents.teamDeleted.short", values)
           : t("chatEvents.teamDeleted.full", values),
+        slots: { owner: personSlot(owner), team },
+      };
+    }
+
+    // The owner deleted the team and this voids an open application or
+    // invitation (item 40b). `requestKind` and `deletionMode` are data, not
+    // names, so they pick the sentence like a perspective does.
+    case "request_void": {
+      const owner = person("owner");
+      const values = {
+        owner: perspectiveOf(owner),
+        kind: event.parsed?.requestKind === "invitation" ? "invitation" : "application",
+        mode: event.parsed?.deletionMode === "deleted" ? "deleted" : "archived",
+        personal: personalOf(event),
+      };
+      return {
+        text: short
+          ? t("chatEvents.requestVoid.short", values)
+          : t("chatEvents.requestVoid.full", values),
         slots: { owner: personSlot(owner), team },
       };
     }

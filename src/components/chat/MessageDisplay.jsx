@@ -1548,6 +1548,7 @@ const MessageDisplay = ({
     renderInvitationDeclinedMessage,
     renderApplicationResponseMessage,
     renderApplicationDeclinedMessage,
+    renderRequestVoidMessage,
     renderInvitationResponseMessage,
     renderApplicationCancelledMessage,
     renderRoleChangedMessage,
@@ -2082,6 +2083,10 @@ const MessageDisplay = ({
                           parsedMessage,
                           isCurrentUser,
                         ),
+                    );
+                  } else if (parsedMessage.type === "request_void") {
+                    return renderSystemMessage(
+                      renderRequestVoidMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "application_approved_dm") {
                     return renderSystemMessage(
