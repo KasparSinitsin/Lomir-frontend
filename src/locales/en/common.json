@@ -1,4 +1,9 @@
 {
+  "badgeOverview": {
+    "intro": "Badges recognize skills, qualities, and contributions of team members in Lomir. They are awarded by peers and showcase strengths across different categories.",
+    "loadError": "Failed to load badges",
+    "title": "Badge Overview"
+  },
   "badges": {
     "award": {
       "generic": "Contribution",
@@ -54,6 +59,7 @@
       "byShort": "by",
       "delete": "Delete badge award",
       "hide": "Hide badge from others",
+      "noDescription": "No description",
       "personal": "Personal",
       "privateProfile": "Private Lomir User",
       "project": "Project",
