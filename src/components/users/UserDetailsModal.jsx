@@ -656,9 +656,9 @@ const UserDetailsModal = ({
       queryClient.invalidateQueries({ queryKey: userProfileQueryKey(userId) });
       setIsBlockModalOpen(false);
       onClose?.();
-    } catch (error) {
+    } catch {
       setBlockError(
-        error.response?.data?.message || t("userDetails.blockFailed"),
+        t("userDetails.blockFailed"),
       );
     } finally {
       setBlocking(false);

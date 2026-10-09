@@ -628,8 +628,6 @@ const Settings = () => {
       } else {
         setDeleteError({
           text:
-            err.response?.data?.message ||
-            err.message ||
             t("settings.delete.errors.loadSummary"),
         });
       }
@@ -690,10 +688,9 @@ const Settings = () => {
         ...prev,
         [teamId]: options,
       }));
-    } catch (err) {
+    } catch {
       setDeleteError({
         text:
-          err.response?.data?.message ||
           t("settings.delete.errors.loadMembers"),
       });
     } finally {

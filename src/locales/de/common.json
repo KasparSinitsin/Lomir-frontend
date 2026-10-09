@@ -318,7 +318,8 @@
     "viewDetailsGeneric": "Details ansehen"
   },
   "chatMessage": {
-    "emptyError": "Die Nachricht darf nicht leer sein."
+    "emptyError": "Die Nachricht darf nicht leer sein.",
+    "saveEditFailed": "Deine Änderung konnte nicht gespeichert werden."
   },
   "chatPage": {
     "conversationUnavailable": "Diese Unterhaltung ist nicht mehr verfügbar.",

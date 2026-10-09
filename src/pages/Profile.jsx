@@ -498,9 +498,7 @@ const Profile = () => {
     } catch (error) {
       console.error("Error deleting avatar:", error);
       setError(
-        error.response?.data?.message ||
-          error.message ||
-          t("errors.removePictureRetry"),
+        t("errors.removePictureRetry"),
       );
     } finally {
       setAvatarDeleteLoading(false);
@@ -637,9 +635,7 @@ const Profile = () => {
     } catch (err) {
       console.error("Failed to hide badge:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          t("errors.hideBadge"),
+        t("errors.hideBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -680,9 +676,7 @@ const Profile = () => {
     } catch (err) {
       console.error("Failed to show badge:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          t("errors.showBadge"),
+        t("errors.showBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -727,9 +721,7 @@ const Profile = () => {
     } catch (err) {
       console.error("Failed to delete badge award:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          t("errors.deleteBadge"),
+        t("errors.deleteBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
