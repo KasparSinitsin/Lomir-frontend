@@ -558,6 +558,7 @@
   },
   "teamErrors": {
     "teamNotFound": "This team no longer exists.",
+    "teamNotAccessible": "This team is private. Only its members can see it.",
     "teamFull": "This team has reached its maximum number of members.",
     "roleNotFound": "This role no longer exists. It may have been deleted.",
     "roleNotOpen": "This role is no longer open.",
