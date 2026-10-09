@@ -10,6 +10,7 @@ import ReactDOM from "react-dom";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
+import { getBadgeName } from "../utils/badgeLabels";
 import PageContainer from "../components/layout/PageContainer";
 import Grid from "../components/layout/Grid";
 import TeamCard from "../components/teams/TeamCard";
@@ -1265,7 +1266,7 @@ const SearchPage = () => {
       const categoryDiff =
         getBadgeCategoryOrder(a.category) - getBadgeCategoryOrder(b.category);
       if (categoryDiff !== 0) return categoryDiff;
-      return a.label.localeCompare(b.label);
+      return getBadgeName(a.label, t).localeCompare(getBadgeName(b.label, t));
     });
   const activeCriteriaPills = getActiveCriteriaPills({
     t,
@@ -1825,14 +1826,15 @@ const SearchPage = () => {
       const badges = allBadges
         .filter(
           (b) =>
-            b.name.toLowerCase().includes(q) &&
+            (b.name.toLowerCase().includes(q) ||
+              getBadgeName(b.name, t).toLowerCase().includes(q)) &&
             !filterBadgeIds.includes(Number(b.id)),
         )
         .slice(0, 5);
 
       return { tags, badges };
     },
-    [allBadges, filterTagIds, filterBadgeIds, resolveTagWithTaxonomy],
+    [allBadges, filterTagIds, filterBadgeIds, resolveTagWithTaxonomy, t],
   );
 
   const handleActivePillRemove = (pillKey) => {
