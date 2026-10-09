@@ -44,9 +44,10 @@ import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
 import { useMentionNames } from "../../contexts/MentionNamesContext";
 import {
   collectEventPersonIds,
+  collectEventRoleRefs,
   collectEventTeamIds,
 } from "../../utils/describeEvent";
-import { resolveTeamNames } from "../../utils/chatEntityResolvers";
+import { resolveRoleNames, resolveTeamNames } from "../../utils/chatEntityResolvers";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -362,23 +363,29 @@ const ConversationList = ({
     if (ids.size > 0) requestEventPersonIds([...ids]);
   }, [conversations, requestEventPersonIds]);
 
-  // Team names too: the preview text comes from describeEvent, which uses a
-  // team's current name once it has been fetched. The counter re-renders the
+  // Team and role names too: the preview text comes from describeEvent, which
+  // uses current names once they have been fetched. The counter re-renders the
   // list when the names have arrived.
   const [, setTeamNamesResolved] = useState(0);
   useEffect(() => {
     const ids = new Set();
+    const roleRefs = [];
     for (const conversation of conversations || []) {
-      for (const id of collectEventTeamIds(
-        getConversationLastMessageText(conversation),
-      )) {
+      const lastMessageText = getConversationLastMessageText(conversation);
+      for (const id of collectEventTeamIds(lastMessageText)) {
         ids.add(id);
       }
+      roleRefs.push(
+        ...collectEventRoleRefs(
+          lastMessageText,
+          conversation.type === "team" ? conversation.id : null,
+        ),
+      );
     }
-    if (ids.size === 0) return undefined;
+    if (ids.size === 0 && roleRefs.length === 0) return undefined;
 
     let isCurrent = true;
-    resolveTeamNames([...ids]).then(() => {
+    Promise.all([resolveTeamNames([...ids]), resolveRoleNames(roleRefs)]).then(() => {
       if (isCurrent) setTeamNamesResolved((count) => count + 1);
     });
     return () => {

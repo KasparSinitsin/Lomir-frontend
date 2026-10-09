@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   collectEventPersonIds,
+  collectEventRoleRefs,
   matchesViewer,
 } from "../../utils/describeEvent";
 import { useMentionNames } from "../../contexts/MentionNamesContext";
@@ -39,7 +40,9 @@ import {
   getTeamAvatarUrl,
   mergeResolvedTeamData,
   mergeResolvedUserData,
+  resolveRoleNames,
 } from "../../utils/chatEntityResolvers";
+import { getCurrentRoleName, rememberRoleName } from "../../utils/roleNameRegistry";
 import { parseSystemMessage } from "../../utils/messageSystemParser";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
@@ -542,13 +545,17 @@ const MessageDisplay = ({
     conversationType === "team" && !isArchivedTeamData(teamData)
       ? teamData?.id ?? null
       : null;
-  const { eventRoleIdsKey, roleIdsDeletedByEvent } = useMemo(() => {
+  const { eventRoleIdsKey, roleIdsDeletedByEvent, hasIdLessRoleNames } = useMemo(() => {
     const ids = new Set();
     const deletedByEvent = new Set();
+    let idLess = false;
     for (const message of messages) {
       const parsed = parseSystemMessage(message?.content);
       const roleId = parsed?.roleId;
-      if (roleId == null || roleId === "") continue;
+      if (roleId == null || roleId === "") {
+        if (parsed?.roleName) idLess = true;
+        continue;
+      }
       ids.add(String(roleId));
       if (parsed.type === "role_deleted") deletedByEvent.add(String(roleId));
     }
@@ -556,6 +563,7 @@ const MessageDisplay = ({
       eventRoleIdsKey:
         roleLookupTeamId == null ? "" : [...ids].sort().join(","),
       roleIdsDeletedByEvent: deletedByEvent,
+      hasIdLessRoleNames: idLess,
     };
   }, [messages, roleLookupTeamId]);
   const [deletedRoleIds, setDeletedRoleIds] = useState(() => new Set());
@@ -579,6 +587,8 @@ const MessageDisplay = ({
         if (isCancelled) return;
         const roles = response?.data ?? response;
         if (!Array.isArray(roles)) return;
+        // The same answer carries each living role's CURRENT name (item 38).
+        for (const role of roles) rememberRoleName(role?.id, getRoleName(role));
         const livingIds = new Set(roles.map((role) => String(role?.id)));
         setDeletedRoleIds(new Set(roleIds.filter((id) => !livingIds.has(id))));
       })
@@ -589,6 +599,81 @@ const MessageDisplay = ({
       isCancelled = true;
     };
   }, [eventRoleIdsKey, roleLookupTeamId]);
+
+  // Old events that name a role without its id (e.g. the 🔓 prose account
+  // deletion wrote until item 37) can only be matched by name. In a live team
+  // chat the reader sees every role of the team, so a name no living role
+  // carries is gone — deleted, or renamed, which cannot be told apart without
+  // an id — and renders as text. `null` = not known: every name stays a link.
+  // Keyed by team: names of another team's roles must never decide here, so a
+  // chat switch reads "not known" until this team's answer arrives.
+  const [livingRoleNames, setLivingRoleNames] = useState(null);
+  const isIdLessRoleGone = (roleId, roleName) =>
+    roleId == null &&
+    livingRoleNames != null &&
+    String(livingRoleNames.teamId) === String(roleLookupTeamId) &&
+    !livingRoleNames.names.has(normalizeRoleLookupValue(roleName));
+
+  useEffect(() => {
+    setLivingRoleNames(null);
+    if (roleLookupTeamId == null || !hasIdLessRoleNames) return undefined;
+
+    let isCancelled = false;
+
+    vacantRoleService
+      .getVacantRoles(roleLookupTeamId, "all")
+      .then((response) => {
+        if (isCancelled) return;
+        const roles = response?.data ?? response;
+        if (!Array.isArray(roles)) return;
+        setLivingRoleNames({
+          teamId: roleLookupTeamId,
+          names: new Set(
+            roles.map((role) => normalizeRoleLookupValue(getRoleName(role))),
+          ),
+        });
+      })
+      // A failed lookup keeps every link, as for the id lookup above.
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [roleLookupTeamId, hasIdLessRoleNames]);
+
+  // Current role names everywhere else (DMs, archived team chats): the live
+  // team chat gets them from the bulk lookup above. A role the answer leaves
+  // out keeps its stored name. The counter re-renders once names arrive.
+  const eventRoleRefsKey = useMemo(() => {
+    if (roleLookupTeamId != null) return "";
+    const chatTeamId = conversationType === "team" ? teamData?.id ?? null : null;
+    const refs = new Set();
+    for (const message of messages) {
+      for (const ref of collectEventRoleRefs(message?.content ?? null, chatTeamId)) {
+        refs.add(`${ref.teamId}:${ref.roleId}`);
+      }
+    }
+    return [...refs].sort().join(",");
+  }, [messages, roleLookupTeamId, conversationType, teamData?.id]);
+  const [, setRoleNamesResolved] = useState(0);
+
+  useEffect(() => {
+    if (!eventRoleRefsKey) return undefined;
+
+    let isCancelled = false;
+    const refs = eventRoleRefsKey.split(",").map((key) => {
+      const [teamId, roleId] = key.split(":");
+      return { teamId, roleId };
+    });
+
+    resolveRoleNames(refs).then(() => {
+      if (!isCancelled) setRoleNamesResolved((count) => count + 1);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventRoleRefsKey]);
 
   // Current team names for the teams named by this chat's events, so a link
   // shows what the team is called now, as person links already do. Where a
@@ -996,13 +1081,19 @@ const MessageDisplay = ({
         } else {
           const response = await vacantRoleService.getVacantRoles(teamId, "all");
           const roles = response?.data ?? response ?? [];
-          resolvedRole =
-            findMatchingRole(roles, {
-              roleId,
-              roleName: safeName,
-              filledUserId,
-              filledUserName: safeFilledUserName,
-            }) ?? fallbackRole;
+          const matchingRole = findMatchingRole(roles, {
+            roleId,
+            roleName: safeName,
+            filledUserId,
+            filledUserName: safeFilledUserName,
+          });
+          if (!matchingRole && Array.isArray(roles)) {
+            // No role of the team carries this name any more: say so instead
+            // of opening a modal built from the event alone (item 37).
+            setRoleNotFound(true);
+            return;
+          }
+          resolvedRole = matchingRole ?? fallbackRole;
         }
       } catch (error) {
         if (roleId && error?.response?.status === 404) {
@@ -1033,10 +1124,11 @@ const MessageDisplay = ({
     // ⚠️ "Role" is unreachable: every role format the parser matches carries
     // a non-empty name. Not "Open Role" either (nor the older "Vacant Role")
     // — those are saved names.
-    const safeName = (name || "").trim() || "Role";
+    // The CURRENT name where it has been fetched (item 38), else the stored one.
+    const safeName = (getCurrentRoleName(roleId) || name || "").trim() || "Role";
 
     // A deleted role keeps its name as text, like the 🗑️ banner shows it.
-    if (isRoleDeleted(roleId)) {
+    if (isRoleDeleted(roleId) || isIdLessRoleGone(roleId, safeName)) {
       return (
         <span className="font-medium">
           {renderHighlightedSearchText(safeName, searchQuery)}
