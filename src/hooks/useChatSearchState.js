@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { useMentionNames } from "../contexts/MentionNamesContext";
 import { messageService } from "../services/messageService";
-import { resolveTeamNames } from "../utils/chatEntityResolvers";
+import { resolveRoleNames, resolveTeamNames } from "../utils/chatEntityResolvers";
 import { getConversationUpdatedAt } from "../utils/chatHelpers";
 import {
   collectMessageSearchPersonIds,
+  collectMessageSearchRoleRefs,
   collectMessageSearchTeamIds,
   CHAT_SEARCH_PAGE_SIZE,
   CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION,
@@ -117,11 +118,17 @@ const useChatSearchState = ({
       { content: conversation?.lastMessage?.content ?? conversation?.lastMessage },
       { content: conversation?.last_message?.content ?? conversation?.last_message },
     ];
-    // Team names the same way: awaited, so the cached string carries the
-    // team's current name (describeEvent reads it from teamNameRegistry).
+    // Team and role names the same way: awaited, so the cached string carries
+    // the current names (describeEvent reads them from the two registries).
     const [resolvedNames] = await Promise.all([
       resolveIds(collectMessageSearchPersonIds(indexedMessages)),
       resolveTeamNames(collectMessageSearchTeamIds(indexedMessages)),
+      resolveRoleNames(
+        collectMessageSearchRoleRefs(
+          indexedMessages,
+          conversation?.type === "team" ? conversation?.id : null,
+        ),
+      ),
     ]);
     const options = { ...searchOptions, names: resolvedNames };
 
@@ -147,6 +154,12 @@ const useChatSearchState = ({
       const [resolvedNames] = await Promise.all([
         resolveIds(collectMessageSearchPersonIds(messages)),
         resolveTeamNames(collectMessageSearchTeamIds(messages)),
+        resolveRoleNames(
+          collectMessageSearchRoleRefs(
+            messages,
+            conversationType === "team" ? conversationId : null,
+          ),
+        ),
       ]);
       if (cancelled) return;
 

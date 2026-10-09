@@ -1,6 +1,8 @@
 import { teamService } from "../services/teamService";
 import { userService } from "../services/userService";
+import { vacantRoleService } from "../services/vacantRoleService";
 import { rememberTeamName } from "./teamNameRegistry";
+import { rememberRoleName } from "./roleNameRegistry";
 
 const chatUserProfileCache = new Map();
 const chatTeamProfileCache = new Map();
@@ -65,6 +67,50 @@ export const getCachedChatTeamProfile = async (teamId) =>
 export const resolveTeamNames = async (teamIds) => {
   const ids = [...new Set((teamIds ?? []).filter((id) => id != null && id !== "").map(String))];
   await Promise.allSettled(ids.map((id) => getCachedChatTeamProfile(id)));
+};
+
+// Role names by `${teamId}:${roleId}`, each asked once per session. A role the
+// answer leaves out (deleted, or not visible to this reader) settles without a
+// name and keeps its stored one; a failed request is forgotten so a later call
+// can retry it.
+const chatRoleNameRequests = new Map();
+
+// Fetches the given roles, one request per team, so `describeEvent` can use
+// their current names. Never rejects. `refs`: [{ teamId, roleId }].
+export const resolveRoleNames = async (refs) => {
+  const pendingByTeam = new Map();
+  const waits = [];
+
+  for (const ref of refs ?? []) {
+    if (ref?.teamId == null || ref?.roleId == null) continue;
+    const key = `${ref.teamId}:${ref.roleId}`;
+    if (chatRoleNameRequests.has(key)) {
+      waits.push(chatRoleNameRequests.get(key));
+      continue;
+    }
+    const ids = pendingByTeam.get(String(ref.teamId)) ?? new Set();
+    ids.add(String(ref.roleId));
+    pendingByTeam.set(String(ref.teamId), ids);
+  }
+
+  for (const [teamId, idSet] of pendingByTeam) {
+    const roleIds = [...idSet];
+    const request = vacantRoleService
+      .getVacantRolesByIds(teamId, roleIds)
+      .then((response) => {
+        const roles = extractEntityPayload(response);
+        for (const role of Array.isArray(roles) ? roles : []) {
+          rememberRoleName(role?.id, role?.roleName ?? role?.role_name);
+        }
+      })
+      .catch(() => {
+        for (const roleId of roleIds) chatRoleNameRequests.delete(`${teamId}:${roleId}`);
+      });
+    for (const roleId of roleIds) chatRoleNameRequests.set(`${teamId}:${roleId}`, request);
+    waits.push(request);
+  }
+
+  await Promise.allSettled(waits);
 };
 
 export const getTeamAvatarUrl = (team) =>

@@ -23,6 +23,7 @@ import { DELETED_USER_DISPLAY_NAME } from "./deletedUser";
 import { joinNameParts } from "./nameFormatters";
 import { currentNameFromLookup } from "./mentions";
 import { getCurrentTeamName } from "./teamNameRegistry";
+import { getCurrentRoleName } from "./roleNameRegistry";
 
 /**
  * Every participant slot in the parser's output is a `<role>Name` / `<role>Id`
@@ -180,6 +181,19 @@ export const collectEventTeamIds = (content) => {
   return event?.team?.id != null ? [String(event.team.id)] : [];
 };
 
+// The roles an event names by id, with the team to ask: the role endpoint is
+// per team. `fallbackTeamId` is the chat's team, for the one format whose
+// payload carries a role id but no team (`role_application_approved`).
+export const collectEventRoleRefs = (content, fallbackTeamId = null) => {
+  const event = describeEvent(content, null, null, null, null);
+  if (!event) return [];
+  const teamId = event.team?.id ?? fallbackTeamId;
+  if (teamId == null || teamId === "") return [];
+  return [event.role, event.currentRole]
+    .filter((role) => role?.id != null && role.id !== "")
+    .map((role) => ({ teamId: String(teamId), roleId: String(role.id) }));
+};
+
 export const collectEventPersonIds = (content) => {
   const event = describeEvent(content, null, null, null, null);
   if (!event) return [];
@@ -228,8 +242,11 @@ export const describeEvent = (
     // (teamNameRegistry.js); until then, and for a team that cannot be
     // fetched, the stored name stands.
     team: buildEntity(parsed.teamId, getCurrentTeamName(parsed.teamId) ?? parsed.teamName),
-    role: buildEntity(parsed.roleId, parsed.roleName),
-    currentRole: buildEntity(parsed.currentRoleId, parsed.currentRoleName),
+    role: buildEntity(parsed.roleId, getCurrentRoleName(parsed.roleId) ?? parsed.roleName),
+    currentRole: buildEntity(
+      parsed.currentRoleId,
+      getCurrentRoleName(parsed.currentRoleId) ?? parsed.currentRoleName,
+    ),
     // Flags and free text the sentences branch on. Kept verbatim; they are
     // data, not prose.
     hasPersonalMessage: Boolean(parsed.hasPersonalMessage),

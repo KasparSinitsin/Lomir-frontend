@@ -1,5 +1,6 @@
 import {
   collectEventPersonIds,
+  collectEventRoleRefs,
   collectEventTeamIds,
   describeEvent,
 } from "../utils/describeEvent";
@@ -64,6 +65,17 @@ export const collectMessageSearchTeamIds = (messages) => {
     for (const id of collectEventTeamIds(message?.content ?? null)) ids.add(id);
   }
   return [...ids];
+};
+
+export const collectMessageSearchRoleRefs = (messages, chatTeamId = null) => {
+  const refs = new Map();
+  for (const message of messages ?? []) {
+    const fallbackTeamId = message?.team_id ?? message?.teamId ?? chatTeamId;
+    for (const ref of collectEventRoleRefs(message?.content ?? null, fallbackTeamId)) {
+      refs.set(`${ref.teamId}:${ref.roleId}`, ref);
+    }
+  }
+  return [...refs.values()];
 };
 
 export const dedupeConversations = (list) =>
