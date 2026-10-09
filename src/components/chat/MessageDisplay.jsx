@@ -44,6 +44,7 @@ import {
 } from "../../utils/chatEntityResolvers";
 import { getCurrentRoleName, rememberRoleName } from "../../utils/roleNameRegistry";
 import { parseSystemMessage } from "../../utils/messageSystemParser";
+import { getTeamErrorCode } from "../../utils/teamErrorText";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
 import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
 import { joinNameParts } from "../../utils/nameFormatters";
@@ -152,6 +153,8 @@ const MessageDisplay = ({
   // A role link in an event whose role has been deleted since. Without this the
   // modal opened on the event's name alone, as an open role you could apply to.
   const [roleNotFound, setRoleNotFound] = useState(false);
+  // A team link whose team is gone or private to this reader (item 34).
+  const [teamAlertKey, setTeamAlertKey] = useState(null);
   const screenAlerts = [
     {
       type: "error",
@@ -162,6 +165,16 @@ const MessageDisplay = ({
       type: "error",
       message: roleNotFound ? tTeams("teamErrors.roleNotFound") : null,
       onClose: () => setRoleNotFound(false),
+    },
+    {
+      type: "error",
+      message:
+        teamAlertKey === "notFound"
+          ? tTeams("teamErrors.teamNotFound")
+          : teamAlertKey === "notAccessible"
+            ? tTeams("teamErrors.teamNotAccessible")
+            : null,
+      onClose: () => setTeamAlertKey(null),
     },
   ];
 
@@ -688,6 +701,10 @@ const MessageDisplay = ({
     return [...ids].sort().join(",");
   }, [messages]);
   const [currentTeamNames, setCurrentTeamNames] = useState({});
+  // Teams the API reports as gone (TEAM_NOT_FOUND: hard-deleted, or archived
+  // to a non-member). Their last stored name stays, as text (item 34). A
+  // private team answers TEAM_NOT_ACCESSIBLE instead and keeps its link.
+  const [goneTeamIds, setGoneTeamIds] = useState(() => new Set());
 
   useEffect(() => {
     if (!eventTeamIdsKey) return undefined;
@@ -700,13 +717,23 @@ const MessageDisplay = ({
     ).then((results) => {
       if (isCancelled) return;
       const names = {};
+      const gone = [];
       results.forEach((result, index) => {
+        if (
+          result.status === "rejected" &&
+          getTeamErrorCode(result.reason) === "TEAM_NOT_FOUND"
+        ) {
+          gone.push(teamIds[index]);
+        }
         const name =
           result.status === "fulfilled" ? (result.value?.name || "").trim() : "";
         if (name) names[teamIds[index]] = name;
       });
       if (Object.keys(names).length > 0) {
         setCurrentTeamNames((prev) => ({ ...prev, ...names }));
+      }
+      if (gone.length > 0) {
+        setGoneTeamIds((prev) => new Set([...prev, ...gone]));
       }
     });
 
@@ -912,8 +939,25 @@ const MessageDisplay = ({
     );
   }
 
-  const openTeamModal = (teamId) => {
+  const openTeamModal = async (teamId) => {
     if (!teamId) return;
+    // Cached per session, so normally no request: a gone or private team says
+    // so instead of opening a modal that can only show an error (item 34).
+    try {
+      await getCachedChatTeamProfile(teamId);
+    } catch (error) {
+      const code = getTeamErrorCode(error);
+      if (code === "TEAM_NOT_FOUND") {
+        setGoneTeamIds((prev) => new Set(prev).add(String(teamId)));
+        setTeamAlertKey("notFound");
+        return;
+      }
+      if (code === "TEAM_NOT_ACCESSIBLE") {
+        setTeamAlertKey("notAccessible");
+        return;
+      }
+      // Anything else (network, an old backend without a code): open as before.
+    }
     setSelectedTeamId(teamId);
     setIsTeamModalOpen(true);
   };
@@ -924,8 +968,8 @@ const MessageDisplay = ({
     const currentName = teamId ? currentTeamNames[String(teamId)] : null;
     const safeName = (currentName || name || "").trim() || t("team.unknownName");
 
-    // legacy / missing id => non-clickable fallback
-    if (!teamId) {
+    // legacy / missing id, or a team that is gone => its last name, not a link
+    if (!teamId || goneTeamIds.has(String(teamId))) {
       return (
         <span className="font-medium">
           {renderHighlightedSearchText(safeName, searchQuery)}

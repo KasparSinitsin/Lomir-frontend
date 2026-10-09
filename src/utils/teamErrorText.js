@@ -30,6 +30,8 @@ export const getTeamErrorText = (error, t, fallback) => {
   switch (code) {
     case "TEAM_NOT_FOUND":
       return t("teams:teamErrors.teamNotFound");
+    case "TEAM_NOT_ACCESSIBLE":
+      return t("teams:teamErrors.teamNotAccessible");
     case "TEAM_FULL":
       return t("teams:teamErrors.teamFull");
     case "MAX_MEMBERS_BELOW_MEMBER_COUNT": {
