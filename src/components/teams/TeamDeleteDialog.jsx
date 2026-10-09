@@ -13,6 +13,8 @@ import {
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import useTeamRequestLists from "../../hooks/useTeamRequestLists";
+import { useAuth } from "../../contexts/AuthContext";
+import { getDisplayName } from "../../utils/userHelpers";
 
 // Mirrors MAX_PERSONAL_MESSAGE_LENGTH in the backend's teamDeletionRequests.js,
 // which refuses anything longer.
@@ -46,6 +48,7 @@ const TeamDeleteDialog = ({
   deleteBody,
 }) => {
   const { t } = useTranslation(["teams", "common"]);
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [message, setMessage] = useState("");
   const [messageExpanded, setMessageExpanded] = useState(false);
@@ -95,9 +98,12 @@ const TeamDeleteDialog = ({
             invitations: invitationCount,
           });
 
+  // The preview is the sentence the recipient reads, so it names the owner.
+  const ownerName = user ? getDisplayName(user) : "";
+
   const noticeText = willBeDeletedAtOnce
-    ? t("teams:teamDeleteDialog.noticeDeleted", { teamName: teamName ?? "" })
-    : t("teams:teamDeleteDialog.noticeArchived", { teamName: teamName ?? "" });
+    ? t("teams:teamDeleteDialog.noticeDeleted", { teamName: teamName ?? "", ownerName })
+    : t("teams:teamDeleteDialog.noticeArchived", { teamName: teamName ?? "", ownerName });
 
   const deleteButton = (
     <Button
@@ -170,7 +176,12 @@ const TeamDeleteDialog = ({
             {t("teams:teamDeleteDialog.requestsTitle")}
           </h3>
           <p className="text-sm text-base-content/60">{requestSummary}</p>
-          <p className="text-sm text-base-content/90">{noticeText}</p>
+          <div className="space-y-1">
+            <p className="text-sm text-base-content/60">
+              {t("teams:teamDeleteDialog.noticeIntro")}
+            </p>
+            <p className="text-sm text-base-content/90 italic">{noticeText}</p>
+          </div>
 
           <div>
             <button
