@@ -69,12 +69,9 @@ const TeamDeleteDialog = ({
     }
   }, [isOpen]);
 
-  // Internal role applications (the applicant is already a member) get no DM,
-  // so they do not count.
-  const applicationCount = applications.filter(
-    (application) =>
-      !(application.isInternalRoleApplication ?? application.is_internal_role_application),
-  ).length;
+  // Members' role applications and role invitations are told too (in words
+  // about a role), so every open one counts.
+  const applicationCount = applications.length;
   const invitationCount = invitations.length;
   const hasRequests = applicationCount + invitationCount > 0;
   const requestsLoading =

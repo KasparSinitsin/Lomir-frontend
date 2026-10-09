@@ -79,6 +79,9 @@ export const perspectiveOf = (person) => {
 /** For the optional parts of a sentence: a team or role name that may be missing. */
 const presenceOf = (entity) => (entity?.name ? "named" : "other");
 
+// `application` is the select's `other` branch; the rest are spelled out.
+const REQUEST_VOID_KINDS = new Set(["application", "invitation", "role_application", "role_invitation"]);
+
 /** Whether a decision DM carries a personal message beside the banner. */
 const personalOf = (event) => (event.hasPersonalMessage ? "yes" : "other");
 
@@ -392,7 +395,9 @@ export const getEventSentence = (t, event, form = "full", people = {}) => {
       const owner = person("owner");
       const values = {
         owner: perspectiveOf(owner),
-        kind: event.parsed?.requestKind === "invitation" ? "invitation" : "application",
+        kind: REQUEST_VOID_KINDS.has(event.parsed?.requestKind)
+          ? event.parsed.requestKind
+          : "application",
         mode: event.parsed?.deletionMode === "deleted" ? "deleted" : "archived",
         personal: personalOf(event),
       };

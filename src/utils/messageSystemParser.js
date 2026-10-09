@@ -806,9 +806,10 @@ const parseSystemMessageRaw = (content) => {
   // Pattern 16: a deleted team voids an open application or invitation (DM,
   // owner -> applicant/invitee). The recipient is the DM's receiver and is
   // deliberately not named in the row.
-  // Format: 🗑️ REQUEST_VOID: teamId:teamName | ownerId:ownerName | application|invitation | archived|deleted | hasPersonalMessage
+  // Format: 🗑️ REQUEST_VOID: teamId:teamName | ownerId:ownerName | application|invitation|role_application|role_invitation | archived|deleted | hasPersonalMessage
+  // The role_* kinds are a MEMBER's application for / invitation to a role.
   const requestVoidMatch = content.match(
-    /^🗑️\s+REQUEST_VOID:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(application|invitation)\s+\|\s+(archived|deleted)\s+\|\s+(true|false)$/,
+    /^🗑️\s+REQUEST_VOID:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(application|invitation|role_application|role_invitation)\s+\|\s+(archived|deleted)\s+\|\s+(true|false)$/,
   );
   if (requestVoidMatch) {
     const team = parseIdNameToken(requestVoidMatch[1].trim());
