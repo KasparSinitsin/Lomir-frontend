@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Tooltip from "../common/Tooltip";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { getFocusAreaCategoryIcon } from "../../utils/badgeIconUtils";
 import {
   FOCUS_BORDER,
@@ -10,8 +11,6 @@ import {
   TAG_SECTION_BG,
 } from "../../constants/badgeConstants";
 
-const byName = (a, b) => a.name.localeCompare(b.name);
-
 /**
  * One category of the focus area overview, built like `BadgeCard`: a light green card on the
  * supercategory's white surface, an icon and a title in the focus area green, the focus areas as pills.
@@ -19,6 +18,7 @@ const byName = (a, b) => a.name.localeCompare(b.name);
  */
 const FocusAreaCategoryCard = ({ category, supercategoryName }) => {
   const { t } = useTranslation();
+  const { categoryLabel, tagLabel, language } = useTagLabels();
 
   return (
     <div
@@ -28,7 +28,7 @@ const FocusAreaCategoryCard = ({ category, supercategoryName }) => {
       <div className="flex items-center gap-2 flex-wrap mb-2">
         {getFocusAreaCategoryIcon(category.name, supercategoryName, 24, FOCUS_GREEN)}
         <h3 className="font-medium leading-tight" style={{ color: FOCUS_GREEN }}>
-          {category.name}
+          {categoryLabel(category.name)}
         </h3>
         {/* The count chip of the tag awards modal; white here, because the card already
             carries the green tint that chip is drawn in. */}
@@ -41,17 +41,19 @@ const FocusAreaCategoryCard = ({ category, supercategoryName }) => {
       </div>
 
       <ul className="flex flex-wrap gap-1.5">
-        {[...category.tags].sort(byName).map((tag) => (
+        {[...category.tags]
+          .sort((a, b) => tagLabel(a).localeCompare(tagLabel(b), language))
+          .map((tag) => (
           <li key={tag.id}>
             {/* The pill of the profile page and the detail modals (TagsDisplaySection),
                 for a focus area without credits; it opens the search. */}
-            <Tooltip content={t("focusAreaOverview.searchWith", { name: tag.name })}>
+            <Tooltip content={t("focusAreaOverview.searchWith", { name: tagLabel(tag) })}>
               <Link
                 to={`/search?tags=${tag.id}`}
                 className="badge badge-outline py-1 px-3 bg-white leading-tight h-auto inline-flex items-start gap-1 cursor-pointer hover:shadow-md transition-shadow"
                 style={{ borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }}
               >
-                {tag.name}
+                {tagLabel(tag)}
               </Link>
             </Tooltip>
           </li>
