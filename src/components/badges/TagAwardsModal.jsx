@@ -15,6 +15,7 @@ import { getCategoryIcon } from "../../utils/badgeIconUtils";
 import Modal from "../common/Modal";
 import AwardCard from "./AwardCard";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 /**
  * TagAwardsModal Component
@@ -24,7 +25,8 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
  *
  * @param {boolean} isOpen - Whether the modal is open
  * @param {Function} onClose - Callback to close the modal
- * @param {string} tagName - Name of the tag
+ * @param {string} tagName - Stored (English) name of the tag; the key
+ * @param {number|string} [tagId] - Id of the tag; with it the title is shown translated
  * @param {string} dominantBadgeCategory - The dominant badge category for coloring
  * @param {number} totalCredits - Total badge credits on this tag
  * @param {Array} awards - Array of award objects linked to this tag
@@ -36,6 +38,7 @@ const TagAwardsModal = ({
   isOpen,
   onClose,
   tagName,
+  tagId = null,
   totalCredits = 0,
   awards = [],
   loading = false,
@@ -53,6 +56,7 @@ const TagAwardsModal = ({
   showAwarderAtBottom = false,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   // Internal TeamDetailsModal state (mirrors SupercategoryAwardsModal)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -143,7 +147,7 @@ const TagAwardsModal = ({
           className="text-xl font-medium truncate"
           style={{ color: FOCUS_GREEN }}
         >
-          {tagName}
+          {tagLabel(tagId, tagName)}
         </span>
       </div>
     </div>

@@ -16,6 +16,7 @@ import {
 import Modal from "../common/Modal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import AwardCard from "./AwardCard";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 const SupercategoryAwardsModal = ({
   isOpen,
@@ -39,6 +40,7 @@ const SupercategoryAwardsModal = ({
   showAwarderAtBottom = false,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel, supercategoryLabel } = useTagLabels();
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -70,6 +72,14 @@ const SupercategoryAwardsModal = ({
   const listedAwards = showHiddenBadgeAwards
     ? awards
     : awards.filter((award) => !isAwardHidden(award));
+
+  // The awards carry only the stored tag name, so the id for the SHOWN title comes
+  // from this group's own tag list. Grouping and matching stay on the stored name.
+  const tagIdByName = new Map(
+    (Array.isArray(tags) ? tags : [])
+      .filter((tag) => tag?.name && tag?.id != null)
+      .map((tag) => [tag.name, tag.id]),
+  );
 
   // Group awards by tag name
   const awardsByTag = listedAwards.reduce((acc, award) => {
@@ -131,7 +141,9 @@ const SupercategoryAwardsModal = ({
           <span className="inline-block align-middle mr-1.5 shrink-0">
             {getSupercategoryIcon(supercategory, 20)}
           </span>
-          <span className="font-semibold">{supercategory}</span>
+          <span className="font-semibold">
+            {supercategoryLabel(supercategory)}
+          </span>
         </span>
       </span>
     </h2>
@@ -250,7 +262,7 @@ const SupercategoryAwardsModal = ({
                           className="font-medium text-sm"
                           style={{ color: FOCUS_GREEN_DARK }}
                         >
-                          {tagName}
+                          {tagLabel(tagIdByName.get(tagName), tagName)}
                         </span>
                       </div>
 
