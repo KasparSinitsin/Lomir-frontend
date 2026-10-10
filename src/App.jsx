@@ -28,6 +28,7 @@ import PublicProfile from "./pages/PublicProfile";
 import VerifyEmail from "./pages/VerifyEmail";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
 import BadgeOverview from "./pages/BadgeOverview";
+import FocusAreaOverview from "./pages/FocusAreaOverview";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
 import "./index.css";
@@ -93,6 +94,7 @@ function AppLayout() {
                   element={<VerifyEmailChange />}
                 />
                 <Route path="/badges" element={<BadgeOverview />} />
+                <Route path="/focusareas" element={<FocusAreaOverview />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/about" element={<LegalPage type="about" />} />
                 <Route path="/terms" element={<LegalPage type="terms" />} />
