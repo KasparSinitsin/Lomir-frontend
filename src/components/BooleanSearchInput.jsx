@@ -43,6 +43,7 @@ import {
 } from "../constants/badgeConstants";
 import { getBadgeName, getCategoryLabel } from "../utils/badgeLabels";
 import { splitEventSentence } from "../utils/eventSentences";
+import { useTagLabels } from "../hooks/useTagLabels";
 
 const hexToRgba = (hex, alpha) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -253,6 +254,9 @@ const BooleanSearchInput = ({
   wrappedControlsExpanded = false,
 }) => {
   const { t } = useTranslation();
+  // The dropdown shows names in the set language, whatever the user typed. The
+  // icon tables stay keyed by the stored supercategory text.
+  const { tagLabel, supercategoryLabel } = useTagLabels();
   const minQueryHint = t("searchInput.minQueryHint");
   const resolvedPlaceholder = placeholder ?? t("searchInput.placeholder");
   const [query, setQuery] = useState(initialQuery);
@@ -1356,12 +1360,12 @@ const BooleanSearchInput = ({
                                       {isFirst && (
                                         <span className="flex max-w-full items-center gap-1 text-xs leading-none whitespace-normal [overflow-wrap:anywhere]" style={{ color: FOCUS_GREEN }}>
                                           <SuperIcon size={10} className="shrink-0" />
-                                          <span>{supercategory}</span>
+                                          <span>{supercategoryLabel(supercategory)}</span>
                                         </span>
                                       )}
                                     </div>
                                     <div className="[flex:1_1_0] max-w-full flex items-center gap-2 min-w-0">
-                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{tag.name}</span>
+                                      <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{tagLabel(tag)}</span>
                                     </div>
                                   </button>
                                 </li>

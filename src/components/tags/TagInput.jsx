@@ -11,6 +11,7 @@ import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles, Layers, Check } from "lucide-react";
 import { tagService } from "../../services/tagService";
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import {
   flattenStructuredTags,
   usePopularTags,
@@ -39,6 +40,8 @@ const TagInput = ({
   disabled = false,
 }) => {
   const { t } = useTranslation();
+  // What is SHOWN is translated; ids and stored names stay the data.
+  const { tagLabel, categoryLabel } = useTagLabels();
   const handleTags = onTagsChange ?? onChange;
 
   const [inputValue, setInputValue] = useState("");
@@ -495,15 +498,17 @@ const TagInput = ({
                   className="badge badge-primary badge-lg gap-2 leading-none items-start h-auto py-1.5"
                 >
                   <TagIcon size={14} className="shrink-0 mt-px" />
-                  {tag?.name ??
+                  {tagLabel(tagId, tag?.name) ??
                     t("focusAreas.fallbackName", { id: String(tagId) })}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tagId)}
                     className="hover:text-error transition-colors"
                     aria-label={
-                      tag?.name
-                        ? t("focusAreas.remove", { name: tag.name })
+                      tagLabel(tagId, tag?.name)
+                        ? t("focusAreas.remove", {
+                            name: tagLabel(tagId, tag?.name),
+                          })
                         : t("focusAreas.removeGeneric")
                     }
                     disabled={disabled}
@@ -636,12 +641,12 @@ const TagInput = ({
                                 {isFirstInCategory && (
                                   <span className="flex items-center gap-1 text-xs leading-none text-primary-focus whitespace-nowrap">
                                     <CategoryIcon size={10} className="shrink-0" />
-                                    <span>{category}</span>
+                                    <span>{categoryLabel(category)}</span>
                                   </span>
                                 )}
                               </div>
                               <div className="[flex:1_0_auto] max-w-full flex items-start gap-2 min-w-0">
-                                <span className="font-medium">{tag.name}</span>
+                                <span className="font-medium">{tagLabel(tag)}</span>
                                 {alreadyAdded && <Check size={12} className="opacity-60 shrink-0 mt-px" />}
                               </div>
                             </button>

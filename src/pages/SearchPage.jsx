@@ -61,6 +61,7 @@ import useViewerMatchProfile from "../hooks/useViewerMatchProfile";
 import useViewerPendingRequests from "../hooks/useViewerPendingRequests";
 import useViewerTeamMemberships from "../hooks/useViewerTeamMemberships";
 import { useStructuredTags } from "../hooks/useTagQueries";
+import { useTagLabels } from "../hooks/useTagLabels";
 import {
   buildSearchRequestCriteria,
   DISTANCE_SUBMENU_TYPE,
@@ -280,6 +281,7 @@ const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
   const queryClient = useQueryClient();
 
@@ -1250,7 +1252,10 @@ const SearchPage = () => {
   const focusAreaPills = filterTagIds.map((id) => ({
     key: `tag-${id}`,
     id,
-    label: filterTagMap[id]?.name || t("searchPage.pillFallback.tag", { id }),
+    // Shown text only: the stored name stays in `filterTagMap` and is what is matched.
+    label:
+      tagLabel(id, filterTagMap[id]?.name) ||
+      t("searchPage.pillFallback.tag", { id }),
     category: filterTagMap[id]?.category || "",
     supercategory: filterTagMap[id]?.supercategory || "",
   }));
