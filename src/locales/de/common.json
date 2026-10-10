@@ -510,6 +510,12 @@
     "placeholder": "Land auswählen",
     "searchPlaceholder": "Zum Suchen tippen …"
   },
+  "focusAreaOverview": {
+    "intro": "Fokusbereiche beschreiben, was Personen und Teams in Lomir wichtig ist. Wähle einen aus, um nach Personen und Teams zu suchen, die ihn teilen.",
+    "loadError": "Fokusbereiche konnten nicht geladen werden",
+    "searchWith": "Nach Personen und Teams mit {name} suchen",
+    "title": "Fokusbereich-Übersicht"
+  },
   "datetime": {
     "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
     "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",

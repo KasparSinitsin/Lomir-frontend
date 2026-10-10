@@ -510,6 +510,12 @@
     "placeholder": "Select a country",
     "searchPlaceholder": "Type to search..."
   },
+  "focusAreaOverview": {
+    "intro": "Focus areas describe what people and teams care about in Lomir. Choose one to search for the people and teams that share it.",
+    "loadError": "Failed to load focus areas",
+    "searchWith": "Search for people and teams with {name}",
+    "title": "Focus Area Overview"
+  },
   "datetime": {
     "archiveRemainingDays": "{count, plural, one {# day} other {# days}}",
     "archiveRemainingHours": "{count, plural, one {# hour} other {# hours}}",
