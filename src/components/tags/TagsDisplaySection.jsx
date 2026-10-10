@@ -15,6 +15,7 @@ import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import TagInput from "./TagInput";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 /**
  * Unified TagsDisplaySection Component
@@ -66,6 +67,9 @@ const TagsDisplaySection = ({
   headerRight = null,
 }) => {
   const { t } = useTranslation();
+  // What is SHOWN is translated; `name` and `supercategory` stay the stored English text
+  // (they are the keys: highlight, awards lookup, icons, grouping).
+  const { tagLabel, supercategoryLabel, language } = useTagLabels();
   const [isEditing, setIsEditing] = useState(false);
   const [localSelectedTags, setLocalSelectedTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -194,6 +198,7 @@ const TagsDisplaySection = ({
 
             return {
               key: tag.id || tag.tag_id || tag.tagId || name,
+              id: tag.id ?? tag.tag_id ?? tag.tagId ?? null,
               name,
               badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
               hiddenBadgeCredits:
@@ -231,6 +236,7 @@ const TagsDisplaySection = ({
           return name
             ? {
                 key: id,
+                id,
                 name,
                 badgeCredits: 0,
                 hiddenBadgeCredits: 0,
@@ -266,7 +272,7 @@ const TagsDisplaySection = ({
       groups[key].sort((a, b) => {
         if (b.badgeCredits !== a.badgeCredits)
           return b.badgeCredits - a.badgeCredits;
-        return a.name.localeCompare(b.name);
+        return tagLabel(a).localeCompare(tagLabel(b), language);
       });
     }
 
@@ -400,13 +406,13 @@ const TagsDisplaySection = ({
       tag.badgeCredits > 0
         ? entityType === "team"
           ? t("focusAreas.tagTooltipMembers", {
-              name: tag.name,
+              name: tagLabel(tag),
               credits: tag.badgeCredits,
               badges: Number(tag.linkedBadgeCount),
               people: personCount,
             })
           : t("focusAreas.tagTooltip", {
-              name: tag.name,
+              name: tagLabel(tag),
               credits: tag.badgeCredits,
               badges: Number(tag.linkedBadgeCount),
               people: personCount,
@@ -416,10 +422,10 @@ const TagsDisplaySection = ({
           // put back in words exactly what the pill leaves out.
           showsPendingState
           ? t("focusAreas.pendingTooltip", {
-              name: tag.name,
+              name: tagLabel(tag),
               credits: hiddenCredits,
             })
-          : tag.name;
+          : tagLabel(tag);
 
     const isHighlighted =
       highlightTagName &&
@@ -472,7 +478,7 @@ const TagsDisplaySection = ({
               style={{ color: FOCUS_GREEN }}
             />
           )}
-          {tag.name}
+          {tagLabel(tag)}
           {(hasBadgeCredits || showsPendingState) && (
             <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start gap-1">
               {/* Before a `+n` figure, which the eye qualifies; after a counted
@@ -520,18 +526,18 @@ const TagsDisplaySection = ({
       totalCredits > 0
         ? entityType === "team"
           ? t("focusAreas.groupTooltipMembers", {
-              group: supercategory,
+              group: supercategoryLabel(supercategory),
               credits: totalCredits,
               badges: totalBadges,
               people: totalPersons,
             })
           : t("focusAreas.groupTooltip", {
-              group: supercategory,
+              group: supercategoryLabel(supercategory),
               credits: totalCredits,
               badges: totalBadges,
               people: totalPersons,
             })
-        : supercategory;
+        : supercategoryLabel(supercategory);
 
     const isClickable = !!onSupercategoryClick;
 
@@ -689,7 +695,7 @@ const TagsDisplaySection = ({
                   <div
                     key={supercategory}
                     className="flex items-start gap-0"
-                    title={supercategory}
+                    title={supercategoryLabel(supercategory)}
                   >
                     {/* Supercategory initials avatar */}
                     {renderSupercategoryIcon(supercategory, groupTags)}
