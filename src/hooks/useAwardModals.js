@@ -95,6 +95,7 @@ const useAwardModals = ({
   const [tagAwardsModal, setTagAwardsModal] = useState({
     isOpen: false,
     tagName: null,
+    tagId: null,
     dominantBadgeCategory: null,
     totalCredits: 0,
   });
@@ -193,6 +194,8 @@ const useAwardModals = ({
       setTagAwardsModal({
         isOpen: true,
         tagName: tag.name,
+        // the id only picks the SHOWN title; the stored name stays the key below
+        tagId: tag.id ?? null,
         dominantBadgeCategory:
           tag.dominantBadgeCategory ?? tag.dominant_badge_category,
         totalCredits: tag.badgeCredits ?? tag.badge_credits ?? 0,
@@ -273,6 +276,7 @@ const useAwardModals = ({
     setTagAwardsModal({
       isOpen: false,
       tagName: null,
+      tagId: null,
       dominantBadgeCategory: null,
       totalCredits: 0,
     });
@@ -413,6 +417,7 @@ const useAwardModals = ({
     isOpen: tagAwardsModal.isOpen,
     onClose: closeTagAwardsModal,
     tagName: tagAwardsModal.tagName,
+    tagId: tagAwardsModal.tagId,
     dominantBadgeCategory: tagAwardsModal.dominantBadgeCategory,
     totalCredits: tagAwardsModal.totalCredits,
     awards: tagAwards,
