@@ -50,6 +50,7 @@ import {
   MATCH_TIER_GREAT,
 } from "../../utils/matchScoreUtils";
 import { summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -216,6 +217,7 @@ const VacantRoleCard = ({
   notificationHighlight = false,
 }) => {
   const { t } = useTranslation("teams");
+  const { tagLabel } = useTagLabels();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const menuTriggerRef = useRef(null);
@@ -598,8 +600,15 @@ const VacantRoleCard = ({
         .map((tag) => {
           if (typeof tag === "string") return tag.trim();
 
+          // The translated name when the tag has an id the dictionary knows,
+          // else the stored one; the order stays the backend's.
           return String(
-            tag?.name ?? tag?.tagName ?? tag?.tag_name ?? tag?.tag ?? "",
+            tagLabel(tag) ??
+              tag?.name ??
+              tag?.tagName ??
+              tag?.tag_name ??
+              tag?.tag ??
+              "",
           ).trim();
         })
         .filter(Boolean)
