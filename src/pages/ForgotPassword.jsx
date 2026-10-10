@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../utils/authErrorText";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -51,8 +52,7 @@ const ForgotPassword = () => {
       console.error("Forgot password error:", error);
       setStatus("error");
       setMessage(
-        error.response?.data?.message ||
-          t("auth:forgotPassword.errors.generic"),
+        getAuthErrorText(error, t, t("auth:forgotPassword.errors.generic")),
       );
     }
   };

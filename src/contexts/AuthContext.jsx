@@ -205,12 +205,13 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       console.error("Registration error:", err);
-      setError(
-        err.response?.data?.message || "Registration failed. Please try again.",
-      );
+      // The result carries the backend's code, not a sentence: the form words it
+      // in the reader's language (utils/authErrorText.js).
+      const errorCode = err.response?.data?.code ?? null;
+      setError(errorCode || "REGISTRATION_FAILED");
       return {
         success: false,
-        message: err.response?.data?.message || "Registration failed",
+        errorCode,
         errors: err.response?.data?.errors,
       };
     } finally {
@@ -245,13 +246,11 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Login failed. Please check your credentials.",
-      );
+      const errorCode = err.response?.data?.code ?? null;
+      setError(errorCode || "LOGIN_FAILED");
       return {
         success: false,
-        message: err.response?.data?.message || "Login failed",
+        errorCode,
       };
     } finally {
       setLoading(false);
