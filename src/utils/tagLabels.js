@@ -33,9 +33,12 @@ export const createTagLabels = (dictionary) => {
   const supercategories = d.supercategories || {};
 
   return {
-    /** A tag object `{ id, name }`, or `(id, name)`. */
+    /** A tag object `{ id, name }` (`tag_id` / `tagId` also count), or `(id, name)`. */
     tagLabel: (tagOrId, name) => {
-      const id = tagOrId !== null && typeof tagOrId === "object" ? tagOrId.id : tagOrId;
+      const id =
+        tagOrId !== null && typeof tagOrId === "object"
+          ? (tagOrId.id ?? tagOrId.tag_id ?? tagOrId.tagId)
+          : tagOrId;
       const stored = tagOrId !== null && typeof tagOrId === "object" ? tagOrId.name : name;
       const key = id === undefined || id === null ? null : String(id);
       return key !== null && has(tags, key) && tags[key] ? tags[key] : stored;

@@ -28,6 +28,7 @@ import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { getBadgeName } from "../../utils/badgeLabels";
 import {
   formatListLocation,
@@ -60,6 +61,7 @@ const UserCard = ({
   showSearchResultTypeOverlay = false,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
 
@@ -246,7 +248,7 @@ const UserCard = ({
       Boolean(listLocationTextShort) &&
       !(user.is_remote || user.isRemote);
 
-    const tagNames = extractNames(user.tags);
+    const tagNames = extractNames(user.tags, tagLabel);
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames);
 

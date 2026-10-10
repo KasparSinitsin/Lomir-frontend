@@ -57,6 +57,7 @@ import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
 import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { getBadgeName } from "../../utils/badgeLabels";
 import {
   calculateDistanceKm,
@@ -353,6 +354,7 @@ const TeamCard = ({
   teamMemberBadges,
 }) => {
   const { t } = useTranslation("teams");
+  const { tagLabel } = useTagLabels();
 
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ??
@@ -2132,7 +2134,7 @@ const TeamCard = ({
       Boolean(locationTextShort) &&
       !(teamData.is_remote || teamData.isRemote);
 
-    const tagNames = extractNames(teamData.tags);
+    const tagNames = extractNames(teamData.tags, tagLabel);
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames);
 
