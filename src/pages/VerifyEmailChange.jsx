@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../utils/authErrorText";
 import { BadgeCheck, Info, Loader2, MailCheck, XCircle } from "lucide-react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -47,16 +48,18 @@ const VerifyEmailChange = () => {
         if (error.response?.status === 409) {
           setStatus("info");
           setMessage(
-            error.response?.data?.message ||
+            getAuthErrorText(
+              error,
+              t,
               t("auth:verifyEmailChange.conflictFallback"),
+            ),
           );
           return;
         }
 
         setStatus("error");
         setMessage(
-          error.response?.data?.message ||
-            t("auth:verifyEmailChange.fallbackError"),
+          getAuthErrorText(error, t, t("auth:verifyEmailChange.fallbackError")),
         );
       }
     };

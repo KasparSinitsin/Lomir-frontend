@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorCode, getAuthErrorText } from "../../utils/authErrorText";
 import { useAuth } from "../../contexts/AuthContext";
 import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
@@ -409,18 +410,12 @@ const RegisterForm = () => {
     setTurnstileToken(null);
   };
 
-  const isUsernameConflictMessage = (message = "") =>
-    message.toLowerCase().includes("username already exists") ||
-    message.toLowerCase().includes("username is already taken");
-
-  const getAvailabilityErrorClass = (message = "") => {
-    const normalizedMessage = message.toLowerCase();
-
-    return normalizedMessage.includes("already registered") ||
-      normalizedMessage.includes("already taken")
+  // The "taken" sentence is the translated one, so compare with it rather than
+  // searching an English phrase (which never matched in German).
+  const getAvailabilityErrorClass = (message = "") =>
+    message === t("auth:register.errors.usernameTaken")
       ? " field-error-animate"
       : "";
-  };
 
   const getAccountCreationErrorMessages = (fieldMessages) => [
     ...new Set(Object.values(fieldMessages).flat().filter(Boolean)),
@@ -464,15 +459,8 @@ const RegisterForm = () => {
     return [];
   };
 
-  const getApiErrorMessage = (
-    errorSource,
-    fallback = t("auth:register.errors.registrationFailed"),
-  ) =>
-    errorSource?.response?.data?.message || errorSource?.message || fallback;
-
   const buildRegistrationErrorState = (errorSource) => {
     const apiMessages = getApiErrorMessages(errorSource);
-    const message = getApiErrorMessage(errorSource);
 
     if (apiMessages.length > 0) {
       return {
@@ -481,7 +469,7 @@ const RegisterForm = () => {
       };
     }
 
-    if (isUsernameConflictMessage(message)) {
+    if (getAuthErrorCode(errorSource) === "USERNAME_TAKEN") {
       const formMessages = [t("auth:register.errors.usernameTaken")];
 
       return {
@@ -493,7 +481,13 @@ const RegisterForm = () => {
       };
     }
 
-    return { form: message };
+    return {
+      form: getAuthErrorText(
+        errorSource,
+        t,
+        t("auth:register.errors.registrationFailed"),
+      ),
+    };
   };
 
   const handleSubmit = async (e) => {
@@ -649,8 +643,7 @@ const RegisterForm = () => {
     } catch (error) {
       setResendStatus("error");
       setResendMessage(
-        error.response?.data?.message ||
-          t("auth:register.resendFailure"),
+        getAuthErrorText(error, t, t("auth:register.resendFailure")),
       );
     }
   };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../utils/authErrorText";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -30,8 +31,7 @@ const VerifyEmail = () => {
       } else {
         setStatus("error");
         setMessage(
-          error.response?.data?.message ||
-            t("auth:verifyEmail.fallbackError"),
+          getAuthErrorText(error, t, t("auth:verifyEmail.fallbackError")),
         );
       }
     }

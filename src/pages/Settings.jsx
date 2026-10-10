@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorCode, getAuthErrorText } from "../utils/authErrorText";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Card from "../components/common/Card";
@@ -340,19 +341,18 @@ const Settings = () => {
       setEmailData({ newEmail: "", currentPasswordForEmail: "" });
       setShowEmailForm(false);
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (getAuthErrorCode(err) === "PASSWORD_INCORRECT") {
         setEmailErrors((prev) => ({
           ...prev,
-          currentPasswordForEmail:
-            err.response?.data?.message ||
-            t("settings.account.errors.currentPasswordIncorrect"),
+          currentPasswordForEmail: t(
+            "settings.account.errors.currentPasswordIncorrect",
+          ),
         }));
         return;
       }
 
       setError(
-        err.response?.data?.message ||
-          t("settings.account.errors.sendVerification"),
+        getAuthErrorText(err, t, t("settings.account.errors.sendVerification")),
       );
     } finally {
       setEmailLoading(false);
@@ -419,19 +419,16 @@ const Settings = () => {
       });
       return;
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (getAuthErrorCode(err) === "PASSWORD_INCORRECT") {
         setPasswordErrors((prev) => ({
           ...prev,
-          currentPassword:
-            err.response?.data?.message ||
-            t("settings.account.errors.currentPasswordIncorrect"),
+          currentPassword: t("settings.account.errors.currentPasswordIncorrect"),
         }));
         return;
       }
 
       setError(
-        err.response?.data?.message ||
-          t("settings.account.errors.changePassword"),
+        getAuthErrorText(err, t, t("settings.account.errors.changePassword")),
       );
     } finally {
       setPasswordLoading(false);
@@ -755,10 +752,11 @@ const Settings = () => {
     } catch (err) {
       setDeletionStep(DELETE_STEP_SUMMARY);
       setDeleteError({
-        text:
-          err.response?.data?.message ||
-          err.message ||
+        text: getAuthErrorText(
+          err,
+          t,
           t("settings.delete.errors.deleteAccountRetry"),
+        ),
       });
     }
   };

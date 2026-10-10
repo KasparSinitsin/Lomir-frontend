@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../../utils/authErrorText";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -71,7 +72,9 @@ const LoginForm = () => {
       if (result.success) {
         navigate("/profile");
       } else {
-        setErrors({ form: result.message });
+        setErrors({
+          form: getAuthErrorText(result, t, t("auth:login.errors.unexpected")),
+        });
       }
     } catch {
       setErrors({ form: t("auth:login.errors.unexpected") });
