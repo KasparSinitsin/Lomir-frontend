@@ -38,6 +38,7 @@ import {
 } from "../../utils/deletedUser";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { getDisplayName } from "../../utils/userHelpers";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 const normalizeBooleanFlag = (value) => {
   if (typeof value === "boolean") return value;
@@ -114,6 +115,7 @@ const AwardCard = ({
   showAwarderAtBottom = false,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   const mutedBadgeColor = "#6B7280";
   const mutedCardBackground = "#F3F4F6";
   const mutedHighlightBackground = "#E5E7EB";
@@ -201,7 +203,9 @@ const AwardCard = ({
   const hasDirectTeamSyntheticFlag =
     teamObj?.is_synthetic != null || teamObj?.isSynthetic != null;
 
+  // The stored name is what matches and groups; the id only picks the SHOWN text.
   const tagName = award?.tagName ?? award?.tag_name ?? null;
+  const tagId = award?.tagId ?? award?.tag_id ?? null;
 
   // --- Awarded BY (bottom row) ---
   const awardedBySource =
@@ -867,7 +871,7 @@ const AwardCard = ({
             {tagName && !hideTag && (
               <span className="flex items-center gap-1 min-w-0">
                 <Tag size={11} className="flex-shrink-0" />
-                <span className="truncate">{tagName}</span>
+                <span className="truncate">{tagLabel(tagId, tagName)}</span>
               </span>
             )}
           </div>
