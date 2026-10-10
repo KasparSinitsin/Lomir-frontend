@@ -1,6 +1,7 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getBadgeName } from "../../utils/badgeLabels";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { Tag, Award, UserSearch } from "lucide-react";
 import LocationSection from "./LocationSection";
 import {
@@ -98,6 +99,16 @@ const LocationDistanceTagsRow = ({
   showCountryCode = true,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel, language } = useTagLabels();
+
+  // The text SHOWN for a tag object: its translated name when it has an id the
+  // dictionary knows, else the stored one. Sorting and grouping keep working on
+  // the stored `supercategory`; only the names are ordered by what is shown.
+  const tagText = (tag) =>
+    String(
+      tagLabel(tag.id ?? tag.tag_id ?? tag.tagId, tag.name || tag.tag || "") ||
+        "",
+    ).trim();
 
   // ─── Normalize tags into a sorted array of strings ───
   const normalizeSortedTagStrings = (input) => {
@@ -128,14 +139,14 @@ const LocationDistanceTagsRow = ({
         return sortTagsBySupercategory(input);
       }
 
-      return input.map((t) => (t.name || "").trim()).filter(Boolean);
+      return input.map(tagText).filter(Boolean);
     }
 
     if (Array.isArray(input)) {
       return input
         .map((t) => {
           if (typeof t === "string") return t.trim();
-          if (t && typeof t === "object") return (t.name || t.tag || "").trim();
+          if (t && typeof t === "object") return tagText(t);
           return "";
         })
         .filter(Boolean);
@@ -157,7 +168,7 @@ const LocationDistanceTagsRow = ({
         const creditsA = a.badge_credits ?? a.badgeCredits ?? 0;
         const creditsB = b.badge_credits ?? b.badgeCredits ?? 0;
         if (creditsB !== creditsA) return creditsB - creditsA;
-        return (a.name || "").localeCompare(b.name || "");
+        return tagText(a).localeCompare(tagText(b), language);
       });
     }
 
@@ -182,7 +193,7 @@ const LocationDistanceTagsRow = ({
     );
 
     return sortedGroups.flatMap(([, groupTags]) =>
-      groupTags.map((t) => (t.name || "").trim()).filter(Boolean),
+      groupTags.map(tagText).filter(Boolean),
     );
   };
 
@@ -273,7 +284,7 @@ const LocationDistanceTagsRow = ({
       return input
         .map((t) => {
           if (typeof t === "string") return t.trim();
-          if (t && typeof t === "object") return (t.name || t.tag || "").trim();
+          if (t && typeof t === "object") return tagText(t);
           return "";
         })
         .filter(Boolean);
