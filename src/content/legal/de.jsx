@@ -122,6 +122,7 @@ const content = {
           "Sicherheit, Missbrauchsprävention, Rate-Limiting, CAPTCHA-Prüfungen, Betrugsprävention, Debugging und Zuverlässigkeit des Dienstes: Art. 6 Abs. 1 lit. f DSGVO.",
           "Kontaktanfragen und Support-Kommunikation: Art. 6 Abs. 1 lit. b DSGVO, wo die Anfrage einen Account oder potenziellen Account betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO.",
           "Rechtliche Compliance und Beweissicherung, falls erforderlich: Art. 6 Abs. 1 lit. c und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Anzeige der Kartenansicht und Auflösen von Standortangaben über OpenStreetMap: Art. 6 Abs. 1 lit. b DSGVO, soweit du die Funktion nutzt, und Art. 6 Abs. 1 lit. f DSGVO.",
         ],
       },
       {
@@ -140,6 +141,7 @@ const content = {
               "der Durchsetzung der Regeln,",
               "der Beweissicherung, falls erforderlich,",
               "der Beantwortung von Support-Anfragen,",
+              "der Darstellung von Suchergebnissen auf einer Karte,",
               "der Verteidigung oder Geltendmachung von Rechtsansprüchen.",
             ],
           },
@@ -170,7 +172,7 @@ const content = {
           "Die Betreiber des Lomir-Projekts können auf personenbezogene Daten zugreifen, soweit dies für den Betrieb der App, Support, Missbrauchsuntersuchungen, Fehlerbehebung, Sicherheitswartung oder die Einhaltung rechtlicher Verpflichtungen erforderlich ist.",
           "Hosting-, Datenbank-, Upload-, E-Mail-, CAPTCHA-, Geocoding-, Karten- und Infrastruktur-Anbieter verarbeiten personenbezogene Daten, soweit dies für die Bereitstellung der App erforderlich ist. Je nach Anbieter und Kontext handeln sie entweder als Auftragsverarbeiter im Auftrag von Lomir oder als unabhängige Anbieter nach ihren eigenen Datenschutzbestimmungen.",
           "E-Mail-Anbieter können E-Mail-Adressen, Nachrichteninhalte, E-Mail-Metadaten, Bestätigungs-E-Mails, Passwort-Zurücksetzungs-E-Mails und Kontaktformular-Nachrichten (einschließlich Anhänge) verarbeiten, soweit dies für die E-Mail-Zustellung oder Support-Kommunikation erforderlich ist.",
-          "Geocoding- und Kartenanbieter können Standortanfragen, Kartenanfragen, IP-Adressen, Browser- oder Gerätedaten und Anfrage-Metadaten erhalten, wenn Standortabfragen oder Kartenansichten genutzt werden.",
+          "Für das Auflösen von Standortangaben fragt das Lomir-Backend OpenStreetMap/Nominatim an; dabei wird die Standortangabe übermittelt, nicht deine IP-Adresse. Wenn du die Kartenansicht öffnest, lädt dein Browser Kartenkacheln direkt von OpenStreetMap; dabei erhält OpenStreetMap deine IP-Adresse, Browser- und Gerätedaten sowie Anfrage-Metadaten.",
           "Behörden, Gerichte, Rechtsberater oder andere Dritte können Daten erhalten, soweit dies gesetzlich vorgeschrieben oder notwendig ist, um Rechte, Sicherheit, Nutzer oder den Dienst zu schützen.",
         ],
       },
@@ -198,7 +200,7 @@ const content = {
           "ImageKit speichert, transformiert, optimiert und liefert hochgeladene Medien und Dateien, einschließlich Profil-Avatare, Team-Avatare, Chat-Bilder, Chat-Dateien und zugehörige Liefer-Logs oder Metadaten.",
           "Brevo (betrieben von Sendinblue SAS, Frankreich) wird zum Versand von Transaktions-E-Mails der App verwendet – z. B. Account-Bestätigung, Passwort-Zurücksetzung, Benachrichtigungen über Account-Änderungen sowie Kontaktformular- und Missbrauchs- oder illegalen Inhaltsmeldungen. Brevo kann E-Mail-Adressen, E-Mail-Inhalte, E-Mail-Metadaten und Anhangsdateien aus dem Kontaktformular im Rahmen der E-Mail-Zustellung verarbeiten. Kontaktformular- und Meldenachrichten werden zusätzlich im Google/Gmail-Postfach der Lomir-Betreiber empfangen; Google kann diese E-Mail-Inhalte und Metadaten als Postfachbetreiber verarbeiten.",
           "Cloudflare Turnstile wird für CAPTCHA-Prüfungen bei der Registrierung und im Kontaktformular verwendet. Cloudflare kann technische Daten wie IP-Adresse, Browser- und Geräteinformationen, Challenge-Daten und Überprüfungstokens verarbeiten, um Missbrauch zu erkennen und zu bestätigen, dass eine Anfrage wahrscheinlich von einem Menschen stammt.",
-          "OpenStreetMap/Nominatim wird verwendet, um von Nutzern bereitgestellte Standortinformationen wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land aufzulösen. OpenStreetMap-Kartenkacheln können geladen werden, wenn die Kartenansicht geöffnet wird. OpenStreetMap-bezogene Dienste können Standortanfragen, IP-Adressen, Browser- oder Gerätedaten und Anfrage-Metadaten erhalten.",
+          "OpenStreetMap/Nominatim wird über das Lomir-Backend verwendet, um von Nutzern bereitgestellte Standortinformationen wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land aufzulösen. Wenn du die Kartenansicht öffnest, lädt dein Browser Kartenkacheln direkt von den Kartenservern von OpenStreetMap; diese erhalten dabei deine IP-Adresse, Browser- und Gerätedaten und Anfrage-Metadaten.",
         ],
       },
       {

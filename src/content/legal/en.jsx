@@ -118,6 +118,7 @@ const content = {
           "Security, abuse prevention, rate limiting, CAPTCHA checks, fraud prevention, debugging, and service reliability: Art. 6(1)(f) GDPR.",
           "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or a potential account, otherwise Art. 6(1)(f) GDPR.",
           "Legal compliance and preservation of evidence where required: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
+          "Showing the map view and resolving location information via OpenStreetMap: Art. 6(1)(b) GDPR, as far as you use the feature, and Art. 6(1)(f) GDPR.",
         ],
       },
       {
@@ -136,6 +137,7 @@ const content = {
               "enforcing the rules,",
               "preserving evidence where needed,",
               "responding to support requests,",
+              "showing search results on a map,",
               "defending or asserting legal claims.",
             ],
           },
@@ -166,7 +168,7 @@ const content = {
           "The Lomir project operators may access personal data where this is necessary to operate the app, provide support, investigate abuse, fix errors, maintain security, or comply with legal obligations.",
           "Hosting, database, upload, email, CAPTCHA, geocoding, map, and infrastructure providers process personal data where needed to provide the app. Depending on the provider and context, they act either as processors on Lomir's behalf or as independent providers under their own privacy terms.",
           "Email providers may process email addresses, message content, email metadata, verification emails, password reset emails, and contact form messages (including attachments) where email delivery or support communication requires this.",
-          "Geocoding and map providers may receive location queries, map requests, IP addresses, browser or device data, and request metadata when location lookups or map views are used.",
+          "To resolve location information, the Lomir backend queries OpenStreetMap/Nominatim; the location query is sent, not your IP address. When you open the map view, your browser loads map tiles directly from OpenStreetMap; OpenStreetMap then receives your IP address, browser and device data, and request metadata.",
           "Authorities, courts, legal advisers, or other third parties may receive data where disclosure is legally required or necessary to protect rights, security, users, or the service.",
         ],
       },
@@ -194,7 +196,7 @@ const content = {
           "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",
           "Brevo (operated by Sendinblue SAS, France) is used to send the app's transactional emails — for example account verification, password reset, account-change notifications, and contact form and abuse or illegal-content report messages. Brevo may process email addresses, email content, email metadata, and contact form attachments as part of email delivery. Contact form and report messages are additionally received in the Lomir operators' Google/Gmail mailbox; Google may process that email content and metadata as the mailbox operator.",
           "Cloudflare Turnstile is used for CAPTCHA checks on registration and in the contact form. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
-          "OpenStreetMap/Nominatim is used to resolve location information provided by users, such as postal code, city, district, state, or country. OpenStreetMap map tiles may be loaded when the map view is opened. OpenStreetMap-related services may receive location queries, IP addresses, browser or device data, and request metadata.",
+          "OpenStreetMap/Nominatim is used through the Lomir backend to resolve location information provided by users, such as postal code, city, district, state, or country. When you open the map view, your browser loads map tiles directly from the OpenStreetMap tile servers, which then receive your IP address, browser and device data, and request metadata.",
         ],
       },
       {
