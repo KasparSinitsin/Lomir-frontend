@@ -29,6 +29,7 @@ import {
 } from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
+import { hasLetter, hasNumber } from "../../utils/passwordRules";
 
 const RegisterForm = () => {
   const { t } = useTranslation("auth");
@@ -126,8 +127,8 @@ const RegisterForm = () => {
     } else if (formData.password.length < 8) {
       newErrors.password = t("auth:register.errors.passwordLength");
     } else if (
-      !/[A-Za-z]/.test(formData.password) ||
-      !/\d/.test(formData.password)
+      !hasLetter(formData.password) ||
+      !hasNumber(formData.password)
     ) {
       newErrors.password =
         t("auth:register.errors.passwordLetterNumber");
@@ -302,11 +303,11 @@ const RegisterForm = () => {
       passwordValidationErrors.push(t("auth:register.errors.passwordLength"));
     }
 
-    if (!/[A-Za-z]/.test(password)) {
+    if (!hasLetter(password)) {
       passwordValidationErrors.push(t("auth:register.errors.passwordLetter"));
     }
 
-    if (!/\d/.test(password)) {
+    if (!hasNumber(password)) {
       passwordValidationErrors.push(t("auth:register.errors.passwordNumber"));
     }
 

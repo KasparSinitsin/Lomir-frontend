@@ -25,6 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { joinNameParts } from "../utils/nameFormatters";
+import { hasLetter, hasNumber } from "../utils/passwordRules";
 
 const DELETE_STEP_PASSWORD = "password";
 const DELETE_STEP_SUMMARY = "summary";
@@ -394,8 +395,8 @@ const Settings = () => {
     else if (passwordData.newPassword.length < 8)
       errs.newPassword = t("settings.account.errors.passwordTooShort");
     else if (
-      !/[A-Za-z]/.test(passwordData.newPassword) ||
-      !/\d/.test(passwordData.newPassword)
+      !hasLetter(passwordData.newPassword) ||
+      !hasNumber(passwordData.newPassword)
     )
       errs.newPassword = t("settings.account.errors.passwordComplexity");
     if (passwordData.newPassword !== passwordData.confirmPassword)
