@@ -37,7 +37,8 @@ import Alert from "../common/Alert";
 import Tooltip from "../common/Tooltip";
 import UserAvatar from "../users/UserAvatar";
 import { badgeService } from "../../services/badgeService";
-import { tagService } from "../../services/tagService";
+import TagInput from "../tags/TagInput";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { useBadges, useSharedTeamsForAward } from "../../hooks/useBadgeQueries";
 import { useUserTags } from "../../hooks/useUserQueries";
 import { formatDateMedium } from "../../utils/dateHelpers";
@@ -110,6 +111,7 @@ const BadgeAwardModal = ({
   onAwardComplete,
 }) => {
   const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   const [sending, setSending] = useState(false);
   /**
    * ⚠️ Both hold a CODE, never a finished sentence.
@@ -136,12 +138,7 @@ const BadgeAwardModal = ({
 
   // Tag picker state
   const [awardeeTags, setAwardeeTags] = useState([]);
-  const [tagSearchQuery, setTagSearchQuery] = useState("");
-  const [tagSearchResults, setTagSearchResults] = useState([]);
-  const [tagSearching, setTagSearching] = useState(false);
   const [showTagSearch, setShowTagSearch] = useState(false);
-  const tagSearchRef = useRef(null);
-  const tagSearchTimerRef = useRef(null);
   const nameContainerRef = useRef(null);
   const nameProbeRef = useRef(null);
   const dateRef = useRef(null);
@@ -260,8 +257,6 @@ const BadgeAwardModal = ({
       setReason("");
       setError(null);
       setSuccess(null);
-      setTagSearchQuery("");
-      setTagSearchResults([]);
       setShowTagSearch(false);
       setCustomTeamName("");
       setProjectName("");
@@ -279,59 +274,6 @@ const BadgeAwardModal = ({
       setProjectName("");
     }
   }, [contextType]);
-
-  // Debounced tag search
-  useEffect(() => {
-    if (tagSearchTimerRef.current) {
-      clearTimeout(tagSearchTimerRef.current);
-    }
-
-    if (!tagSearchQuery.trim() || tagSearchQuery.trim().length < 2) {
-      setTagSearchResults([]);
-      setTagSearching(false);
-      return;
-    }
-
-    setTagSearching(true);
-    tagSearchTimerRef.current = setTimeout(async () => {
-      try {
-        // Exclude already-selected tag and awardee's existing tag IDs from results
-        const excludeIds = awardeeTags.map((t) => t.id);
-        if (selectedTag) excludeIds.push(selectedTag.id);
-
-        const results = await tagService.getSuggestions(
-          tagSearchQuery.trim(),
-          10,
-          excludeIds,
-        );
-        setTagSearchResults(results || []);
-      } catch (err) {
-        console.error("Tag search error:", err);
-        setTagSearchResults([]);
-      } finally {
-        setTagSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (tagSearchTimerRef.current) {
-        clearTimeout(tagSearchTimerRef.current);
-      }
-    };
-  }, [tagSearchQuery, awardeeTags, selectedTag]);
-
-  // Close tag search dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (tagSearchRef.current && !tagSearchRef.current.contains(e.target)) {
-        setShowTagSearch(false);
-        setTagSearchQuery("");
-        setTagSearchResults([]);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   useLayoutEffect(() => {
     const container = nameContainerRef.current;
@@ -405,8 +347,6 @@ const BadgeAwardModal = ({
       setSelectedTag(tag);
     }
     setShowTagSearch(false);
-    setTagSearchQuery("");
-    setTagSearchResults([]);
   };
 
   // Handle submit
@@ -1061,7 +1001,7 @@ const BadgeAwardModal = ({
                         className="badge badge-outline py-1 px-3 bg-white/60 inline-flex items-center gap-1.5 text-sm font-medium leading-tight h-auto"
                         style={{ borderColor: badgeColor, color: badgeColor }}
                       >
-                        {selectedTag.name}
+                        {tagLabel(selectedTag)}
                         <span className="opacity-70">{t("badges.creditsInlinePlus", { credits })}</span>
                         <button
                           onClick={() => setSelectedTag(null)}
@@ -1092,7 +1032,7 @@ const BadgeAwardModal = ({
                         onClick={() => handleTagSelect(tag)}
                         className="badge badge-success text-white gap-1 cursor-pointer hover:opacity-80 transition-opacity"
                       >
-                        {tag.name}
+                        {tagLabel(tag)}
                       </button>
                     ))}
                   </div>
@@ -1105,7 +1045,7 @@ const BadgeAwardModal = ({
                 )}
 
                 {/* Search for any tag */}
-                <div className="relative mt-3" ref={tagSearchRef}>
+                <div className="mt-3">
                   <button
                     onClick={() => setShowTagSearch(!showTagSearch)}
                     className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
@@ -1118,49 +1058,16 @@ const BadgeAwardModal = ({
 
                   {showTagSearch && (
                     <div className="mt-1.5">
-                      <input
-                        type="text"
-                        value={tagSearchQuery}
-                        onChange={(e) => setTagSearchQuery(e.target.value)}
+                      {/* The awardee's own focus areas are the pills above; here
+                          they only mark what is not offered again. */}
+                      <TagInput
+                        selectedTags={awardeeTags}
+                        hideSelectedTags
+                        showPopularTags={false}
+                        onPickTag={handleTagSelect}
                         placeholder={t("badges.award.modal.tagSearchPlaceholder")}
-                        className="input input-bordered input-sm w-full text-sm"
-                        autoFocus
+                        className="text-sm"
                       />
-
-                      {/* Search results dropdown */}
-                      {(tagSearchResults.length > 0 || tagSearching) && (
-                        <div className="mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto z-10">
-                          {tagSearching ? (
-                            <div className="flex items-center gap-2 text-sm text-base-content/50 p-3">
-                              <div className="loading loading-spinner loading-xs"></div>
-                              {t("badges.award.modal.searching")}
-                            </div>
-                          ) : (
-                            tagSearchResults.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={() => handleTagSelect(tag)}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors flex items-center justify-between"
-                              >
-                                <span className="font-medium">{tag.name}</span>
-                                {tag.category && (
-                                  <span className="text-xs text-base-content/40">
-                                    {tag.category}
-                                  </span>
-                                )}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-
-                      {tagSearchQuery.trim().length >= 2 &&
-                        !tagSearching &&
-                        tagSearchResults.length === 0 && (
-                          <p className="text-xs text-base-content/40 mt-1 px-1">
-                            {t("badges.award.modal.noTagsFound", { query: tagSearchQuery })}
-                          </p>
-                        )}
                     </div>
                   )}
                 </div>

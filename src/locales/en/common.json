@@ -37,8 +37,6 @@
         "searchFocusArea": "Search for a Focus Area …",
         "searchAnotherFocusArea": "Search for a different Focus Area …",
         "tagSearchPlaceholder": "Type to search …",
-        "searching": "Searching …",
-        "noTagsFound": "No focus areas found for “{query}”",
         "commentLabel": "Add a comment (optional):",
         "commentPlaceholder": "Why are you awarding {name} the “{badge}” badge?",
         "charCount": "{count}/{max} characters",

@@ -37,8 +37,6 @@
         "searchFocusArea": "Nach einem Fokusbereich suchen …",
         "searchAnotherFocusArea": "Nach einem anderen Fokusbereich suchen …",
         "tagSearchPlaceholder": "Zum Suchen tippen …",
-        "searching": "Wird gesucht …",
-        "noTagsFound": "Keine Fokusbereiche für „{query}“ gefunden",
         "commentLabel": "Kommentar hinzufügen (optional):",
         "commentPlaceholder": "Warum zeichnest du {name} mit „{badge}“ aus?",
         "charCount": "{count}/{max} Zeichen",
