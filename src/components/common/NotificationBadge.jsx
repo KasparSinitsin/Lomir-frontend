@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Mail, SendHorizontal, MessageCircle, Bell } from "lucide-react";
 import Tooltip from "./Tooltip";
 
@@ -23,27 +24,25 @@ const VARIANTS = {
     backgroundColor: "#fce8ec", // Light pink
     Icon: Mail,
     iconColorClass: "text-error",
-    getTitle: (count) =>
-      `${count} pending application${count !== 1 ? "s" : ""}`,
+    getTitle: (t, count) => t("notificationBadge.application", { count }),
   },
   invitation: {
     backgroundColor: "#ede9fe", // Light violet
     Icon: SendHorizontal,
     iconColorClass: "text-info",
-    getTitle: (count) =>
-      `${count} pending invitation${count !== 1 ? "s" : ""} sent`,
+    getTitle: (t, count) => t("notificationBadge.invitation", { count }),
   },
   message: {
     backgroundColor: "#dcfce7", // Light green
     Icon: MessageCircle,
     iconColorClass: "text-primary",
-    getTitle: (count) => `${count} unread message${count !== 1 ? "s" : ""}`,
+    getTitle: (t, count) => t("notificationBadge.message", { count }),
   },
   alert: {
     backgroundColor: "#fef3c7", // Light yellow
     Icon: Bell,
     iconColorClass: "text-warning",
-    getTitle: (count) => `${count} notification${count !== 1 ? "s" : ""}`,
+    getTitle: (t, count) => t("notificationBadge.alert", { count }),
   },
 };
 
@@ -73,13 +72,14 @@ const NotificationBadge = ({
   compact = false,
   interactive = false,
 }) => {
+  const { t } = useTranslation();
   const config = VARIANTS[variant];
   const shouldShowBadge = count > 0 || showZero;
 
   // Wrapper mode: If children are provided, wrap them with the count badge
   if (children) {
     const tooltipText =
-      title || (shouldShowBadge ? config?.getTitle(count) : undefined);
+      title || (shouldShowBadge ? config?.getTitle(t, count) : undefined);
     return (
       <Tooltip content={tooltipText} interactive={interactive}>
         <div
@@ -107,7 +107,7 @@ const NotificationBadge = ({
   const { backgroundColor, Icon, iconColorClass, getTitle } = config;
 
   return (
-    <Tooltip content={title || getTitle(count)}>
+    <Tooltip content={title || getTitle(t, count)}>
       <button
         onClick={onClick}
         className={`group relative inline-flex items-center justify-center ${compact ? "w-6 h-6" : "w-8 h-8"} ${className}`}

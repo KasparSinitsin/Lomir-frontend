@@ -311,15 +311,23 @@ const MessageDisplay = ({
 
   const formatReadByTooltip = (names) => {
     const uniqueNames = [...new Set((names || []).filter(Boolean))];
-    if (uniqueNames.length === 0) return "Read.";
-    if (uniqueNames.length === 1) return `Read by ${uniqueNames[0]}.`;
+    if (uniqueNames.length === 0) return t("readReceipt.readNoNames");
+    if (uniqueNames.length === 1) {
+      return t("readReceipt.readByOne", { name: uniqueNames[0] });
+    }
     if (uniqueNames.length === 2) {
-      return `Read by ${uniqueNames[0]} and ${uniqueNames[1]}.`;
+      return t("readReceipt.readByTwo", {
+        first: uniqueNames[0],
+        second: uniqueNames[1],
+      });
     }
 
     const lastName = uniqueNames[uniqueNames.length - 1];
     const leadingNames = uniqueNames.slice(0, -1).join(", ");
-    return `Read by ${leadingNames} and ${lastName}.`;
+    return t("readReceipt.readByMany", {
+      leading: leadingNames,
+      last: lastName,
+    });
   };
 
   const getReadByTooltip = (message) => {
@@ -2272,8 +2280,8 @@ const MessageDisplay = ({
                 </div>
                 <span className="text-sm ml-2">
                   {typingUsers.length === 1
-                    ? `${typingUsers[0]} is typing...`
-                    : `${typingUsers.length} people are typing...`}
+                    ? t("chatPage.typingOne", { name: typingUsers[0] })
+                    : t("chatPage.typingMany", { count: typingUsers.length })}
                 </span>
               </div>
             </div>
