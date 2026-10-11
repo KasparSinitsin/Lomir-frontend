@@ -27,6 +27,22 @@ const MIN_MENU_HEIGHT = 140;
 const MAX_MENU_HEIGHT = 360;
 const EMPTY_QUERY_ARRAY = [];
 
+// The menu shows tags grouped by supercategory and category, which can differ
+// from the order they arrive in. Downshift picks `items[index]`, so it has to be
+// given the SHOWN order, or a click lands on the wrong tag.
+const groupSuggestions = (tags) => {
+  const superGroups = new Map();
+  tags.forEach((tag) => {
+    const superKey = tag.supercategory || "Other";
+    const catKey = tag.category || "Other";
+    if (!superGroups.has(superKey)) superGroups.set(superKey, new Map());
+    const catMap = superGroups.get(superKey);
+    if (!catMap.has(catKey)) catMap.set(catKey, []);
+    catMap.get(catKey).push(tag);
+  });
+  return superGroups;
+};
+
 const TagInput = ({
   selectedTags = [],
   onTagsChange,
@@ -38,6 +54,11 @@ const TagInput = ({
   maxSuggestions = 8,
   className = "",
   disabled = false,
+  // Single-pick mode (badge award modal): a picked tag goes to onPickTag as the
+  // whole tag object instead of into the id list, and the caller shows the
+  // choice itself. selectedTags then only marks tags that are not offered.
+  onPickTag,
+  hideSelectedTags = false,
 }) => {
   const { t } = useTranslation();
   // What is SHOWN is translated; ids and stored names stay the data.
@@ -211,6 +232,13 @@ const TagInput = ({
   }, [inputValue, suggestions, relatedTags, popularTags]);
 
   const currentSuggestions = getCurrentSuggestions();
+  const shownOrderTags = React.useMemo(
+    () =>
+      Array.from(groupSuggestions(currentSuggestions.tags).values()).flatMap(
+        (catMap) => Array.from(catMap.values()).flat(),
+      ),
+    [currentSuggestions.tags],
+  );
   const shouldShowDropdown =
     !disabled && showSuggestions && currentSuggestions.tags.length > 0;
 
@@ -248,10 +276,14 @@ const TagInput = ({
     (tag) => {
       const id = getTagId(tag);
       if (id != null && !selectedTagIdSet.has(id)) {
-        const next = [...selectedTagIds, id];
-        handleTags?.(next);
-        updateTagMap([tag]);
-        fetchRelatedTags(id);
+        if (onPickTag) {
+          onPickTag(tag);
+        } else {
+          const next = [...selectedTagIds, id];
+          handleTags?.(next);
+          updateTagMap([tag]);
+          fetchRelatedTags(id);
+        }
       }
       setInputValue("");
       setSuggestions([]);
@@ -261,6 +293,7 @@ const TagInput = ({
       selectedTagIds,
       selectedTagIdSet,
       handleTags,
+      onPickTag,
       updateTagMap,
       fetchRelatedTags,
     ],
@@ -293,7 +326,9 @@ const TagInput = ({
     // If we have selected tags rendered under the input, treat them as “reserved space”
     // so the dropdown doesn’t choose bottom placement and cover them.
     const reservedBelow =
-      selectedTags.length > 0 ? selectedTagsHeight + GAP : 0;
+      !hideSelectedTags && selectedTags.length > 0
+        ? selectedTagsHeight + GAP
+        : 0;
 
     const spaceBelow =
       viewportH - (rect.bottom + GAP) - EDGE_MARGIN - reservedBelow;
@@ -435,7 +470,7 @@ const TagInput = ({
     getItemProps,
     closeMenu,
   } = useCombobox({
-    items: currentSuggestions.tags,
+    items: shownOrderTags,
     inputValue,
     onInputValueChange: ({ inputValue }) => handleInputChange(inputValue ?? ""),
     onSelectedItemChange: ({ selectedItem }) => {
@@ -487,7 +522,7 @@ const TagInput = ({
         className="input input-bordered w-full pr-10 focus:input-primary"
       />
 
-      {selectedTags.length > 0 && (
+      {!hideSelectedTags && selectedTags.length > 0 && (
         <div ref={selectedTagsRef} className="mt-2 p-3 bg-base-100 rounded-lg">
           <div className="flex flex-wrap gap-2">
             {selectedTagIds.map((tagId) => {
@@ -585,15 +620,7 @@ const TagInput = ({
                 </li>
 
                 {(() => {
-                  const superGroups = new Map();
-                  currentSuggestions.tags.forEach((tag) => {
-                    const superKey = tag.supercategory || "Other";
-                    const catKey = tag.category || "Other";
-                    if (!superGroups.has(superKey)) superGroups.set(superKey, new Map());
-                    const catMap = superGroups.get(superKey);
-                    if (!catMap.has(catKey)) catMap.set(catKey, []);
-                    catMap.get(catKey).push(tag);
-                  });
+                  const superGroups = groupSuggestions(currentSuggestions.tags);
 
                   let globalIndex = 0;
                   return Array.from(superGroups.entries()).flatMap(([supercategory, catMap], superIdx) => {
