@@ -98,7 +98,7 @@ const content = {
           "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
           "Location data: postal code, city, district, state, country, and coordinates derived from the location data you provide. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and context, postal code, city, district, state, or country may be visible to other users. Public search results and map views show rounded approximate coordinates, not exact stored coordinates.",
           "Contact and report data: name, email address, subject, message, optional contact form attachments, report reference IDs, report status, email-forwarding status, and attachment metadata for abuse or illegal-content reports.",
-          "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data (where enabled), session and authentication data, and browser storage needed for the app to work.",
+          "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data, session and authentication data, and browser storage needed for the app to work.",
         ],
       },
       {
@@ -182,7 +182,7 @@ const content = {
         paragraphs: [
           "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie contains session authentication data, is not readable by JavaScript, and is sent to the Lomir backend to authenticate your requests and real-time chat connections. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state.",
           "This cookie and the storage are strictly necessary to provide authentication, API access, real-time chat, and notification features, and therefore do not require consent under Section 25(2) TDDDG. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
-          "Where Cloudflare Turnstile is enabled for registration or the contact form, Cloudflare may process technical data to verify that a request comes from a human. This is used for abuse prevention.",
+          "Lomir uses Cloudflare Turnstile for registration and the contact form. Cloudflare processes technical data to verify that a request comes from a human. This is used for abuse prevention.",
         ],
       },
       {
@@ -193,7 +193,7 @@ const content = {
           "Neon, now part of Databricks, provides the PostgreSQL database. App data stored in the database may include account data, profile data, team and role data, messages, notifications, legal acknowledgement records, location data, and related metadata.",
           "ImageKit stores, transforms, optimizes, and delivers uploaded media and files, including profile avatars, team avatars, chat images, chat files, and related delivery logs or metadata.",
           "Brevo (operated by Sendinblue SAS, France) is used to send the app's transactional emails — for example account verification, password reset, account-change notifications, and contact form and abuse or illegal-content report messages. Brevo may process email addresses, email content, email metadata, and contact form attachments as part of email delivery. Contact form and report messages are additionally received in the Lomir operators' Google/Gmail mailbox; Google may process that email content and metadata as the mailbox operator.",
-          "Cloudflare Turnstile may be used for CAPTCHA checks on registration and in the contact form. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
+          "Cloudflare Turnstile is used for CAPTCHA checks on registration and in the contact form. Cloudflare may process technical data such as IP address, browser and device information, challenge data, and verification tokens to detect abuse and confirm that a request is likely made by a human.",
           "OpenStreetMap/Nominatim is used to resolve location information provided by users, such as postal code, city, district, state, or country. OpenStreetMap map tiles may be loaded when the map view is opened. OpenStreetMap-related services may receive location queries, IP addresses, browser or device data, and request metadata.",
         ],
       },
