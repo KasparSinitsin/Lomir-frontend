@@ -195,7 +195,7 @@ const BadgeAwardModal = ({
   };
 
   /**
-   * The first given name only: "Alice Stephanie Beurer" → "Alice".
+   * The first given name only: "Alicia Maria Keller" → "Alicia".
    *
    * Every sentence that addresses the awardee uses this. A second helper
    * returned *all* given names despite being called `getFirstName`, so the
