@@ -388,6 +388,8 @@
     },
     "openConversation": "Open conversation",
     "deselectConversation": "Deselect conversation",
+    "typingOne": "{name} is typing...",
+    "typingMany": "{count} people are typing...",
     "archivedBanner": {
       "body": "This team has been archived and is scheduled for deletion. The chat stays available for {remaining} so remaining teammates can say goodbye. Leave anytime; once you leave or the chat is deleted, its messages and files are no longer accessible.",
       "leaveNow": "Leave team chat now"
@@ -876,6 +878,12 @@
     "settings": "Settings",
     "signUp": "Sign Up"
   },
+  "notificationBadge": {
+    "application": "{count} pending {count, plural, one {application} other {applications}}",
+    "invitation": "{count} pending {count, plural, one {invitation} other {invitations}} sent",
+    "message": "{count} unread {count, plural, one {message} other {messages}}",
+    "alert": "{count} {count, plural, one {notification} other {notifications}}"
+  },
   "notifications": {
     "applicationApproved": "{count, plural, one {Your team application was approved} other {# team applications were approved}}{teamCount, plural, =0 {} =1 {} other { in # teams}}",
     "applicationCancelled": "{count, plural, one {# team application} other {# team applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
@@ -944,7 +952,11 @@
   "readReceipt": {
     "read": "Read",
     "readByAll": "Read by all",
-    "readBySomeone": "Read by someone"
+    "readBySomeone": "Read by someone",
+    "readNoNames": "Read.",
+    "readByOne": "Read by {name}.",
+    "readByTwo": "Read by {first} and {second}.",
+    "readByMany": "Read by {leading} and {last}."
   },
   "requestList": {
     "pendingCount": "{count, plural, one {# pending {kind, select, application {application} invitation {invitation} other {item}}} other {# pending {kind, select, application {applications} invitation {invitations} other {items}}}}",

@@ -388,6 +388,8 @@
     },
     "openConversation": "Unterhaltung öffnen",
     "deselectConversation": "Auswahl aufheben",
+    "typingOne": "{name} schreibt …",
+    "typingMany": "{count} Personen schreiben …",
     "archivedBanner": {
       "body": "Dieses Team wurde archiviert und wird gelöscht. Der Chat bleibt noch {remaining} verfügbar, damit ihr euch verabschieden könnt. Du kannst jederzeit gehen; sobald du den Chat verlässt oder er gelöscht wird, sind seine Nachrichten und Dateien nicht mehr zugänglich.",
       "leaveNow": "Team-Chat jetzt verlassen"
@@ -876,6 +878,12 @@
     "settings": "Einstellungen",
     "signUp": "Registrieren"
   },
+  "notificationBadge": {
+    "application": "{count} {count, plural, one {offene Bewerbung} other {offene Bewerbungen}}",
+    "invitation": "{count} {count, plural, one {offene Einladung} other {offene Einladungen}} gesendet",
+    "message": "{count} {count, plural, one {ungelesene Nachricht} other {ungelesene Nachrichten}}",
+    "alert": "{count} {count, plural, one {Benachrichtigung} other {Benachrichtigungen}}"
+  },
   "notifications": {
     "applicationApproved": "{count, plural, one {Deine Team-Bewerbung wurde angenommen} other {# Team-Bewerbungen wurden angenommen}}{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
     "applicationCancelled": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
@@ -944,7 +952,11 @@
   "readReceipt": {
     "read": "Gelesen",
     "readByAll": "Von allen gelesen",
-    "readBySomeone": "Von jemandem gelesen"
+    "readBySomeone": "Von jemandem gelesen",
+    "readNoNames": "Gelesen.",
+    "readByOne": "Gelesen von {name}.",
+    "readByTwo": "Gelesen von {first} und {second}.",
+    "readByMany": "Gelesen von {leading} und {last}."
   },
   "requestList": {
     "pendingCount": "{count, plural, one {# offene {kind, select, application {Bewerbung} invitation {Einladung} other {Anfrage}}} other {# offene {kind, select, application {Bewerbungen} invitation {Einladungen} other {Anfragen}}}}",
