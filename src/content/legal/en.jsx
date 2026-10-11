@@ -429,6 +429,12 @@ const content = {
         paragraphs: [<>Email: {mailLink}</>, <>Online: {contactFormLink}</>],
       },
       {
+        title: "Single Point of Contact (Digital Services Act)",
+        paragraphs: [
+          "The single point of contact for recipients of the service and for the authorities of the Member States, the European Commission and the European Board for Digital Services under Art. 11 and 12 of Regulation (EU) 2022/2065 (Digital Services Act) is Julia Baur. She can be reached electronically at the email address above and through the contact form. Requests are handled personally and can be made in German or English.",
+        ],
+      },
+      {
         title: "Journalistic-Editorial Content",
         paragraphs: [
           "Lomir does not currently provide journalistic-editorial content within the meaning of Section 18(2) of the German Interstate Media Treaty (MStV). A responsible person under Section 18(2) MStV is therefore not designated. If such content is offered in the future, this notice will be updated accordingly.",

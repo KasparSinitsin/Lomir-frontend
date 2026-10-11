@@ -433,6 +433,12 @@ const content = {
         paragraphs: [<>E-Mail: {mailLink}</>, <>Online: {contactFormLink}</>],
       },
       {
+        title: "Zentrale Kontaktstelle (Digital Services Act)",
+        paragraphs: [
+          "Zentrale Kontaktstelle für Nutzer von Lomir sowie für Behörden der Mitgliedstaaten, die Europäische Kommission und das Europäische Gremium für digitale Dienste nach Art. 11 und 12 der Verordnung (EU) 2022/2065 (Digital Services Act) ist Julia Baur. Sie ist über die oben genannte E-Mail-Adresse und das Kontaktformular elektronisch erreichbar. Anfragen werden persönlich bearbeitet und können auf Deutsch oder Englisch gestellt werden.",
+        ],
+      },
+      {
         title: "Journalistisch-redaktionelle Inhalte",
         paragraphs: [
           "Lomir bietet derzeit keine journalistisch-redaktionellen Inhalte im Sinne von § 18 Abs. 2 MStV an. Daher wird keine verantwortliche Person nach § 18 Abs. 2 MStV benannt. Sollten in Zukunft solche Inhalte angeboten werden, wird dieses Impressum entsprechend aktualisiert.",
