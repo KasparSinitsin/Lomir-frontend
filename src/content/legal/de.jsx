@@ -353,6 +353,7 @@ const content = {
           <>Falls du der Meinung bist, dass Inhalte, ein Account, ein Team, eine Nachricht oder ein Upload auf Lomir rechtswidrig, missbräuchlich, belästigend, Spam, Malware, rechtsverletzend, die Privatsphäre verletzend oder sonst gegen diese Nutzungsbedingungen verstößt, melde dies bitte über die {contactLink} oder per E-Mail an {mailLink}.</>,
           "Meldungen sollten ausreichend Informationen enthalten, um das Problem zu lokalisieren und zu prüfen, z. B. Benutzernamen, Teamnamen, Nachrichtenkontext, Links, Screenshots, den Grund der Meldung und eine Kontakt-E-Mail. Bitte reichst du Meldungen in gutem Glauben ein.",
           "Meldungen, die über das Kontaktformular eingereicht werden, werden mit einer Vorgangs-ID aufgezeichnet, damit Lomir sie auch dann empfangen und nachverfolgen kann, wenn die E-Mail-Weiterleitung vorübergehend nicht verfügbar ist.",
+          "Wir bestätigen den Eingang einer Meldung und prüfen sie zeitnah, sorgfältig und objektiv. Die Prüfung erfolgt persönlich, ohne automatisierte Entscheidung. Anschließend teilen wir dir das Ergebnis mit und nennen dir die Möglichkeiten, dagegen vorzugehen.",
           "Lomir kann gemeldete Inhalte oder Accounts prüfen und Inhalte einschränken, entfernen oder löschen; Accounts sperren oder löschen; betroffene Nutzer kontaktieren; Informationen speichern, falls erforderlich; oder Angelegenheiten an zuständige Behörden melden, falls dies gesetzlich vorgeschrieben oder notwendig ist, um Nutzer, die App oder Dritte zu schützen.",
           <>Falls dein Inhalt oder Account eingeschränkt wurde und du der Meinung bist, dass dies ein Fehler war, kannst du Lomir über die {contactLink} oder per E-Mail an {mailLink} kontaktieren.</>,
         ],
@@ -380,6 +381,7 @@ const content = {
         title: "11. Sperrung und Entfernung",
         paragraphs: [
           "Accounts oder Inhalte können eingeschränkt, entfernt oder gelöscht werden, wenn sie gegen diese Nutzungsbedingungen verstoßen, andere Nutzer schädigen, rechtliche Risiken darstellen, die Sicherheit der App gefährden oder gesetzlich entfernt werden müssen.",
+          "Wenn wir Inhalte oder einen Account einschränken, entfernen oder sperren, teilen wir der betroffenen Person die Maßnahme und die Gründe dafür mit und nennen ihr die Möglichkeiten, sich dagegen zu wehren, etwa über die Kontaktseite oder auf dem Rechtsweg. Das gilt, soweit uns ihre Kontaktdaten bekannt sind und keine gesetzlichen Gründe entgegenstehen.",
         ],
       },
       {
