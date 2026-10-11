@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { hasLetter, hasNumber } from "../utils/passwordRules";
 
 const ResetPassword = () => {
   const { t } = useTranslation("auth");
@@ -45,8 +46,8 @@ const ResetPassword = () => {
     } else if (formData.password.length < 8) {
       newErrors.password = t("auth:resetPassword.errors.passwordLength");
     } else if (
-      !/[A-Za-z]/.test(formData.password) ||
-      !/\d/.test(formData.password)
+      !hasLetter(formData.password) ||
+      !hasNumber(formData.password)
     ) {
       newErrors.password =
         t("auth:resetPassword.errors.passwordLetterNumber");
