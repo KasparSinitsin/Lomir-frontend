@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { getAuthErrorCode, getAuthErrorText } from "../../utils/authErrorText";
 import { useAuth } from "../../contexts/AuthContext";
 import TagInput from "../tags/TagInput";
@@ -708,7 +708,11 @@ const RegisterForm = () => {
               {t("auth:register.successMessage", { email: formData.email })}
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              {t("auth:register.successHelp")}
+              {/* The text carries <strong>; t() would print the tags as characters. */}
+              <Trans
+                i18nKey="auth:register.successHelp"
+                components={{ strong: <strong /> }}
+              />
             </p>
 
             {resendMessage && (
