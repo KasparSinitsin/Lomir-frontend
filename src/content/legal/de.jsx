@@ -43,7 +43,7 @@ const content = {
         title: "Projektstatus",
         paragraphs: [
           "Lomir wird aktuell als nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Die App ist mit Datenschutz als Standard konzipiert: Neue Profile bleiben privat, bis Nutzer sie aktiv öffentlich machen.",
-          "Die App kann sich im Verlauf des Projekts weiterentwickeln. Falls sich wesentliche Funktionen ändern, sollten die rechtlichen und Datenschutzinformationen vor der öffentlichen Veröffentlichung überprüft und aktualisiert werden.",
+          "Die App kann sich im Verlauf des Projekts weiterentwickeln. Ändern sich wesentliche Funktionen, überprüfen und aktualisieren wir die rechtlichen Hinweise und die Datenschutzerklärung, bevor die Änderungen gelten.",
         ],
       },
       {
@@ -292,7 +292,7 @@ const content = {
       {
         title: "19. Aktualisierungen und weitere Verarbeitung",
         paragraphs: [
-          "Diese Datenschutzerklärung kann aktualisiert werden, wenn sich Lomir, die Anbieter oder die rechtlichen Anforderungen ändern. Wesentliche Aktualisierungen sollten veröffentlicht werden, bevor sie auf neue Verarbeitungsaktivitäten angewendet werden.",
+          "Diese Datenschutzerklärung kann aktualisiert werden, wenn sich Lomir, die Anbieter oder die rechtlichen Anforderungen ändern. Wesentliche Aktualisierungen veröffentlichen wir, bevor sie auf neue Verarbeitungsaktivitäten angewendet werden.",
           "Falls Lomir beabsichtigt, personenbezogene Daten für einen neuen Zweck zu verarbeiten, der nicht mit dem Zweck vereinbar ist, für den die Daten erhoben wurden, werden die Nutzer vor dieser weiteren Verarbeitung informiert, sofern dies gesetzlich erforderlich ist.",
         ],
       },
@@ -449,7 +449,7 @@ const content = {
       {
         title: "Art des Projekts",
         paragraphs: [
-          "Lomir wird derzeit als kostenloses, nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Falls sich der rechtliche oder kommerzielle Status der App ändert, sollte dieses Impressum überprüft und aktualisiert werden.",
+          "Lomir wird derzeit als kostenloses, nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Ändert sich der rechtliche oder kommerzielle Status der App, wird dieses Impressum entsprechend aktualisiert.",
         ],
       },
       {

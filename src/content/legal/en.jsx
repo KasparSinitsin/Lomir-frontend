@@ -39,7 +39,7 @@ const content = {
         title: "Project Status",
         paragraphs: [
           "Lomir is currently operated as a non-commercial portfolio and learning project. The app is designed with privacy-by-default settings: new profiles stay private until users actively make them public.",
-          "The app may evolve as the project develops. If material features change, the legal and privacy information should be reviewed and updated before public rollout.",
+          "The app may evolve as the project develops. If material features change, we review and update the legal and privacy information before the changes take effect.",
         ],
       },
       {
@@ -288,7 +288,7 @@ const content = {
       {
         title: "19. Updates and Further Processing",
         paragraphs: [
-          "This Privacy Policy may be updated when Lomir, the providers, or the legal requirements change. Material updates should be published before they apply to new processing activities.",
+          "This Privacy Policy may be updated when Lomir, the providers, or the legal requirements change. We publish material updates before they apply to new processing activities.",
           "If Lomir intends to process personal data for a new purpose that is not compatible with the purpose for which the data was collected, users will be informed before that further processing where legally required.",
         ],
       },
@@ -445,7 +445,7 @@ const content = {
       {
         title: "Nature of the Project",
         paragraphs: [
-          "Lomir is currently operated as a free, non-commercial portfolio and learning project. If the legal or commercial status of the app changes, this notice should be reviewed and updated.",
+          "Lomir is currently operated as a free, non-commercial portfolio and learning project. If the legal or commercial status of the app changes, this notice will be updated accordingly.",
         ],
       },
       {
