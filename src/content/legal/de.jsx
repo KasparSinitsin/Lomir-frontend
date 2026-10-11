@@ -19,6 +19,14 @@ const contactLink = (
   </Link>
 );
 
+// The legal notice names the contact form as the second, quick means of contact next to the e-mail address
+// (DDG § 5 Abs. 1 Nr. 2). It is open to visitors without an account.
+const contactFormLink = (
+  <Link to="/contact" className="link link-primary">
+    Kontaktformular
+  </Link>
+);
+
 const privacyLink = (
   <Link to="/privacy" className="link link-primary">
     Datenschutzerklärung
@@ -422,7 +430,7 @@ const content = {
       },
       {
         title: "Kontakt",
-        paragraphs: [<>E-Mail: {mailLink}</>],
+        paragraphs: [<>E-Mail: {mailLink}</>, <>Online: {contactFormLink}</>],
       },
       {
         title: "Journalistisch-redaktionelle Inhalte",
