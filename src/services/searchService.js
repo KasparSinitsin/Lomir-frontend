@@ -1,3 +1,8 @@
+import i18n from "../i18n";
+import {
+  canonicalizeOperators,
+  getOperatorWords,
+} from "../utils/searchOperators";
 import api from "./api";
 
 /**
@@ -112,7 +117,14 @@ const buildSearchParams = ({
     includeDemoData: String(includeDemoData),
   };
 
-  if (query) params.query = query;
+  // The backend knows AND / OR / NOT only; the operator words of the interface
+  // language are turned into them here (see utils/searchOperators.js).
+  if (query) {
+    params.query = canonicalizeOperators(
+      query,
+      getOperatorWords(i18n.t.bind(i18n)),
+    );
+  }
   if (maxDistance) params.maxDistance = maxDistance;
   if (excludeOwnTeams) params.excludeOwnTeams = true;
 
