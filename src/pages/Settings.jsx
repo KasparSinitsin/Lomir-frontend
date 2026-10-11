@@ -214,7 +214,16 @@ const normalizeTransferOptions = (members, currentUserId) =>
     .filter(Boolean);
 
 const Settings = () => {
-  const { t } = useTranslation("profile");
+  const { t, i18n } = useTranslation("profile");
+
+  // getAuthErrorText() reads `auth:` keys, and `auth` is only loaded when an
+  // auth page asks for it. Opened directly (reload), this page would show the
+  // bare key. Not `useTranslation(["profile", "auth"])`: i18n:check reads only
+  // a single namespace per file. t() reads the store when it is called, so no
+  // re-render is needed when the namespace arrives.
+  useEffect(() => {
+    i18n.loadNamespaces("auth");
+  }, [i18n]);
   const { user, updateUser, logout, refreshBlocks } = useAuth();
   const navigate = useNavigate();
   const pendingEmail = user?.pendingEmail || user?.pending_email || null;
