@@ -90,7 +90,7 @@ export const createEventRenderers = (ctx) => {
   const renderApplicationApprovedMessage = (message, parsedMessage) => {
     // ⚠️ This is the prose format — names only, no ids — so describeEvent
     // matches the reader by name. Id-only checks let the approver read about
-    // herself in the third person ("… was added by Anna Madlen Albers").
+    // herself in the third person ("… was added by Erika Mustermann").
     const welcomeText = renderSentence(getEventSentence(t, eventOf(parsedMessage)));
 
     return (

@@ -522,7 +522,7 @@ const TeamInviteModal = ({
     return inviteeName || inviteeUsername || t("requestList.unknownUser");
   };
 
-  // Get first given name for the modal title (e.g. "Alice Stephanie Beurer" → "Alice")
+  // Get first given name for the modal title (e.g. "Alicia Maria Keller" → "Alicia")
   const getInviteeAbbreviatedName = () => {
     return (inviteeFirstName || "").split(" ")[0] || inviteeName || inviteeUsername || t("requestList.unknownUser");
   };
