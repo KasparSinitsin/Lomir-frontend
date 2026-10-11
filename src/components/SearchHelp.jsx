@@ -8,6 +8,7 @@ import React, {
 import { Info } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { getOperatorWords } from "../utils/searchOperators";
 import Tooltip from "./common/Tooltip";
 
 /**
@@ -80,16 +81,20 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
     );
   }, [isOpen]);
 
-  // The queries are syntax and stay as they are in every language: the
-  // operators are English (decision E1), and the terms match the English tag
-  // and badge names stored in the database. Only the explanations translate.
+  // The operators are shown in the words of the interface language; the terms
+  // are product names that every language knows. The English operators work
+  // everywhere, so a query copied from elsewhere keeps working.
+  const operatorWords = getOperatorWords(t);
   const examples = [
-    { query: "react AND node", description: t("searchHelp.examples.and") },
-    { query: "react OR vue", description: t("searchHelp.examples.or") },
-    { query: "javascript NOT jquery", description: t("searchHelp.examples.not") },
-    { query: "python -django", description: t("searchHelp.examples.minus") },
+    { query: `react ${operatorWords.AND} node`, description: t("searchHelp.examples.and") },
+    { query: `react ${operatorWords.OR} vue`, description: t("searchHelp.examples.or") },
+    { query: `javascript ${operatorWords.NOT} jquery`, description: t("searchHelp.examples.not") },
+    {
+      query: "python -django",
+      description: t("searchHelp.examples.minus", { operator: operatorWords.NOT }),
+    },
     { query: '"full stack developer"', description: t("searchHelp.examples.phrase") },
-    { query: '"web development" OR backend', description: t("searchHelp.examples.combine") },
+    { query: `"web development" ${operatorWords.OR} backend`, description: t("searchHelp.examples.combine") },
   ];
 
   return (
@@ -189,9 +194,18 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
               <div className="mt-3 pt-3 border-t border-base-300">
                 <p className="text-xs text-base-content/50">
-                  {t("searchHelp.caseInsensitive")}
+                  {t("searchHelp.capitalsOnly")}
                   <br />
-                  {t("searchHelp.caseInsensitiveExample")}
+                  {t("searchHelp.capitalsOnlyExample", {
+                    upper: operatorWords.AND,
+                    lower: operatorWords.AND.toLowerCase(),
+                  })}
+                  {operatorWords.AND !== "AND" && (
+                    <>
+                      <br />
+                      {t("searchHelp.alsoEnglish")}
+                    </>
+                  )}
                 </p>
               </div>
             </div>

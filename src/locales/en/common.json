@@ -1037,17 +1037,23 @@
     "teamMembersUnnamed": "team members",
     "teamMembersUnnamedRemove": "Exclude team members"
   },
+  "searchOperators": {
+    "and": "AND",
+    "or": "OR",
+    "not": "NOT"
+  },
   "searchHelp": {
     "title": "Advanced Search",
     "intro": "Use operators to refine your search:",
     "closeTips": "Close search tips",
-    "caseInsensitive": "Operators are case-insensitive",
-    "caseInsensitiveExample": "(AND, and, And all work)",
+    "capitalsOnly": "Write operators in capital letters",
+    "capitalsOnlyExample": "({upper} works, “{lower}” is searched as a word)",
+    "alsoEnglish": "The English operators AND, OR and NOT work too.",
     "examples": {
       "and": "Must contain both \"react\" AND \"node\"",
       "or": "Must contain either \"react\" OR \"vue\"",
       "not": "Must contain \"javascript\" but NOT \"jquery\"",
-      "minus": "Same as NOT: contains \"python\" but not \"django\"",
+      "minus": "Same as {operator}: contains \"python\" but not \"django\"",
       "phrase": "Exact phrase match",
       "combine": "Combine phrases with operators"
     }
@@ -1083,8 +1089,8 @@
     "noResults": "No teams, users or Roles found matching this search query. Try a different search term.",
     "clearInput": "Clear search input",
     "placeholder": {
-      "default": "Try: hiking AND photography, or hiking NOT photography",
-      "defaultCompact": "Try: hiking AND photo",
+      "default": "Try: hiking {and} photography, or hiking {not} photography",
+      "defaultCompact": "Try: hiking {and} photo",
       "match": "Matching results to your profile — type to narrow",
       "roleMatch": "Finding people matching the \"{role}\" role — type to narrow",
       "narrowCompact": "Type to narrow results..."
@@ -1144,7 +1150,7 @@
       "unclosedQuote": "Unclosed quote in search query.",
       "startsWithOperator": "Query cannot start with \"{operator}\".",
       "endsWithOperator": "Query cannot end with \"{operator}\".",
-      "notWithoutTerm": "NOT must be followed by a search term.",
+      "notWithoutTerm": "{operator} must be followed by a search term.",
       "operatorWithoutTerms": "{operator} must be between two search terms.",
       "failed": "Something went wrong with the search. Please try again."
     }

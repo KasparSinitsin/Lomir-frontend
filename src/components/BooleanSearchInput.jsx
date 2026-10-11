@@ -4,9 +4,16 @@ import {
   useRef,
   useEffect,
   useLayoutEffect,
+  useMemo,
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import {
+  buildInnerOperatorPattern,
+  buildLeadingOperatorPattern,
+  buildOperatorPattern,
+  getOperatorWords,
+} from "../utils/searchOperators";
 import {
   Tag,
   Award,
@@ -54,7 +61,6 @@ const hexToRgba = (hex, alpha) => {
 
 const ADVANCED_SEARCH_SHADOW =
   "0 8px 18px rgba(4, 80, 20, 0.22), 0 18px 42px rgba(4, 80, 20, 0.18)";
-const BOOLEAN_OPERATOR_SPLIT_PATTERN = /\b(?:AND|OR|NOT)\b/i;
 const NARROW_DROPDOWN_BREAKPOINT = 640;
 const COMPACT_INLINE_CONTROLS_RESERVED_WIDTH = 76;
 const SUGGESTION_DROPDOWN_ARROW_WIDTH = 20;
@@ -67,16 +73,18 @@ const cleanSuggestionSegment = (value) =>
     .replace(/^[\s"'-]+|[\s"')]+$/g, "")
     .trim();
 
-const getSuggestionQuery = (value, cursorIndex = value.length) => {
+// `splitPattern` matches the operator words of the interface language and the
+// English ones, in capitals only (utils/searchOperators.js).
+const getSuggestionQuery = (value, cursorIndex, splitPattern) => {
   const beforeCursor = value.slice(0, cursorIndex);
   const segmentAtCursor = cleanSuggestionSegment(
-    beforeCursor.split(BOOLEAN_OPERATOR_SPLIT_PATTERN).pop() || "",
+    beforeCursor.split(splitPattern).pop() || "",
   );
 
   if (segmentAtCursor) return segmentAtCursor;
 
   const fallbackSegments = value
-    .split(BOOLEAN_OPERATOR_SPLIT_PATTERN)
+    .split(splitPattern)
     .map(cleanSuggestionSegment)
     .filter(Boolean);
 
@@ -85,20 +93,26 @@ const getSuggestionQuery = (value, cursorIndex = value.length) => {
 
 // Removes the fragment a picked suggestion came from: the text between the last
 // operator before the cursor and the cursor, together with that operator. What
-// the user wrote around it stays, so `hiking AND art` becomes `hiking`.
-const removeSuggestionSegment = (value, cursorIndex = value.length) => {
+// the user wrote around it stays, so `hiking AND art` becomes `hiking` (in
+// German `Wandern UND Kunst` becomes `Wandern`).
+const removeSuggestionSegment = (value, cursorIndex, operatorWords) => {
   const beforeCursor = value.slice(0, cursorIndex);
   let afterCursor = value.slice(cursorIndex);
 
   let lastOperator = null;
-  for (const match of beforeCursor.matchAll(/\b(?:AND|OR|NOT)\b/gi)) {
+  for (const match of beforeCursor.matchAll(
+    buildOperatorPattern(operatorWords, "g"),
+  )) {
     lastOperator = match;
   }
   const head = lastOperator ? beforeCursor.slice(0, lastOperator.index) : "";
 
   // Nothing before the fragment: drop the operator that followed it instead.
   if (!head.trim()) {
-    afterCursor = afterCursor.replace(/^\s*(?:AND|OR|NOT)\b\s*/i, "");
+    afterCursor = afterCursor.replace(
+      buildLeadingOperatorPattern(operatorWords),
+      "",
+    );
   }
 
   return `${head}${afterCursor}`
@@ -537,15 +551,23 @@ const BooleanSearchInput = ({
     ),
   );
 
+  // The operator words of the interface language. `checkBooleanOperators` reads
+  // them through a ref and keeps one identity: the effect below depends on it
+  // and would reset the typed text whenever the language changed.
+  const operatorWords = useMemo(() => getOperatorWords(t), [t]);
+  const operatorWordsRef = useRef(operatorWords);
+  operatorWordsRef.current = operatorWords;
+  const operatorSplitPattern = useMemo(
+    () => buildOperatorPattern(operatorWords),
+    [operatorWords],
+  );
+
   // Check if query contains boolean operators
   const checkBooleanOperators = useCallback((value) => {
     if (!value) return false;
 
-    const upperValue = value.toUpperCase();
     const hasOperators =
-      upperValue.includes(" AND ") ||
-      upperValue.includes(" OR ") ||
-      upperValue.includes(" NOT ") ||
+      buildInnerOperatorPattern(operatorWordsRef.current).test(value) ||
       value.includes('"') ||
       value.includes("'") ||
       value.includes(" -") ||
@@ -622,7 +644,7 @@ const BooleanSearchInput = ({
 
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
 
-    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex, operatorSplitPattern);
 
     if (suggestionQuery.length >= 2 && onSearchSuggestions) {
       suggestionsTimerRef.current = setTimeout(async () => {
@@ -644,7 +666,7 @@ const BooleanSearchInput = ({
   const handleSuggestionRefresh = () => {
     const value = inputRef.current?.value ?? query;
     const cursorIndex = inputRef.current?.selectionStart ?? value.length;
-    const suggestionQuery = getSuggestionQuery(value, cursorIndex);
+    const suggestionQuery = getSuggestionQuery(value, cursorIndex, operatorSplitPattern);
 
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
 
@@ -786,7 +808,7 @@ const BooleanSearchInput = ({
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
     const value = inputRef.current?.value ?? query;
     const cursorIndex = inputRef.current?.selectionStart ?? value.length;
-    const nextQuery = removeSuggestionSegment(value, cursorIndex);
+    const nextQuery = removeSuggestionSegment(value, cursorIndex, operatorWords);
     setQuery(nextQuery);
     setHasBooleanOperators(checkBooleanOperators(nextQuery));
     setSuggestions({ tags: [], badges: [] });

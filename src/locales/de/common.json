@@ -1037,17 +1037,23 @@
     "teamMembersUnnamed": "Teammitglieder",
     "teamMembersUnnamedRemove": "Teammitglieder ausschließen"
   },
+  "searchOperators": {
+    "and": "UND",
+    "or": "ODER",
+    "not": "NICHT"
+  },
   "searchHelp": {
     "title": "Erweiterte Suche",
     "intro": "Mit Operatoren kannst du deine Suche verfeinern:",
     "closeTips": "Suchtipps schließen",
-    "caseInsensitive": "Groß- und Kleinschreibung spielt bei Operatoren keine Rolle",
-    "caseInsensitiveExample": "(AND, and und And funktionieren gleich)",
+    "capitalsOnly": "Operatoren schreibst du in Großbuchstaben",
+    "capitalsOnlyExample": "({upper} funktioniert, „{lower}“ wird als Wort gesucht)",
+    "alsoEnglish": "Die englischen Operatoren AND, OR und NOT funktionieren ebenfalls.",
     "examples": {
       "and": "Muss sowohl „react“ als auch „node“ enthalten",
       "or": "Muss „react“ oder „vue“ enthalten",
       "not": "Muss „javascript“ enthalten, aber nicht „jquery“",
-      "minus": "Wie NOT: enthält „python“, aber nicht „django“",
+      "minus": "Wie {operator}: enthält „python“, aber nicht „django“",
       "phrase": "Genau diese Wortfolge",
       "combine": "Wortfolgen mit Operatoren kombinieren"
     }
@@ -1083,8 +1089,8 @@
     "noResults": "Keine Teams, Personen oder Rollen zu dieser Suche gefunden. Versuch es mit einem anderen Suchbegriff.",
     "clearInput": "Sucheingabe leeren",
     "placeholder": {
-      "default": "Probiere: hiking AND photography oder hiking NOT photography",
-      "defaultCompact": "Probiere: hiking AND photo",
+      "default": "Probiere: Wandern {and} Fotografie oder Wandern {not} Fotografie",
+      "defaultCompact": "Probiere: Wandern {and} Foto",
       "match": "Ergebnisse passend zu deinem Profil – tippe, um einzugrenzen",
       "roleMatch": "Personen passend zur Rolle „{role}“ – tippe, um einzugrenzen",
       "narrowCompact": "Tippe, um einzugrenzen …"
@@ -1144,7 +1150,7 @@
       "unclosedQuote": "In deiner Suche ist ein Anführungszeichen nicht geschlossen.",
       "startsWithOperator": "Die Suche darf nicht mit „{operator}“ beginnen.",
       "endsWithOperator": "Die Suche darf nicht mit „{operator}“ enden.",
-      "notWithoutTerm": "Auf NOT muss ein Suchbegriff folgen.",
+      "notWithoutTerm": "Auf {operator} muss ein Suchbegriff folgen.",
       "operatorWithoutTerms": "{operator} muss zwischen zwei Suchbegriffen stehen.",
       "failed": "Bei der Suche ist etwas schiefgelaufen. Bitte versuch es noch einmal."
     }

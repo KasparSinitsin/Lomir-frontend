@@ -9,6 +9,7 @@ import React, {
 import ReactDOM from "react-dom";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getOperatorWords, localizeOperator } from "../utils/searchOperators";
 import { useAuth } from "../contexts/AuthContext";
 import { getBadgeName } from "../utils/badgeLabels";
 import PageContainer from "../components/layout/PageContainer";
@@ -281,6 +282,7 @@ const SearchPage = () => {
   const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { t } = useTranslation();
+  const operatorWords = getOperatorWords(t);
   const { tagLabel } = useTagLabels();
   const { data: structuredTags = EMPTY_QUERY_ARRAY } = useStructuredTags();
   const queryClient = useQueryClient();
@@ -587,8 +589,9 @@ const SearchPage = () => {
    * One literal key per code, as on the contact page: a key built from the
    * code would be invisible to `npm run i18n:check`. A backend without codes,
    * or a code this build does not know, falls back to the backend's prose, so
-   * the change needs no deploy order. `operator` is syntax and stays English
-   * (plan decision E1).
+   * the change needs no deploy order. The backend names the operator in
+   * English (AND / OR / NOT); it is shown in the words of the interface
+   * language.
    */
   const getSearchErrorText = (searchError) => {
     const { code, values, message } = getSearchErrorDetails(searchError);
@@ -603,17 +606,19 @@ const SearchPage = () => {
         return t("searchPage.errors.unclosedQuote");
       case "STARTS_WITH_OPERATOR":
         return t("searchPage.errors.startsWithOperator", {
-          operator: values.operator,
+          operator: localizeOperator(values.operator, operatorWords),
         });
       case "ENDS_WITH_OPERATOR":
         return t("searchPage.errors.endsWithOperator", {
-          operator: values.operator,
+          operator: localizeOperator(values.operator, operatorWords),
         });
       case "NOT_WITHOUT_TERM":
-        return t("searchPage.errors.notWithoutTerm");
+        return t("searchPage.errors.notWithoutTerm", {
+          operator: operatorWords.NOT,
+        });
       case "OPERATOR_WITHOUT_TERMS":
         return t("searchPage.errors.operatorWithoutTerms", {
-          operator: values.operator,
+          operator: localizeOperator(values.operator, operatorWords),
         });
       case "SEARCH_FAILED":
         return t("searchPage.errors.failed");
@@ -2501,12 +2506,17 @@ const SearchPage = () => {
                         })
                       : sortBy === "match"
                         ? t("searchPage.placeholder.match")
-                        : t("searchPage.placeholder.default")
+                        : t("searchPage.placeholder.default", {
+                            and: operatorWords.AND,
+                            not: operatorWords.NOT,
+                          })
                   }
                   compactPlaceholder={
                     matchRoleId || sortBy === "match"
                       ? t("searchPage.placeholder.narrowCompact")
-                      : t("searchPage.placeholder.defaultCompact")
+                      : t("searchPage.placeholder.defaultCompact", {
+                          and: operatorWords.AND,
+                        })
                   }
                   activePills={activeCriteriaPills}
                   onRemoveActivePill={handleActivePillRemove}
