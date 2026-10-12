@@ -127,6 +127,7 @@ const content = {
           "Kontaktanfragen und Support-Kommunikation: Art. 6 Abs. 1 lit. b DSGVO, wo die Anfrage einen Account oder potenziellen Account betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO.",
           "Rechtliche Compliance und Beweissicherung, falls erforderlich: Art. 6 Abs. 1 lit. c und Art. 6 Abs. 1 lit. f DSGVO.",
           "Anzeige der Kartenansicht und Auflösen von Standortangaben über OpenStreetMap: Art. 6 Abs. 1 lit. b DSGVO, soweit du die Funktion nutzt, und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Erhalt von Team-Nachrichten und verliehenen Badges nach einer Account-Löschung, mit ersetztem Namen: Art. 6 Abs. 1 lit. f DSGVO.",
         ],
       },
       {
@@ -146,6 +147,7 @@ const content = {
               "der Beweissicherung, falls erforderlich,",
               "der Beantwortung von Support-Anfragen,",
               "der Darstellung von Suchergebnissen auf einer Karte,",
+              "der Verständlichkeit von Team-Gesprächen und Auszeichnungen für die verbleibenden Mitglieder,",
               "der Verteidigung oder Geltendmachung von Rechtsansprüchen.",
             ],
           },

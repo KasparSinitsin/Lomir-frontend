@@ -121,6 +121,7 @@ const content = {
           "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or a potential account, otherwise Art. 6(1)(f) GDPR.",
           "Legal compliance and preservation of evidence where required: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
           "Showing the map view and resolving location information via OpenStreetMap: Art. 6(1)(b) GDPR, as far as you use the feature, and Art. 6(1)(f) GDPR.",
+          "Keeping team messages and awarded badges after an account deletion, with the name replaced: Art. 6(1)(f) GDPR.",
         ],
       },
       {
@@ -140,6 +141,7 @@ const content = {
               "preserving evidence where needed,",
               "responding to support requests,",
               "showing search results on a map,",
+              "keeping team conversations and awards understandable for the remaining members,",
               "defending or asserting legal claims.",
             ],
           },
