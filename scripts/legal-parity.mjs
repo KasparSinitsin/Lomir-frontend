@@ -5,10 +5,10 @@
  * Why this exists
  * ---------------
  * The legal pages are one file per language (src/content/legal/de.jsx and
- * en.jsx), not translation keys, so i18n:check cannot see them. Both versions
- * carry equal legal weight, which means a section, paragraph or list item that
- * exists in one language and not the other is a defect in a binding text - and
- * nothing on screen would show it.
+ * en.jsx), not translation keys, so i18n:check cannot see them. The German
+ * version is authoritative and the English one its translation (terms §14),
+ * so a section, paragraph or list item that exists in one language and not the
+ * other is a defect in a binding text - and nothing on screen would show it.
  *
  * What it compares, per page and in order
  * ---------------------------------------

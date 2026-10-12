@@ -17,8 +17,8 @@ export const mailLink = (
  * so a change to either is a change to both.
  */
 export const LEGAL_UPDATED = {
-  about: "2026-06-18",
-  terms: "2026-06-18",
-  privacy: "2026-06-30",
-  legalNotice: "2026-10-11",
+  about: "2026-10-11",
+  terms: "2026-10-12",
+  privacy: "2026-10-12",
+  legalNotice: "2026-10-12",
 };

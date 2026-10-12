@@ -1,0 +1,9 @@
+# Lomir - keep people's public profiles and the search out of search engines
+# (data minimisation, decided 2026-10-12; privacy policy section 9 says so).
+# The API is listed because a crawler that renders the app would load the
+# profile data from it. robots.txt is a request, not a lock.
+User-agent: *
+Disallow: /api/
+Disallow: /socket.io/
+Disallow: /search
+Disallow: /profile

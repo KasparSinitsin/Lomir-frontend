@@ -476,7 +476,7 @@
     "intro": "Fragen, Rückmeldungen, Hilfe zum Account, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
     "introSecondLine": "Wir leiten deine Nachricht an die richtige Stelle weiter.",
     "loginHint": "Schon bei Lomir dabei? <0>Melde dich an</0>, um uns über den App-Chat zu erreichen.",
-    "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir deinen Namen und deine E-Mail-Adresse, um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
+    "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir die Angaben im Formular (Name, E-Mail-Adresse, Thema, Nachricht und Anhänge), um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
     "report": {
       "topicHelp": "Nutze dieses Thema, um illegale Inhalte, Missbrauch, Belästigung, Spam, Datenschutzprobleme oder Sicherheitsbedenken zu melden.",
       "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder den Account finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
@@ -606,7 +606,11 @@
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …"
   },
+  "legalLink": {
+    "opensInNewTab": "(öffnet in neuem Tab)"
+  },
   "legalPage": {
+    "translationNotice": "Dies ist eine Übersetzung. Rechtlich verbindlich ist die deutsche Fassung.",
     "lastUpdated": "Stand: {date}"
   },
   "location": {
@@ -932,12 +936,12 @@
     "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}"
   },
   "privacy": {
-    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht. Einzelne Verweise in Teams und Badges können als „Ehemaliger Lomir-Nutzer“ anonymisiert werden, damit Team- und Gesprächszusammenhänge erhalten bleiben.",
-    "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere Nutzer sichtbar sein.",
-    "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
-    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere Nutzer sichtbar sein.",
+    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht, auch für die andere Person. Deine Nachrichten in Team-Chats und die Badges, die du anderen verliehen hast, bleiben bestehen und zeigen „Ehemaliger Lomir-Nutzer“ statt deines Namens.",
+    "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere sichtbar sein, bei einem öffentlichen Profil oder Team auch für Besucher ohne Account.",
+    "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar und werden nach 60 Tagen automatisch gelöscht. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
+    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account.",
     "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
-    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere Nutzer sichtbar sein."
+    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account."
   },
   "publicProfile": {
     "title": "Profil",

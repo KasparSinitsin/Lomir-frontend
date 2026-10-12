@@ -139,7 +139,7 @@
         "owner": "Eigentümer"
       },
       "selectedTeammate": "Ausgewähltes Teammitglied",
-      "soloTeamNotice": "Dieses Solo-Team wird sofort und endgültig gelöscht",
+      "soloTeamNotice": "Dieses Team hat außer dir keine Mitglieder und wird sofort und endgültig gelöscht",
       "step1": "Schritt 1 von 2: Passwort bestätigen",
       "step2": "Schritt 2 von 2: Prüfen, was sich ändert",
       "successorLabel": "Nachfolge:",
@@ -148,6 +148,7 @@
       "summaryHeading": "Übersicht",
       "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
       "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",
+      "summaryTeamMessages": "Deine Nachrichten in Team-Chats bleiben für die Mitglieder sichtbar und zeigen künftig „Ehemaliger Lomir-Nutzer“ statt deines Namens.",
       "transferHeading": "Teams, die übergeben werden",
       "transferTo": "Team-Eigentum übertragen an",
       "unknownMember": "Unbekanntes Mitglied",

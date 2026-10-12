@@ -139,7 +139,7 @@
         "owner": "Owner"
       },
       "selectedTeammate": "Selected teammate",
-      "soloTeamNotice": "This solo team will be permanently deleted immediately",
+      "soloTeamNotice": "This team has no members besides you and will be permanently deleted immediately",
       "step1": "Step 1 of 2: Confirm your password",
       "step2": "Step 2 of 2: Review what will change",
       "successorLabel": "Successor:",
@@ -148,6 +148,7 @@
       "summaryHeading": "Summary",
       "summaryMemberships": "{count, plural, one {# team membership will be removed} other {# team memberships will be removed}}",
       "summaryMessages": "{count, plural, one {# direct message will be deleted} other {# direct messages will be deleted}}",
+      "summaryTeamMessages": "Your messages in team chats stay visible to the members and will show \"Former Lomir User\" instead of your name.",
       "transferHeading": "Teams to be transferred",
       "transferTo": "Transfer ownership to",
       "unknownMember": "Unknown member",

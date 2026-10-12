@@ -21,6 +21,7 @@ import InfoCard from "../components/common/InfoCard";
 import CreateTeamModal from "../components/teams/CreateTeamModal";
 import { useAuth } from "../contexts/AuthContext";
 import lomirWordmark from "../assets/images/Lomir-logowordmark-color.svg";
+import LegalLink from "../components/common/LegalLink";
 
 /**
  * Opens the search page on its Open Roles view.
@@ -517,10 +518,10 @@ const Home = () => {
                   <User className="w-4 h-4" />
                   {t("home:closing.createProfile")}
                 </Link>
-                <Link to="/privacy" className="btn btn-primary">
+                <LegalLink to="/privacy" className="btn btn-primary">
                   <ShieldCheck className="w-4 h-4" />
                   {t("home:closing.privacy")}
-                </Link>
+                </LegalLink>
               </>
             ) : (
               <>
