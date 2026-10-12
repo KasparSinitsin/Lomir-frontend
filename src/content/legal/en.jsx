@@ -343,7 +343,7 @@ const content = {
       {
         title: "5. Profiles, Teams, and Visibility",
         paragraphs: [
-          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search results, profiles, cards, lists, or overviews.",
+          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search results, on profile pages and profile cards, in the map view, in lists, or in overviews.",
           "If you add location data, it may be used for matching and recommendations. Depending on visibility settings and context, approximate location details such as postal code, city, district, state, or country may be visible to other users.",
           "Team and role visibility depends on team settings and membership context. Even when your profile is private, information needed for teams, applications, invitations, messages, and notifications may be shown to the relevant participants.",
         ],

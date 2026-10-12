@@ -349,7 +349,7 @@ const content = {
       {
         title: "5. Profile, Teams und Sichtbarkeit",
         paragraphs: [
-          "Dein Profil ist standardmäßig privat. Du entscheidest, ob du es öffentlich machst. Öffentliche Profilinhalte können für andere Lomir-Nutzer sichtbar sein und in Suchergebnissen, Profilen, Karten, Listen oder Übersichten angezeigt werden.",
+          "Dein Profil ist standardmäßig privat. Du entscheidest, ob du es öffentlich machst. Öffentliche Profilinhalte können für andere Lomir-Nutzer sichtbar sein und in Suchergebnissen, auf Profilseiten und Profilkarten, in der Kartenansicht, in Listen oder Übersichten angezeigt werden.",
           "Fügst du Standortdaten hinzu, können diese für Matching und Empfehlungen genutzt werden. Je nach Sichtbarkeitseinstellungen und Kontext können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere Nutzer sichtbar sein.",
           "Die Sichtbarkeit von Teams und Rollen hängt von den Team-Einstellungen und dem Mitgliedschaftskontext ab. Selbst wenn dein Profil privat ist, können Informationen, die für Teams, Bewerbungen, Einladungen, Nachrichten oder Benachrichtigungen erforderlich sind, den relevanten Teilnehmern angezeigt werden.",
         ],
