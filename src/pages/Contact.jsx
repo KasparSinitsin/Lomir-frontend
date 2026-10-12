@@ -14,6 +14,7 @@ import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import FormGroup from "../components/common/FormGroup";
 import TurnstileWidget from "../components/common/TurnstileWidget";
+import LegalLink from "../components/common/LegalLink";
 import { useAuth } from "../contexts/AuthContext";
 import { getActiveLocale } from "../utils/languageUtils";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -930,7 +931,7 @@ const Contact = () => {
           <Trans
             i18nKey="contact.privacyNote"
             components={[
-              <Link key="privacy" to="/privacy" className="link link-primary" />,
+              <LegalLink key="privacy" to="/privacy" className="link link-primary" />,
             ]}
           />
         </p>

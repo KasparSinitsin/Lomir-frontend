@@ -5,6 +5,7 @@ import { getAuthErrorCode, getAuthErrorText } from "../../utils/authErrorText";
 import { useAuth } from "../../contexts/AuthContext";
 import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
+import LegalLink from "../common/LegalLink";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import FormSectionDivider from "../common/FormSectionDivider";
@@ -1133,13 +1134,13 @@ const RegisterForm = () => {
                   />
                   <span className="label-text leading-relaxed">
                     {t("auth:register.legal.agreePrefix")}{" "}
-                    <Link to="/terms" className="link link-primary">
+                    <LegalLink to="/terms" className="link link-primary">
                       {t("auth:register.legal.terms")}
-                    </Link>{" "}
+                    </LegalLink>{" "}
                     {t("auth:register.legal.andAcknowledge")}{" "}
-                    <Link to="/privacy" className="link link-primary">
+                    <LegalLink to="/privacy" className="link link-primary">
                       {t("auth:register.legal.privacy")}
-                    </Link>
+                    </LegalLink>
                     {t("auth:register.legal.afterPrivacy")}
                     .
                   </span>

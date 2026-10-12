@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { mailLink } from "./shared";
+import LegalLink from "../../components/common/LegalLink";
 
 /**
  * The German legal texts. Same shape as en.jsx, checked by
@@ -31,9 +32,9 @@ const contactFormLink = (
 );
 
 const privacyLink = (
-  <Link to="/privacy" className="link link-primary">
+  <LegalLink to="/privacy" className="link link-primary">
     Datenschutzerklärung
-  </Link>
+  </LegalLink>
 );
 
 const content = {

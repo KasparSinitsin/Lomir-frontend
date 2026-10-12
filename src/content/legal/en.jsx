@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { mailLink } from "./shared";
+import LegalLink from "../../components/common/LegalLink";
 
 /**
  * The English legal texts. Same shape as de.jsx, checked by
@@ -25,9 +26,9 @@ const contactFormLink = (
 );
 
 const privacyLink = (
-  <Link to="/privacy" className="link link-primary">
+  <LegalLink to="/privacy" className="link link-primary">
     Privacy Policy
-  </Link>
+  </LegalLink>
 );
 
 const content = {

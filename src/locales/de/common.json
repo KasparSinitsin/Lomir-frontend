@@ -606,6 +606,9 @@
     "placeholder": "Sprache auswählen",
     "searchPlaceholder": "Zum Suchen tippen …"
   },
+  "legalLink": {
+    "opensInNewTab": "(öffnet in neuem Tab)"
+  },
   "legalPage": {
     "translationNotice": "Dies ist eine Übersetzung. Rechtlich verbindlich ist die deutsche Fassung.",
     "lastUpdated": "Stand: {date}"

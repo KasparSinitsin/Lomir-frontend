@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { Github, Instagram, Mail, Scale } from 'lucide-react';
+import LegalLink from '../common/LegalLink';
 
 const LINK_CLASSES =
   'inline-flex items-center gap-1.5 text-base-content hover:text-primary-focus rounded-full px-4 py-1';
@@ -31,9 +32,10 @@ const Footer = () => {
    */
   const internalLinks = [
     { to: '/about', label: t('footer.about') },
-    { to: '/terms', label: t('footer.terms') },
-    { to: '/privacy', label: t('footer.privacy') },
-    { to: '/legal-notice', label: t('footer.imprint') },
+    // `legal`: the binding pages open in a new tab (LegalLink).
+    { to: '/terms', label: t('footer.terms'), legal: true },
+    { to: '/privacy', label: t('footer.privacy'), legal: true },
+    { to: '/legal-notice', label: t('footer.imprint'), legal: true },
     { to: '/contact', label: t('footer.contact'), Icon: Mail },
   ];
 
@@ -49,12 +51,15 @@ const Footer = () => {
         <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 text-sm leading-none">
           {internalLinks
             .filter(({ to }) => to !== currentPath)
-            .map(({ to, label, Icon }) => (
-              <Link key={to} to={to} className={LINK_CLASSES}>
-                {Icon && <Icon className="h-3.5 w-3.5" />}
-                {label}
-              </Link>
-            ))}
+            .map(({ to, label, Icon, legal }) => {
+              const LinkComponent = legal ? LegalLink : Link;
+              return (
+                <LinkComponent key={to} to={to} className={LINK_CLASSES}>
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {label}
+                </LinkComponent>
+              );
+            })}
           <a
             href="https://github.com/KasparSinitsin/Lomir-frontend/blob/main/LICENSE"
             target="_blank"
