@@ -14,11 +14,9 @@ import {
   MailCheck,
   KeyRound,
   User,
-  Camera,
   Eye,
   EyeOff,
 } from "lucide-react";
-import ImageUploader from "../common/ImageUploader";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import CommunicationSection from "../common/CommunicationSection";
@@ -56,13 +54,11 @@ const RegisterForm = () => {
     isPublic: false,
     acceptedLegal: false,
     confirmedAge16: false,
-    profile_image: null,
     selectedTags: [],
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
@@ -400,13 +396,6 @@ const RegisterForm = () => {
     }));
   };
 
-  const getUserInitialsFromForm = () => {
-    const first = formData.first_name?.charAt(0) || "";
-    const last = formData.last_name?.charAt(0) || "";
-    if (first || last) return (first + last).toUpperCase();
-    return formData.username?.charAt(0)?.toUpperCase() || "?";
-  };
-
   const resetTurnstile = () => {
     turnstileRef.current?.reset();
     setTurnstileToken(null);
@@ -555,10 +544,10 @@ const RegisterForm = () => {
               .map((id) => ({ tag_id: id }))
           : [];
 
-      // Send registration as multipart/form-data so the avatar is uploaded
-      // to ImageKit server-side, only after the account is actually created.
-      // This avoids exposing the image (and an ImageKit auth token) from the
-      // browser before a valid registration exists.
+      // Sent as multipart/form-data, which the backend route parses. There is
+      // no picture here on purpose (STATUS item 59): an avatar is uploaded from
+      // the profile after the e-mail confirmation, so an account that is never
+      // confirmed leaves no file in ImageKit.
       const registrationData = new FormData();
       registrationData.append("username", trimmedUsername);
       registrationData.append("email", trimmedEmail);
@@ -582,10 +571,6 @@ const RegisterForm = () => {
 
       if (hasTurnstile) {
         registrationData.append("turnstile_token", turnstileToken);
-      }
-
-      if (formData.profile_image) {
-        registrationData.append("avatar", formData.profile_image);
       }
 
       const result = await register(registrationData);
@@ -1065,34 +1050,6 @@ const RegisterForm = () => {
               disabled={isSubmitting}
             />
 
-            {/* Profile Picture */}
-            <section className="space-y-4">
-              <FormSectionDivider
-                text={t("auth:register.sections.picture")}
-                icon={Camera}
-              />
-
-              <div className="flex justify-center">
-                <div className="w-full max-w-md">
-                  <ImageUploader
-                    currentImage={imagePreview}
-                    onImageSelect={(file, previewUrl) => {
-                      setFormData((prev) => ({ ...prev, profile_image: file }));
-                      setImagePreview(previewUrl);
-                    }}
-                    onImageRemove={() => {
-                      setFormData((prev) => ({ ...prev, profile_image: null }));
-                      setImagePreview(null);
-                    }}
-                    size="mdPlus"
-                    shape="circle"
-                    fallbackText={getUserInitialsFromForm()}
-                    helpText={t("common:privacy.avatarUpload")}
-                  />
-                </div>
-              </div>
-            </section>
-
             {/* Focus Areas */}
             <section className="space-y-4">
               <FormSectionDivider
@@ -1190,6 +1147,14 @@ const RegisterForm = () => {
                   t("auth:register.submit.idle")
                 )}
               </Button>
+              {/* What the click does: the account is only complete after the
+                  link in the verification e-mail. The button label is passed
+                  in, so the sentence always names the button as it reads. */}
+              <p className="-mt-2 text-left text-sm text-base-content/70">
+                {t("auth:register.submit.hint", {
+                  button: t("auth:register.submit.idle"),
+                })}
+              </p>
 
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <p className="text-left text-sm sm:pt-1">
