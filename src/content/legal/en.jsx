@@ -159,7 +159,7 @@ const content = {
         title: "9. Public Visibility",
         paragraphs: [
           "Lomir is designed so that users do not unintentionally publish profile details. New accounts remain private after email verification unless you change the setting.",
-          "If your profile is public, all visitors of Lomir, including those without an account, may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location details you have added. Approximate location details may include postal code, city, district, state, or country.",
+          "If your profile is public, all visitors of Lomir, including those without an account, may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location details you have added. Approximate location details may include postal code, city, district, state, or country. We ask search engines, through the robots.txt file, not to crawl the search and the profile pages; we cannot guarantee that every search engine follows this.",
           "If your profile is private, it is not shown in public search results or profile views. Team members and conversation participants may still see information needed for team collaboration, messaging, applications, invitations, badge context, and safety-related system messages.",
           "You can change your profile visibility in settings. Turning your profile private only affects future public visibility. Information other users have already seen, or data contained in team/chat context, is not removed by it.",
         ],
