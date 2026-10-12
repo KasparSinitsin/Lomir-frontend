@@ -476,7 +476,7 @@
     "intro": "Questions, feedback, account help, privacy requests, or content reports can all start here.",
     "introSecondLine": "We will get your message to the right place.",
     "loginHint": "Already part of Lomir? <0>Log in</0> to contact us through the app chat.",
-    "privacyNote": "By submitting this form, your name and email address will be processed to respond to your inquiry. See our <0>Privacy Policy</0> for details on how we handle your data.",
+    "privacyNote": "By submitting this form, the details you enter (name, email address, subject, message, and attachments) will be processed to respond to your inquiry. See our <0>Privacy Policy</0> for details on how we handle your data.",
     "report": {
       "topicHelp": "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns.",
       "messageHelp": "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
