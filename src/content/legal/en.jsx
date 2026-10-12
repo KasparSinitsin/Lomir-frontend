@@ -125,6 +125,7 @@ const content = {
           "Confirming the minimum age: Art. 6(1)(c) in conjunction with Art. 8 GDPR, and Art. 6(1)(f) GDPR.",
           "Public profile visibility and optional profile content that users publish (including optional approximate location details): Art. 6(1)(a) GDPR and, where relevant, Art. 6(1)(b) GDPR.",
           "Security, abuse prevention, rate limiting, CAPTCHA checks, fraud prevention, debugging, and service reliability: Art. 6(1)(f) GDPR.",
+          "Backups and restoring the service after an outage: Art. 6(1)(f) in conjunction with Art. 32 GDPR.",
           "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or a potential account, otherwise Art. 6(1)(f) GDPR.",
           "Legal compliance and preservation of evidence where required: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
           "Showing the map view and resolving location information via OpenStreetMap: Art. 6(1)(b) GDPR, as far as you use the feature, and Art. 6(1)(f) GDPR.",
@@ -147,6 +148,7 @@ const content = {
               "enforcing the rules,",
               "preserving evidence where needed,",
               "responding to support requests,",
+              "being able to restore the app after an outage or data loss,",
               "showing search results on a map,",
               "keeping team conversations and awards understandable for the remaining members,",
               "defending or asserting legal claims.",
@@ -254,6 +256,7 @@ const content = {
           "Avatars and team avatars are stored until they are replaced, removed, or deleted with the respective account or team, where technically possible.",
           "Contact form messages, abuse or illegal-content reports, report status records, and related emails are kept as long as needed to answer the request, review the report, document the handling process, and, where necessary, comply with legal obligations or defend claims.",
           "Technical logs are kept only as long as needed for security, troubleshooting, and hosting operations, depending on the settings of the respective provider.",
+          "Backups: to protect against data loss, we regularly back up the database to the operators' computers. These backups are encrypted, are used only to restore the service after an outage or error, and are deleted automatically after 30 days. The database provider additionally keeps its own backups under its terms. Deleted data may therefore remain in backups for some time, in our own for up to 30 days. If we restore a backup, we delete again the accounts and teams that were deleted after the time of the backup. Smaller changes from that period, such as a single deleted message, may come back; we inform the people concerned.",
         ],
       },
       {
@@ -261,7 +264,7 @@ const content = {
         paragraphs: [
           <>You can delete your account from within the app. After confirmation, your account and all direct messages you are involved in are deleted immediately, also for the other person. Messages you wrote in team chats and badges you awarded to others remain, so that conversations and awards stay understandable for the others. Your name is replaced there by "Former Lomir User", as it is in system messages, for example about ownership transfers or roles. If you want to remove individual team messages, you can delete them in the chat before deleting your account, or ask us later through the {contactLink}.</>,
           <>Mentions with @ then show "Former Lomir User" instead of your name. What other users have written freely in their messages stays unchanged, even if your name appears in it. If you would like such a passage removed, please contact us through the {contactLink}.</>,
-          "Uploaded avatars are deleted from ImageKit on a best-effort basis after successful account deletion.",
+          "We delete uploaded avatars and the images and files in your direct messages from ImageKit immediately after the account is deleted. If that does not succeed at once, the daily cleanup catches up. Your data disappears from our database backups after 30 days (see 15. Storage Periods).",
         ],
       },
       {

@@ -131,6 +131,7 @@ const content = {
           "Bestätigung des Mindestalters: Art. 6 Abs. 1 lit. c in Verbindung mit Art. 8 DSGVO sowie Art. 6 Abs. 1 lit. f DSGVO.",
           "Öffentliche Profilsichtbarkeit und optionale Profilinhalte, die Nutzer veröffentlichen (einschließlich optionaler ungefährer Standortdetails): Art. 6 Abs. 1 lit. a DSGVO und, wo relevant, Art. 6 Abs. 1 lit. b DSGVO.",
           "Sicherheit, Missbrauchsprävention, Rate-Limiting, CAPTCHA-Prüfungen, Betrugsprävention, Debugging und Zuverlässigkeit des Dienstes: Art. 6 Abs. 1 lit. f DSGVO.",
+          "Datensicherung und Wiederherstellung nach einem Ausfall: Art. 6 Abs. 1 lit. f in Verbindung mit Art. 32 DSGVO.",
           "Kontaktanfragen und Support-Kommunikation: Art. 6 Abs. 1 lit. b DSGVO, wo die Anfrage einen Account oder potenziellen Account betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO.",
           "Rechtliche Compliance und Beweissicherung, falls erforderlich: Art. 6 Abs. 1 lit. c und Art. 6 Abs. 1 lit. f DSGVO.",
           "Anzeige der Kartenansicht und Auflösen von Standortangaben über OpenStreetMap: Art. 6 Abs. 1 lit. b DSGVO, soweit du die Funktion nutzt, und Art. 6 Abs. 1 lit. f DSGVO.",
@@ -153,6 +154,7 @@ const content = {
               "der Durchsetzung der Regeln,",
               "der Beweissicherung, falls erforderlich,",
               "der Beantwortung von Support-Anfragen,",
+              "der Wiederherstellbarkeit der App nach einem Ausfall oder Datenverlust,",
               "der Darstellung von Suchergebnissen auf einer Karte,",
               "der Verständlichkeit von Team-Gesprächen und Auszeichnungen für die verbleibenden Mitglieder,",
               "der Verteidigung oder Geltendmachung von Rechtsansprüchen.",
@@ -260,6 +262,7 @@ const content = {
           "Avatare und Team-Avatare werden gespeichert, bis sie ersetzt, entfernt oder mit dem jeweiligen Account oder Team gelöscht werden, soweit technisch möglich.",
           "Kontaktformular-Nachrichten, Meldungen von Missbrauch oder illegalen Inhalten, Meldestatus-Aufzeichnungen und zugehörige E-Mails werden so lange aufbewahrt, wie es erforderlich ist, um die Anfrage zu beantworten, die Meldung zu prüfen, den Bearbeitungsprozess zu dokumentieren und ggf. rechtlichen Verpflichtungen nachzukommen oder Ansprüchen zu verteidigen.",
           "Technische Logs werden nur so lange aufbewahrt, wie es für Sicherheit, Fehlerbehebung und Hosting-Betrieb erforderlich ist, abhängig von den Einstellungen des jeweiligen Anbieters.",
+          "Sicherungskopien: Zum Schutz vor Datenverlust sichern wir die Datenbank regelmäßig auf den Rechnern der Betreiber. Diese Sicherungen sind verschlüsselt, dienen nur der Wiederherstellung nach einem Ausfall oder Fehler und werden nach 30 Tagen automatisch gelöscht. Der Datenbankanbieter hält zusätzlich eigene Sicherungen nach seinen Bedingungen vor. Gelöschte Daten können daher noch einige Zeit in Sicherungen enthalten sein, in unseren eigenen bis zu 30 Tage. Stellen wir eine Sicherung wieder her, löschen wir Accounts und Teams erneut, die nach dem Zeitpunkt der Sicherung gelöscht wurden. Kleinere Änderungen aus diesem Zeitraum, etwa eine einzeln gelöschte Nachricht, können dabei zurückkehren; die Betroffenen informieren wir darüber.",
         ],
       },
       {
@@ -267,7 +270,7 @@ const content = {
         paragraphs: [
           <>Du kannst deinen Account aus der App heraus löschen. Nach der Bestätigung werden dein Account und alle Direktnachrichten, an denen du beteiligt bist, sofort gelöscht, auch für die jeweils andere Person. Nachrichten, die du in Team-Chats geschrieben hast, und Badges, die du anderen verliehen hast, bleiben bestehen, damit Gespräche und Auszeichnungen für die anderen verständlich bleiben. Dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt, ebenso in Systemnachrichten, etwa zu Eigentumsübertragungen oder Rollen. Möchtest du einzelne Team-Nachrichten entfernen, kannst du sie vor der Löschung im Chat löschen oder uns später über die {contactLink} darum bitten.</>,
           <>Erwähnungen mit @ zeigen danach „Ehemaliger Lomir-Nutzer“ statt deines Namens. Was andere Nutzer frei in ihre Nachrichten geschrieben haben, bleibt dagegen unverändert, auch wenn dein Name darin steht. Möchtest du, dass eine solche Stelle entfernt wird, wende dich über die {contactLink} an uns.</>,
-          "Hochgeladene Avatare werden nach erfolgreicher Account-Löschung nach bestem Bemühen aus ImageKit gelöscht.",
+          "Hochgeladene Avatare sowie Bilder und Dateien aus deinen Direktnachrichten löschen wir unmittelbar nach der Account-Löschung aus ImageKit. Gelingt das nicht sofort, holen wir es bei der täglichen Bereinigung nach. Aus unseren Sicherungskopien der Datenbank verschwinden deine Daten nach 30 Tagen (siehe 15. Speicherdauern).",
         ],
       },
       {
