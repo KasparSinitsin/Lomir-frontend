@@ -253,6 +253,7 @@ const content = {
         title: "16. Account-Löschung",
         paragraphs: [
           "Du kannst deinen Account aus der App heraus löschen. Nach der Bestätigung wird dein Account und alle Direktnachrichten, an denen du beteiligt bist, sofort gelöscht. Einige Team-Kontexte können in anonymisierter Form erhalten bleiben, z. B. als „Ehemaliger Lomir-Nutzer“, damit verbleibende Teams, Badge-Verläufe, Eigentumsübertragungen und Rollenstatus verständlich bleiben.",
+          <>Erwähnungen mit @ zeigen danach „Ehemaliger Lomir-Nutzer“ statt deines Namens. Was andere Nutzer frei in ihre Nachrichten geschrieben haben, bleibt dagegen unverändert, auch wenn dein Name darin steht. Möchtest du, dass eine solche Stelle entfernt wird, wende dich über die {contactLink} an uns.</>,
           "Hochgeladene Avatare werden nach erfolgreicher Account-Löschung nach bestem Bemühen aus ImageKit gelöscht.",
         ],
       },

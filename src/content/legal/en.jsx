@@ -249,6 +249,7 @@ const content = {
         title: "16. Account Deletion",
         paragraphs: [
           "You can delete your account from within the app. After confirmation, your account and all direct messages you are involved in are deleted immediately. Some team context may remain in anonymized form, for example as \"Former Lomir User\", so that remaining teams, badge histories, ownership transfers, and role status stay understandable.",
+          <>Mentions with @ then show "Former Lomir User" instead of your name. What other users have written freely in their messages stays unchanged, even if your name appears in it. If you would like such a passage removed, please contact us through the {contactLink}.</>,
           "Uploaded avatars are deleted from ImageKit on a best-effort basis after successful account deletion.",
         ],
       },
