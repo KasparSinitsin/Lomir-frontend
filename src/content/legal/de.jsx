@@ -9,8 +9,9 @@ import { mailLink } from "./shared";
  * Change German first, then English, in the same commit, and update
  * LEGAL_UPDATED in ./shared.jsx.
  *
- * All four pages are Julia's own translations (2026-09-17 / 2026-09-18).
- * ⚠️ They must not reach users before she has signed the pages off.
+ * All four pages are Julia's own text (2026-09-17 / 2026-09-18); the English
+ * was aligned to them sentence by sentence. Walked by Julia in the browser on
+ * 2026-09-25, both languages compared section by section.
  */
 
 const contactLink = (
