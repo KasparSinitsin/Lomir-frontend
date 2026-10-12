@@ -118,7 +118,8 @@ const content = {
         title: "6. Zwecke und Rechtsgrundlagen",
         items: [
           "Account-Erstellung, Anmeldung, Profilverwaltung, optionales standortbasiertes Matching, Team-Matching, Chat, Benachrichtigungen und App-Betrieb: Art. 6 Abs. 1 lit. b DSGVO.",
-          "Rechtliche Bestätigungen, Altersbestätigung und Dokumentation akzeptierter rechtlicher Dokumente: Art. 6 Abs. 1 lit. c und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Annahme der Nutzungsbedingungen, Kenntnisnahme der Datenschutzerklärung und deren Dokumentation: Art. 6 Abs. 1 lit. b und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Bestätigung des Mindestalters: Art. 6 Abs. 1 lit. c in Verbindung mit Art. 8 DSGVO sowie Art. 6 Abs. 1 lit. f DSGVO.",
           "Öffentliche Profilsichtbarkeit und optionale Profilinhalte, die Nutzer veröffentlichen (einschließlich optionaler ungefährer Standortdetails): Art. 6 Abs. 1 lit. a DSGVO und, wo relevant, Art. 6 Abs. 1 lit. b DSGVO.",
           "Sicherheit, Missbrauchsprävention, Rate-Limiting, CAPTCHA-Prüfungen, Betrugsprävention, Debugging und Zuverlässigkeit des Dienstes: Art. 6 Abs. 1 lit. f DSGVO.",
           "Kontaktanfragen und Support-Kommunikation: Art. 6 Abs. 1 lit. b DSGVO, wo die Anfrage einen Account oder potenziellen Account betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO.",

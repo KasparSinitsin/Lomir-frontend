@@ -113,7 +113,8 @@ const content = {
         title: "6. Purposes and Legal Bases",
         items: [
           "Account creation, login, profile management, optional location-based matching, team matching, chat, notifications, and app operation: Art. 6(1)(b) GDPR.",
-          "Legal acknowledgements, age confirmation, and documentation of accepted legal documents: Art. 6(1)(c) and Art. 6(1)(f) GDPR.",
+          "Accepting the terms, acknowledging the privacy policy, and documenting both: Art. 6(1)(b) and Art. 6(1)(f) GDPR.",
+          "Confirming the minimum age: Art. 6(1)(c) in conjunction with Art. 8 GDPR, and Art. 6(1)(f) GDPR.",
           "Public profile visibility and optional profile content that users publish (including optional approximate location details): Art. 6(1)(a) GDPR and, where relevant, Art. 6(1)(b) GDPR.",
           "Security, abuse prevention, rate limiting, CAPTCHA checks, fraud prevention, debugging, and service reliability: Art. 6(1)(f) GDPR.",
           "Contact requests and support communication: Art. 6(1)(b) GDPR where the request relates to an account or a potential account, otherwise Art. 6(1)(f) GDPR.",
