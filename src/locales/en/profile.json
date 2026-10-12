@@ -139,7 +139,7 @@
         "owner": "Owner"
       },
       "selectedTeammate": "Selected teammate",
-      "soloTeamNotice": "This solo team will be permanently deleted immediately",
+      "soloTeamNotice": "This team has no members besides you and will be permanently deleted immediately",
       "step1": "Step 1 of 2: Confirm your password",
       "step2": "Step 2 of 2: Review what will change",
       "successorLabel": "Successor:",

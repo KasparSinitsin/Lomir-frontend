@@ -139,7 +139,7 @@
         "owner": "Eigentümer"
       },
       "selectedTeammate": "Ausgewähltes Teammitglied",
-      "soloTeamNotice": "Dieses Solo-Team wird sofort und endgültig gelöscht",
+      "soloTeamNotice": "Dieses Team hat außer dir keine Mitglieder und wird sofort und endgültig gelöscht",
       "step1": "Schritt 1 von 2: Passwort bestätigen",
       "step2": "Schritt 2 von 2: Prüfen, was sich ändert",
       "successorLabel": "Nachfolge:",
