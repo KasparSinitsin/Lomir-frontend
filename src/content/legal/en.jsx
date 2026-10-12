@@ -234,7 +234,7 @@ const content = {
       {
         title: "15. Storage Periods",
         items: [
-          "Account and profile data are stored while the account exists. When you delete your account, your profile and direct messages you are involved in are deleted immediately after confirmation, while limited team and badge references may remain in anonymized form.",
+          "Account and profile data are stored while the account exists. When you delete your account, your profile, the badges awarded to you, your team memberships, applications and invitations, and all direct messages you are involved in are deleted immediately after confirmation. Your messages in team chats and the badges you awarded to others remain; your name is replaced there by \"Former Lomir User\".",
           "When a solo team is deleted, the team, its chat, members, invitations, applications, badges, notifications, and team avatar are deleted immediately. When a team with other remaining members is deleted, it is archived first so the remaining members can see the deletion notice and read the team history. It is permanently deleted when the last member leaves the team or after the configured archive period, currently 14 days by default.",
           "Legal acknowledgement records are stored while the account exists and may be retained where necessary to document compliance or defend legal claims.",
           "Unverified accounts are scheduled for deletion after the verification link expires, with a buffer of one hour. Cleanup runs periodically and once at server start.",
@@ -248,7 +248,7 @@ const content = {
       {
         title: "16. Account Deletion",
         paragraphs: [
-          "You can delete your account from within the app. After confirmation, your account and all direct messages you are involved in are deleted immediately. Some team context may remain in anonymized form, for example as \"Former Lomir User\", so that remaining teams, badge histories, ownership transfers, and role status stay understandable.",
+          <>You can delete your account from within the app. After confirmation, your account and all direct messages you are involved in are deleted immediately, also for the other person. Messages you wrote in team chats and badges you awarded to others remain, so that conversations and awards stay understandable for the others. Your name is replaced there by "Former Lomir User", as it is in system messages, for example about ownership transfers or roles. If you want to remove individual team messages, you can delete them in the chat before deleting your account, or ask us later through the {contactLink}.</>,
           <>Mentions with @ then show "Former Lomir User" instead of your name. What other users have written freely in their messages stays unchanged, even if your name appears in it. If you would like such a passage removed, please contact us through the {contactLink}.</>,
           "Uploaded avatars are deleted from ImageKit on a best-effort basis after successful account deletion.",
         ],
@@ -367,7 +367,7 @@ const content = {
       {
         title: "9. Account Deletion",
         paragraphs: [
-          "You may delete your account in the app. Account deletion is intended to be permanent; your profile and direct messages involving you are deleted immediately after confirmation. Some team and badge context may remain in anonymized or system-message form so that other users' team history and collaboration context stay understandable.",
+          <>You may delete your account in the app. Account deletion is permanent: your profile and all direct messages you are involved in are deleted immediately after confirmation. Messages you wrote in team chats and badges you awarded to others remain; your name is replaced there by "Former Lomir User". Details are in the {privacyLink}.</>,
         ],
       },
       {

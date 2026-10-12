@@ -1483,6 +1483,7 @@ const Settings = () => {
                       count: directMessagesCount,
                     })}
                   </p>
+                  <p>{t("settings.delete.summaryTeamMessages")}</p>
                 </div>
               </div>
 

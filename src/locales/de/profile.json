@@ -148,6 +148,7 @@
       "summaryHeading": "Übersicht",
       "summaryMemberships": "{count, plural, one {# Teammitgliedschaft wird entfernt} other {# Teammitgliedschaften werden entfernt}}",
       "summaryMessages": "{count, plural, one {# Direktnachricht wird gelöscht} other {# Direktnachrichten werden gelöscht}}",
+      "summaryTeamMessages": "Deine Nachrichten in Team-Chats bleiben für die Mitglieder sichtbar und zeigen künftig „Ehemaliger Lomir-Nutzer“ statt deines Namens.",
       "transferHeading": "Teams, die übergeben werden",
       "transferTo": "Team-Eigentum übertragen an",
       "unknownMember": "Unbekanntes Mitglied",

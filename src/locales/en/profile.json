@@ -148,6 +148,7 @@
       "summaryHeading": "Summary",
       "summaryMemberships": "{count, plural, one {# team membership will be removed} other {# team memberships will be removed}}",
       "summaryMessages": "{count, plural, one {# direct message will be deleted} other {# direct messages will be deleted}}",
+      "summaryTeamMessages": "Your messages in team chats stay visible to the members and will show \"Former Lomir User\" instead of your name.",
       "transferHeading": "Teams to be transferred",
       "transferTo": "Transfer ownership to",
       "unknownMember": "Unknown member",

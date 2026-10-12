@@ -239,7 +239,7 @@ const content = {
       {
         title: "15. Speicherdauern",
         items: [
-          "Account- und Profildaten werden gespeichert, solange der Account existiert. Wenn du deinen Account löschst, werden dein Profil und Direktnachrichten, an denen du beteiligt bist, sofort nach Bestätigung gelöscht, während begrenzte Team- und Badge-Referenzen in anonymisierter Form erhalten bleiben können.",
+          "Account- und Profildaten werden gespeichert, solange der Account existiert. Wenn du deinen Account löschst, werden dein Profil, die Badges, die dir verliehen wurden, deine Teammitgliedschaften, Bewerbungen und Einladungen sowie alle Direktnachrichten, an denen du beteiligt bist, sofort nach Bestätigung gelöscht. Bestehen bleiben deine Nachrichten in Team-Chats und die Badges, die du anderen verliehen hast; dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt.",
           "Wenn ein Einzelteam gelöscht wird, werden das Team, sein Chat, Mitglieder, Einladungen, Bewerbungen, Badges, Benachrichtigungen und Team-Avatar sofort gelöscht. Wenn ein Team mit anderen verbleibenden Mitgliedern gelöscht wird, wird es zunächst archiviert, damit die verbleibenden Mitglieder die Löschbenachrichtigung sehen und den Teamverlauf einsehen können. Es wird dauerhaft gelöscht, wenn das letzte Mitglied das Team verlässt oder nach der konfigurierten Archivierungsfrist, derzeit standardmäßig 14 Tage.",
           "Aufzeichnungen rechtlicher Bestätigungen werden gespeichert, solange der Account existiert, und können ggf. behalten werden, um die Compliance zu dokumentieren oder Rechtsansprüche zu verteidigen.",
           "Nicht bestätigte Accounts werden zur Löschung vorgesehen, nachdem der Bestätigungslink abgelaufen ist, mit einer Pufferzeit von einer Stunde. Die Bereinigung erfolgt periodisch und einmalig beim Serverstart.",
@@ -253,7 +253,7 @@ const content = {
       {
         title: "16. Account-Löschung",
         paragraphs: [
-          "Du kannst deinen Account aus der App heraus löschen. Nach der Bestätigung wird dein Account und alle Direktnachrichten, an denen du beteiligt bist, sofort gelöscht. Einige Team-Kontexte können in anonymisierter Form erhalten bleiben, z. B. als „Ehemaliger Lomir-Nutzer“, damit verbleibende Teams, Badge-Verläufe, Eigentumsübertragungen und Rollenstatus verständlich bleiben.",
+          <>Du kannst deinen Account aus der App heraus löschen. Nach der Bestätigung werden dein Account und alle Direktnachrichten, an denen du beteiligt bist, sofort gelöscht, auch für die jeweils andere Person. Nachrichten, die du in Team-Chats geschrieben hast, und Badges, die du anderen verliehen hast, bleiben bestehen, damit Gespräche und Auszeichnungen für die anderen verständlich bleiben. Dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt, ebenso in Systemnachrichten, etwa zu Eigentumsübertragungen oder Rollen. Möchtest du einzelne Team-Nachrichten entfernen, kannst du sie vor der Löschung im Chat löschen oder uns später über die {contactLink} darum bitten.</>,
           <>Erwähnungen mit @ zeigen danach „Ehemaliger Lomir-Nutzer“ statt deines Namens. Was andere Nutzer frei in ihre Nachrichten geschrieben haben, bleibt dagegen unverändert, auch wenn dein Name darin steht. Möchtest du, dass eine solche Stelle entfernt wird, wende dich über die {contactLink} an uns.</>,
           "Hochgeladene Avatare werden nach erfolgreicher Account-Löschung nach bestem Bemühen aus ImageKit gelöscht.",
         ],
@@ -372,7 +372,7 @@ const content = {
       {
         title: "9. Account-Löschung",
         paragraphs: [
-          "Du kannst deinen Account in der App löschen. Die Löschung des Accounts ist endgültig intendiert: Dein Profil und Direktnachrichten, an denen du beteiligt bist, werden sofort nach Bestätigung gelöscht. Einige Team- und Badge-Kontexte können in anonymisierter Form oder als Systemnachricht erhalten bleiben, damit die Teamhistorie und der Zusammenarbeitskontext anderer Nutzer verständlich bleiben.",
+          <>Du kannst deinen Account in der App löschen. Die Löschung ist endgültig: Dein Profil und alle Direktnachrichten, an denen du beteiligt bist, werden sofort nach Bestätigung gelöscht. Nachrichten, die du in Team-Chats geschrieben hast, und Badges, die du anderen verliehen hast, bleiben bestehen; dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt. Einzelheiten stehen in der {privacyLink}.</>,
         ],
       },
       {
