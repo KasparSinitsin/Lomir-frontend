@@ -240,7 +240,7 @@ const content = {
         items: [
           "Account and profile data are stored while the account exists. When you delete your account, your profile, the badges awarded to you, your team memberships, applications and invitations, and all direct messages you are involved in are deleted immediately after confirmation. Your messages in team chats and the badges you awarded to others remain; your name is replaced there by \"Former Lomir User\".",
           "When a team whose only member is its owner is deleted, the team, its chat, invitations, applications, badges, notifications, and team avatar are deleted immediately. When a team with other members is deleted, it is archived first so the remaining members can see the deletion notice and read the team history. It is permanently deleted when the last member leaves the team or after the configured archive period, currently 14 days by default.",
-          "Legal acknowledgement records are stored while the account exists and may be retained where necessary to document compliance or defend legal claims.",
+          "Legal acknowledgement records are stored while the account exists and are deleted with it.",
           "Unverified accounts are scheduled for deletion after the verification link expires, with a buffer of one hour. Cleanup runs periodically and once at server start.",
           "Password reset tokens expire after one hour and are deleted by the scheduled cleanup.",
           "Chat file and image uploads expire after 60 days and are removed by the scheduled cleanup where possible. Message records may remain with deleted file references.",
