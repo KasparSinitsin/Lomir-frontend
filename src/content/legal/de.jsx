@@ -348,7 +348,7 @@ const content = {
       {
         title: "6. Nutzerinhalte",
         paragraphs: [
-          "Du behältst die Rechte an den Inhalten und Dateien, die du bei Lomir hochlädst oder dort erstellst. Indem du Inhalte hochlädst oder erstellst, räumst du Lomir ein begrenztes, nicht-ausschließliches Recht ein, diese Inhalte zu speichern, anzuzeigen, zu übertragen und zu verarbeiten, soweit dies für den Betrieb der App erforderlich ist.",
+          "Du behältst die Rechte an den Inhalten und Dateien, die du bei Lomir hochlädst oder dort erstellst. Indem du Inhalte hochlädst oder erstellst, räumst du Lomir ein begrenztes, nicht-ausschließliches Recht ein, diese Inhalte zu speichern, anzuzeigen, zu übertragen und zu verarbeiten, soweit dies für den Betrieb der App erforderlich ist. Das gilt auch für die Speicherung durch von uns beauftragte Dienstleister, etwa für Hosting und Medien. Das Recht endet, wenn du die Inhalte oder deinen Account löschst, soweit Inhalte nicht nach Abschnitt 9 in Team-Chats oder als verliehene Badges bestehen bleiben.",
           "Du bist für die von dir bereitgestellten Inhalte verantwortlich. Gib keine sensiblen persönlichen Daten, vertrauliche Informationen oder Daten über andere Personen ein, es sei denn, du hast eine rechtliche Grundlage und deren Erlaubnis, falls erforderlich.",
         ],
       },
