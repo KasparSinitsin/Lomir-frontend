@@ -374,6 +374,7 @@ const content = {
         title: "10. Availability and Changes",
         paragraphs: [
           "Lomir is provided free of charge and without a guarantee of uninterrupted availability. Features may be changed, limited, or removed. Maintenance, hosting limits, provider outages, security incidents, or project changes may affect the app.",
+          "We may change these terms when Lomir, the legal requirements or the services we use change. We inform you of material changes in good time beforehand by email or in the app. If you do not agree with a change, you can delete your account at any time. New accounts are subject to the current version.",
         ],
       },
       {

@@ -378,6 +378,7 @@ const content = {
         title: "10. Verfügbarkeit und Änderungen",
         paragraphs: [
           "Lomir wird kostenlos und ohne Garantie auf unterbrechungsfreie Verfügbarkeit bereitgestellt. Funktionen können geändert, eingeschränkt oder entfernt werden. Wartungsarbeiten, Hosting-Beschränkungen, Anbieterausfälle, Sicherheitsvorfälle oder Projektänderungen können die App beeinflussen.",
+          "Diese Nutzungsbedingungen können wir ändern, wenn sich Lomir, die rechtlichen Anforderungen oder die eingesetzten Dienste ändern. Über wesentliche Änderungen informieren wir dich rechtzeitig vorher per E-Mail oder in der App. Bist du mit einer Änderung nicht einverstanden, kannst du deinen Account jederzeit löschen. Für neue Accounts gilt die jeweils aktuelle Fassung.",
         ],
       },
       {
