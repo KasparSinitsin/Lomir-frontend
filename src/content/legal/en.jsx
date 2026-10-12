@@ -281,6 +281,11 @@ const content = {
               "Withdrawing consent does not affect the lawfulness of the processing carried out on the basis of that consent before the withdrawal. For example: you can later turn a public profile private, but this does not undo the visibility that already existed before the change.",
           },
           {
+            paragraph: (
+              <><strong>Right to object:</strong> Where we process data on the basis of legitimate interests (Art. 6(1)(f) GDPR), you can object at any time on grounds relating to your particular situation (Art. 21 GDPR). We will then no longer process the data unless we can demonstrate compelling legitimate grounds that override your interests, or the processing serves the establishment, exercise, or defence of legal claims.</>
+            ),
+          },
+          {
             paragraph:
               "You also have the right to lodge a complaint with a data protection supervisory authority. In Rheinland-Pfalz, this is the Landesbeauftragter für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz. You may also contact another competent supervisory authority.",
           },

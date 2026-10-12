@@ -287,6 +287,11 @@ const content = {
               "Ein Widerruf der Einwilligung berührt nicht die Rechtmäßigkeit der Verarbeitung, die auf der Einwilligung vor dem Widerruf beruhte. Beispiel: Du kannst ein öffentliches Profil später auf privat setzen, aber dies hebt nicht die Sichtbarkeit auf, die bereits vor der Änderung bestand.",
           },
           {
+            paragraph: (
+              <><strong>Widerspruchsrecht:</strong> Soweit wir Daten auf Grundlage berechtigter Interessen (Art. 6 Abs. 1 lit. f DSGVO) verarbeiten, kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21 DSGVO). Wir verarbeiten die Daten dann nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe nachweisen, die deine Interessen überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen.</>
+            ),
+          },
+          {
             paragraph:
               "Du hast zudem das Recht, Beschwerde bei einer Datenschutzaufsichtsbehörde einzureichen. In Rheinland-Pfalz ist dies der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz. Du kannst dich auch an eine andere zuständige Aufsichtsbehörde wenden.",
           },
