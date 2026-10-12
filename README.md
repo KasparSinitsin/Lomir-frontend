@@ -32,7 +32,7 @@ To test the live demo, just **register your own account** directly in the deploy
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
 - **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search; deleting a team archives it, and everyone with an open application or invitation is told in a direct message from the owner, who can add a personal note; an archived team is read-only (no role management, no handling of requests), while removing members and leaving it stay possible
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit — from the profile, once the email address is confirmed; registration takes no picture), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO); blocked users are hidden from direct conversations, team rosters, mention lists, and rendered message streams
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — Navbar bell and chat badges with interactive hover tooltips that summarize unread items by type; clear everything behind a badge in one click, or click a type-group to work through its notifications from oldest to newest; notifications whose target was already handled by someone else resolve with an explanation instead of opening an empty view
@@ -73,7 +73,7 @@ To test the live demo, just **register your own account** directly in the deploy
 ### Prerequisites
 
 - **Node.js** v18+ and npm (CI runs on Node 22)
-- The [Lomir backend](https://github.com/KasparSinitsin/Lomir-backend) running on `http://localhost:5001`
+- The [Lomir backend](https://github.com/KasparSinitsin/Lomir-backend) running on `http://localhost:5001` (its README sets up a local demo database with `npm run demo-db`)
 
 ### 1. Clone the repo
 
@@ -99,7 +99,8 @@ VITE_API_URL=http://localhost:5001
 # Optional Socket.IO override (defaults to http://localhost:5001 if unset)
 # VITE_SOCKET_URL=http://localhost:5001
 
-# ImageKit (image/file uploads — get values from the project owner)
+# ImageKit — only needed for uploads; use keys from your own ImageKit account.
+# Without them the app runs, and only uploading a picture or a file fails.
 VITE_IMAGEKIT_PUBLIC_KEY=<your-public-key>
 VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
@@ -125,7 +126,7 @@ localStorage.removeItem("lomir.languageFeaturePreview");      // then reload
 This second switch exists only in a development server; it is compiled out of
 production builds.
 
-> Get the ImageKit values from the project owner.
+> Without ImageKit values the app runs against a local demo backend; only uploads need keys from your own ImageKit account. Maintainers of the shared environment get its values from the project owner.
 
 ### 4. Start the dev server
 
@@ -174,10 +175,11 @@ Lomir-frontend/
 │   │   ├── Profile.jsx             # User profile editing
 │   │   ├── PublicProfile.jsx       # Other users' public profiles; shows "private" message for
 │   │   │                           #   limited-access profiles; placeholder for deleted users
-│   │   ├── Register.jsx            # Multi-step registration with CAPTCHA
+│   │   ├── Register.jsx            # Registration (RegisterForm): one form with legal consent and CAPTCHA; no picture until the email is confirmed
 │   │   ├── Login.jsx
 │   │   ├── Chat.jsx                # Direct + team messaging with file sharing; filters blocked users
 │   │   ├── BadgeOverview.jsx       # Badge catalog and details
+│   │   ├── FocusAreaOverview.jsx   # /focusareas: every focus area by supercategory and category; a focus area opens the search with it set
 │   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes (password change sends a
 │   │   │                           #   confirmation email and logs you out of all sessions; email change sends
 │   │   │                           #   a verification link) + account deletion modal
@@ -214,6 +216,7 @@ Lomir-frontend/
 │   │   │                           #   DeletedUserProfilePlaceholder
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
+│   │   ├── focusAreas/             # The focus area overview: FocusAreaSupercategorySection, FocusAreaCategoryCard
 │   │   ├── chat/                   # Chat UI (ConversationSidebar / ConversationList / ConversationHeader,
 │   │   │                           #   MessageArea, MessageInput, MessageNotifications, ArchivedTeamBanner),
 │   │   │                           #   message bubbles, file/image previews and uploaders,
@@ -239,6 +242,7 @@ Lomir-frontend/
 │   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal,
 │   │   │                           #   ErrorBoundary, LanguageSelect, LanguageFlag,
 │   │   │                           #   CommunicationSection, LocationDistanceTagsRow, TagDisplay,
+│   │   │                           #   LegalLink (links to the legal pages, opened in a new tab),
 │   │   │                           #   ModalTest (only used by the unrouted DesignSystem page)
 │   │   └── layout/                 # Navbar, NavbarLanguageMenu, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
@@ -278,6 +282,7 @@ Lomir-frontend/
 │   ├── hooks/
 │   │   ├── useUserQueries.js       # React Query hooks for user profile/tags/badges (useUserProfile, useUserTags, useUserBadges) + unwrap helpers
 │   │   ├── useTagQueries.js        # React Query hooks for structured tags
+│   │   ├── useTagLabels.js         # The labels to show for tags, categories and supercategories in the active language
 │   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
 │   │   ├── useTeamQueries.js       # React Query hooks/keys for teams: paginated user-teams list, bulk + per-team member badges, team detail (fetchTeamById), open-roles, and viewer team-role (MyTeams, SearchPage, TeamCard)
 │   │   ├── useSearchQueries.js     # React Query hook for the global search (SearchPage): whole criteria object as query key, keepPreviousData
@@ -331,6 +336,10 @@ Lomir-frontend/
 │   │   ├── mentions.js             # @mention tokens: split, resolve labels
 │   │   ├── teamCapacity.js         # Member count / capacity helpers
 │   │   ├── teamErrorText.js        # Translated text for the backend's team error codes
+│   │   ├── authErrorText.js        # Translated text for the backend's account error codes (login, registration, password, email)
+│   │   ├── passwordRules.js        # The password rule's checks: a letter and a number of any script
+│   │   ├── searchOperators.js      # The search operator words per interface language (AND/OR/NOT, UND/ODER/NICHT)
+│   │   ├── tagLabels.js            # Display labels for the focus-area taxonomy (the stored English names stay data)
 │   │   ├── teamNameRegistry.js     # Current team names, so events show a team as it is called NOW
 │   │   ├── roleNameRegistry.js     # Same for role names
 │   │   ├── badgeLabels.js          # Display labels for badge taxonomy values (the stored values stay untranslated)
@@ -370,7 +379,7 @@ Lomir-frontend/
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
 | `/login` | Login | Sign in, register redirect, and forgot-password entry point |
-| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile |
+| `/register` | Register | One form with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile; no profile picture (uploaded from the profile once the email is confirmed); a line under the button says that the click sends a verification email whose link completes the registration |
 | `/verify-email` | Verify Email | Confirms new-account email verification links before login |
 | `/verify-email-change` | Verify Email Change | Confirms an email-change link for a logged-in user and updates the account email |
 | `/forgot-password` | Forgot Password | Request a password reset email |
@@ -382,10 +391,11 @@ Lomir-frontend/
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
 | `/chat/:conversationId` | Chat | Opens a specific conversation |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
+| `/focusareas` | Focus Areas | Every focus area by supercategory and category; a focus area opens the search with it set |
 | `/settings` | Settings | Change profile visibility, manage blocked users, update password (logs you out of all sessions and sends a confirmation email), request a verified email change, and delete account |
 | `/contact` | Contact | Email form with file attachments and privacy notice; abuse/content reports show a reference ID; authenticated users with a contact user ID configured are routed to in-app chat |
 | `/about` | About | Project description, status, and contact information |
-| `/terms` | Terms | Full Terms of Service (14 sections, German law) |
+| `/terms` | Terms | Full Terms of Service (15 sections, German law; the German text is authoritative) |
 | `/privacy` | Privacy | Full GDPR-aligned Privacy Policy (19 sections) |
 | `/legal-notice` | Legal Notice / Impressum | Legal notice per DDG §5 |
 
@@ -413,11 +423,12 @@ The search page supports multiple sort and filter modes:
 
 ## Account Deletion
 
-The deletion flow in Settings follows a three-step process:
+The deletion dialog in Settings has two steps:
 
 1. **Password confirmation** — Validates identity before showing any impact data
-2. **Impact preview** — Shows teams to be transferred (with successor override), teams to be deleted, roles to be reopened, and affected counts
-3. **Confirm & execute** — Triggers the backend transaction; on success, logs out and redirects to home
+2. **Impact preview and confirmation** — Shows teams to be transferred (with successor override), teams to be deleted, roles to be reopened, and affected counts; confirming triggers the backend transaction, and on success the app logs out and redirects to home
+
+The backend deletes the direct messages together with their images and files, the avatar, and the files of teams deleted with the account (see the backend README).
 
 All components handle deleted user references gracefully: chat messages show "Former Lomir User" with a grey avatar, badge awards preserve the badge but show a null awarder, and profile links show a placeholder page.
 
@@ -457,7 +468,7 @@ The chat page supports both direct (1-to-1) and team group conversations.
 - Images are uploaded to ImageKit and shown inline with a filename caption and a download overlay on hover
 - Non-image files (PDFs, Word docs, spreadsheets, etc.) render as a downloadable card with icon, filename, and file size
 - Excel / CSV files are labelled as "Spreadsheet"; other files as "File"
-- Uploaded files expire after 60 days; messages show a countdown and a warning when expiry is within 7 days
+- Uploaded files expire after 60 days; messages show a countdown and a warning when expiry is within 7 days. Files in direct messages are deleted with the account, and a team's files with the team
 
 **System event messages**
 - Team actions (joins, role changes, invitations accepted/declined, ownership transfers) post styled event banners into the team chat automatically
