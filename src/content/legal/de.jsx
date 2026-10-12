@@ -31,6 +31,12 @@ const contactFormLink = (
   </Link>
 );
 
+const termsLink = (
+  <LegalLink to="/terms" className="link link-primary">
+    Nutzungsbedingungen
+  </LegalLink>
+);
+
 const privacyLink = (
   <LegalLink to="/privacy" className="link link-primary">
     Datenschutzerklärung
@@ -479,7 +485,7 @@ const content = {
       {
         title: "Haftung für Inhalte",
         paragraphs: [
-          "Wir bemühen uns, unsere eigenen Inhalte korrekt und aktuell zu halten. Nutzererstellte Inhalte werden von den Nutzern selbst erstellt. Falls dir rechtswidrige Inhalte oder Rechtsverletzungen auffallen, kontaktiere uns bitte, damit wir diese prüfen können.",
+          <>Wir bemühen uns, unsere eigenen Inhalte korrekt und aktuell zu halten. Inhalte, die Nutzer selbst einstellen, etwa Profile, Teambeschreibungen und Chatnachrichten, stammen von den jeweiligen Nutzern. Wir prüfen sie nicht vorab und sind dazu auch nicht verpflichtet (Art. 8 DSA). Erfahren wir von rechtswidrigen Inhalten, entfernen wir sie unverzüglich oder sperren den Zugang (Art. 6 DSA); Inhalte, die gegen unsere Nutzungsbedingungen verstoßen, können wir ebenfalls entfernen. Dafür sind wir auf die Mitwirkung unserer Nutzer angewiesen: Wenn dir rechtswidrige, diskriminierende oder missbräuchliche Inhalte oder ein Missbrauch der App-Funktionen auffallen, melde sie bitte über die {contactLink} oder per E-Mail an {mailLink}. Wie wir Meldungen bearbeiten, steht in den {termsLink} unter „7. Meldung von illegalen Inhalten und Missbrauch“.</>,
         ],
       },
       {

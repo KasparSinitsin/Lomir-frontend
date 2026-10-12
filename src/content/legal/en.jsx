@@ -25,6 +25,12 @@ const contactFormLink = (
   </Link>
 );
 
+const termsLink = (
+  <LegalLink to="/terms" className="link link-primary">
+    Terms of Service
+  </LegalLink>
+);
+
 const privacyLink = (
   <LegalLink to="/privacy" className="link link-primary">
     Privacy Policy
@@ -473,7 +479,7 @@ const content = {
       {
         title: "Liability for Content",
         paragraphs: [
-          "We endeavour to keep our own content accurate and up to date. User-generated content is created by the users themselves. If you notice unlawful content or rights violations, please contact us so we can review it.",
+          <>We endeavour to keep our own content accurate and up to date. Content that users post themselves, such as profiles, team descriptions, and chat messages, comes from the respective users. We do not review it in advance and are not obliged to do so (Art. 8 DSA). If we become aware of unlawful content, we remove it or disable access to it without undue delay (Art. 6 DSA); we may also remove content that violates our Terms of Service. For this we rely on the help of our users: if you notice unlawful, discriminatory, or abusive content or a misuse of the app's features, please report it through the {contactLink} or by email to {mailLink}. How we handle reports is described in the {termsLink} under "7. Reporting Illegal Content and Abuse".</>,
         ],
       },
       {
