@@ -19,6 +19,6 @@ export const mailLink = (
 export const LEGAL_UPDATED = {
   about: "2026-10-11",
   terms: "2026-10-11",
-  privacy: "2026-10-11",
+  privacy: "2026-10-12",
   legalNotice: "2026-10-12",
 };

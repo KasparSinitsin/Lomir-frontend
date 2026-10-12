@@ -182,7 +182,7 @@ const content = {
       {
         title: "12. Browser Storage, Cookies, and Similar Technologies",
         paragraphs: [
-          "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie contains session authentication data, is not readable by JavaScript, and is sent to the Lomir backend to authenticate your requests and real-time chat connections. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state.",
+          "Lomir uses a technically necessary, httpOnly session cookie to keep you signed in after login. This cookie contains session authentication data, is not readable by JavaScript, and is sent to the Lomir backend to authenticate your requests and real-time chat connections. Lomir also uses technically necessary browser storage such as sessionStorage, for example for in-app notification state, and short-lived localStorage entries, for example for a notice after registration that is removed when the next page opens.",
           "This cookie and the storage are strictly necessary to provide authentication, API access, real-time chat, and notification features, and therefore do not require consent under Section 25(2) TDDDG. Lomir does not currently use advertising cookies, marketing trackers, or third-party analytics tools.",
           "Lomir uses Cloudflare Turnstile for registration and the contact form. Cloudflare processes technical data to verify that a request comes from a human. This is used for abuse prevention.",
         ],
