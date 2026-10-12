@@ -350,7 +350,7 @@ const content = {
         title: "7. Reporting Illegal Content and Abuse",
         paragraphs: [
           <>If you believe that content, an account, a team, a message, or an upload on Lomir is unlawful, abusive, harassing, spam, malware, infringing, privacy-invasive, or otherwise violates these terms, please report it through the {contactLink} or by email to {mailLink}.</>,
-          "Reports should include enough information to locate and review the issue, such as usernames, team names, message context, links, screenshots, the reason for the report, and a contact email. Please submit reports in good faith.",
+          "Reports should include enough information to locate and review the issue, such as usernames, team names, message context, links, screenshots, the reason for the report, and a contact email. Please only submit a report if you honestly believe that the information in it is accurate and complete.",
           "Reports submitted through the contact form are recorded with a reference ID so Lomir can receive and track them even if email forwarding is temporarily unavailable.",
           "We confirm receipt of a report and review it in a timely, diligent and objective manner. The review is done personally, without automated decision-making. We then inform you of the outcome and of the possibilities to challenge it.",
           "Lomir may review reported content or accounts and may restrict, remove, or delete content; suspend or delete accounts; contact affected users; preserve information where needed; or report matters to competent authorities where legally required or necessary to protect users, the app, or third parties.",
