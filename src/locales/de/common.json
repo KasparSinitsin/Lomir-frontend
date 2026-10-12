@@ -607,6 +607,7 @@
     "searchPlaceholder": "Zum Suchen tippen …"
   },
   "legalPage": {
+    "translationNotice": "Dies ist eine Übersetzung. Rechtlich verbindlich ist die deutsche Fassung.",
     "lastUpdated": "Stand: {date}"
   },
   "location": {

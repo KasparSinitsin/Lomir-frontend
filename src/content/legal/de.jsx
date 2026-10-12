@@ -5,7 +5,9 @@ import { mailLink } from "./shared";
  * The German legal texts. Same shape as en.jsx, checked by
  * `npm run legal:check` - see scripts/legal-parity.mjs.
  *
- * ⚠️ Binding text, not UI copy. Both language versions carry equal weight.
+ * ⚠️ Binding text, not UI copy. THIS German version is authoritative; en.jsx
+ * is its translation (Julia, 2026-10-12, replacing "equal weight" of
+ * 2026-09-17). Terms §14 says so to users.
  * Change German first, then English, in the same commit, and update
  * LEGAL_UPDATED in ./shared.jsx.
  *
@@ -407,6 +409,7 @@ const content = {
         title: "14. Anwendbares Recht",
         paragraphs: [
           "Es gilt deutsches Recht, vorbehaltlich zwingender Verbraucherschutzvorschriften des Landes, in dem du deinen gewöhnlichen Aufenthalt hast.",
+          "Die Nutzungsbedingungen, die Datenschutzerklärung und das Impressum liegen auf Deutsch und Englisch vor. Maßgeblich ist die deutsche Fassung; die englische Fassung ist eine Übersetzung.",
         ],
       },
       {

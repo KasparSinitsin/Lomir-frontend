@@ -86,6 +86,13 @@ const LegalPage = ({ type }) => {
                 {t("legalPage.lastUpdated", { date: formatLegalDate(updated) })}
               </p>
             )}
+            {/* German is authoritative (terms §14); every other language shows
+                that it is reading a translation. Not on About, which binds nothing. */}
+            {language !== "de" && pageType !== "about" && (
+              <p className="mt-2 text-sm text-base-content/55">
+                {t("legalPage.translationNotice")}
+              </p>
+            )}
           </div>
 
           <div className="space-y-6">

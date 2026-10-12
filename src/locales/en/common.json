@@ -607,6 +607,7 @@
     "searchPlaceholder": "Type to search..."
   },
   "legalPage": {
+    "translationNotice": "This is a translation. The German version is legally binding.",
     "lastUpdated": "Last updated: {date}"
   },
   "location": {

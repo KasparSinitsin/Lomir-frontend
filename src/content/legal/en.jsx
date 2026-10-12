@@ -5,8 +5,9 @@ import { mailLink } from "./shared";
  * The English legal texts. Same shape as de.jsx, checked by
  * `npm run legal:check` - see scripts/legal-parity.mjs.
  *
- * ⚠️ Binding text, not UI copy. Change German first, then English, in the
- * same commit, and update LEGAL_UPDATED in ./shared.jsx.
+ * ⚠️ Binding text, not UI copy, and a TRANSLATION: the German version in
+ * de.jsx is authoritative (terms §14). Change German first, then translate
+ * it here, in the same commit, and update LEGAL_UPDATED in ./shared.jsx.
  */
 
 const contactLink = (
@@ -402,6 +403,7 @@ const content = {
         title: "14. Governing Law",
         paragraphs: [
           "German law applies, subject to the mandatory consumer protection rules of the country in which you have your habitual residence.",
+          "These terms, the privacy policy and the legal notice are available in German and English. The German version is authoritative; the English version is a translation.",
         ],
       },
       {
