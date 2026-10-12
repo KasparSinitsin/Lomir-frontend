@@ -286,8 +286,9 @@ const content = {
             ),
           },
           {
-            paragraph:
-              "You also have the right to lodge a complaint with a data protection supervisory authority. In Rhineland-Palatinate (Rheinland-Pfalz), this is the Landesbeauftragter für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz. You may also contact another competent supervisory authority.",
+            paragraph: (
+              <>You also have the right to lodge a complaint with a data protection supervisory authority. In Rhineland-Palatinate (Rheinland-Pfalz), this is the <a href="https://www.datenschutz.rlp.de" target="_blank" rel="noopener noreferrer" className="link link-primary">Landesbeauftragter für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz</a>. You may also contact another competent supervisory authority.</>
+            ),
           },
         ],
       },

@@ -292,8 +292,9 @@ const content = {
             ),
           },
           {
-            paragraph:
-              "Du hast zudem das Recht, Beschwerde bei einer Datenschutzaufsichtsbehörde einzureichen. In Rheinland-Pfalz ist dies der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz. Du kannst dich auch an eine andere zuständige Aufsichtsbehörde wenden.",
+            paragraph: (
+              <>Du hast zudem das Recht, Beschwerde bei einer Datenschutzaufsichtsbehörde einzureichen. In Rheinland-Pfalz ist dies der <a href="https://www.datenschutz.rlp.de" target="_blank" rel="noopener noreferrer" className="link link-primary">Landesbeauftragte für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz</a>. Du kannst dich auch an eine andere zuständige Aufsichtsbehörde wenden.</>
+            ),
           },
         ],
       },
