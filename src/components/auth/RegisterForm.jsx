@@ -1147,6 +1147,14 @@ const RegisterForm = () => {
                   t("auth:register.submit.idle")
                 )}
               </Button>
+              {/* What the click does: the account is only complete after the
+                  link in the verification e-mail. The button label is passed
+                  in, so the sentence always names the button as it reads. */}
+              <p className="-mt-2 text-left text-sm text-base-content/70">
+                {t("auth:register.submit.hint", {
+                  button: t("auth:register.submit.idle"),
+                })}
+              </p>
 
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <p className="text-left text-sm sm:pt-1">
