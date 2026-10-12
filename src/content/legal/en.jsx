@@ -465,7 +465,7 @@ const content = {
       {
         title: "External Links",
         paragraphs: [
-          "Lomir may contain links to external websites or services. We have no control over their content and take no responsibility for third-party content. External links are reviewed when added. If we become aware of unlawful content, we remove the relevant link where possible.",
+          "Lomir may contain links to external websites or services. We have no control over their content and take no responsibility for third-party content. External links that we add ourselves are reviewed when added. Links in content posted by users, such as chat messages, are not reviewed in advance. If we become aware of unlawful content, we remove the relevant link where possible.",
         ],
       },
       {

@@ -469,7 +469,7 @@ const content = {
       {
         title: "Externe Links",
         paragraphs: [
-          "Lomir kann Links zu externen Websites oder Diensten enthalten. Wir haben keine Kontrolle über deren Inhalte und übernehmen keine Verantwortung für die Inhalte Dritter. Externe Links werden bei der Hinzufügung geprüft. Falls uns rechtswidrige Inhalte bekannt werden, entfernen wir den entsprechenden Link, soweit möglich.",
+          "Lomir kann Links zu externen Websites oder Diensten enthalten. Wir haben keine Kontrolle über deren Inhalte und übernehmen keine Verantwortung für die Inhalte Dritter. Externe Links, die wir selbst setzen, prüfen wir beim Hinzufügen. Links in Inhalten von Nutzern, etwa in Chatnachrichten, prüfen wir nicht vorab. Werden uns rechtswidrige Inhalte bekannt, entfernen wir den entsprechenden Link, soweit möglich.",
         ],
       },
       {
