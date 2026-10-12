@@ -97,7 +97,7 @@ const content = {
           "Team and role data: team names, descriptions, avatars, members, roles, applications, invitations, and team location preferences.",
           "Messages and notifications: direct messages, team messages, mentions, typing/read indicators, system messages, notification records, and message metadata.",
           "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
-          "Location data: postal code, city, district, state, country, and coordinates derived from the location data you provide. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and context, postal code, city, district, state, or country may be visible to other users. Public search results and map views show rounded approximate coordinates, not exact stored coordinates.",
+          "Location data: postal code, city, district, state, country, and coordinates derived from the location data you provide. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and context, postal code, city, district, state, or country may be visible to others, and with a public profile also to visitors without an account. Public search results and map views show rounded approximate coordinates, not exact stored coordinates.",
           "Contact and report data: name, email address, subject, message, optional contact form attachments, report reference IDs, report status, email-forwarding status, and attachment metadata for abuse or illegal-content reports.",
           "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data, session and authentication data, and browser storage needed for the app to work.",
         ],
@@ -159,7 +159,7 @@ const content = {
         title: "9. Public Visibility",
         paragraphs: [
           "Lomir is designed so that users do not unintentionally publish profile details. New accounts remain private after email verification unless you change the setting.",
-          "If your profile is public, other users may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location details you have added. Approximate location details may include postal code, city, district, state, or country.",
+          "If your profile is public, all visitors of Lomir, including those without an account, may see profile details such as username, name, bio, avatar, focus areas, badges, and approximate location details you have added. Approximate location details may include postal code, city, district, state, or country.",
           "If your profile is private, it is not shown in public search results or profile views. Team members and conversation participants may still see information needed for team collaboration, messaging, applications, invitations, badge context, and safety-related system messages.",
           "You can change your profile visibility in settings. Turning your profile private only affects future public visibility. Information other users have already seen, or data contained in team/chat context, is not removed by it.",
         ],
@@ -167,7 +167,7 @@ const content = {
       {
         title: "10. Recipients and Disclosure",
         items: [
-          "Other Lomir users may receive personal data where the app feature requires it, for example public profile views, search results, team pages, applications, invitations, messages, badge context, and notifications.",
+          "Other Lomir users and, for public profiles, also visitors without an account may receive personal data where the app feature requires it, for example public profile views, search results, team pages, applications, invitations, messages, badge context, and notifications.",
           "Team members, team owners, invitees, applicants, and conversation participants may receive information needed for the relevant collaboration context.",
           "The Lomir project operators may access personal data where this is necessary to operate the app, provide support, investigate abuse, fix errors, maintain security, or comply with legal obligations.",
           "Hosting, database, upload, email, CAPTCHA, geocoding, map, and infrastructure providers process personal data where needed to provide the app. Depending on the provider and context, they act either as processors on Lomir's behalf or as independent providers under their own privacy terms.",
@@ -343,8 +343,8 @@ const content = {
       {
         title: "5. Profiles, Teams, and Visibility",
         paragraphs: [
-          "Your profile is private by default. You decide whether to make it public. Public profile content may be visible to other Lomir users and may appear in search results, on profile pages and profile cards, in the map view, in lists, or in overviews.",
-          "If you add location data, it may be used for matching and recommendations. Depending on visibility settings and context, approximate location details such as postal code, city, district, state, or country may be visible to other users.",
+          "Your profile is private by default. You decide whether to make it public. Public profile content is visible to all visitors of Lomir, including those without an account, and may appear in search results, on profile pages and profile cards, in the map view, in lists, or in overviews.",
+          "If you add location data, it may be used for matching and recommendations. Depending on visibility settings and context, approximate location details such as postal code, city, district, state, or country may be visible to others, and with a public profile also to visitors without an account.",
           "Team and role visibility depends on team settings and membership context. Even when your profile is private, information needed for teams, applications, invitations, messages, and notifications may be shown to the relevant participants.",
         ],
       },

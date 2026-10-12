@@ -103,7 +103,7 @@ const content = {
           "Team- und Rollendaten: Teamnamen, Beschreibungen, Avatare, Mitglieder, Rollen, Bewerbungen, Einladungen und Team-Standortpräferenzen.",
           "Nachrichten und Benachrichtigungen: Direktnachrichten, Teamnachrichten, Erwähnungen, Tipp-/Lesebestätigungen, Systemnachrichten, Benachrichtigungsprotokolle und Nachrichten-Metadaten.",
           "Uploads: Profil-Avatare, Team-Avatare, Chat-Bilder, Chat-Dateien und Anhangsdateien aus dem Kontaktformular.",
-          "Standortdaten: Postleitzahl, Stadt, Bezirk, Bundesland, Land und Koordinaten, die aus den von dir angegebenen Standortdaten abgeleitet werden. Lomir fragt keine Straßenadresse ab. Postleitzahl und andere Standortdetails werden als ungefähre Standortinformationen für Suche, entfernungsbasiertes Matching, Empfehlungen und die Anzeige von Profil-/Team-/Rollen-Standorten verwendet. Je nach Sichtbarkeitseinstellungen und Kontext können Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere Nutzer sichtbar sein. Öffentliche Suchergebnisse und Kartenansichten zeigen gerundete ungefähre Koordinaten, nicht die exakt gespeicherten Koordinaten.",
+          "Standortdaten: Postleitzahl, Stadt, Bezirk, Bundesland, Land und Koordinaten, die aus den von dir angegebenen Standortdaten abgeleitet werden. Lomir fragt keine Straßenadresse ab. Postleitzahl und andere Standortdetails werden als ungefähre Standortinformationen für Suche, entfernungsbasiertes Matching, Empfehlungen und die Anzeige von Profil-/Team-/Rollen-Standorten verwendet. Je nach Sichtbarkeitseinstellungen und Kontext können Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account. Öffentliche Suchergebnisse und Kartenansichten zeigen gerundete ungefähre Koordinaten, nicht die exakt gespeicherten Koordinaten.",
           "Kontakt- und Meldedaten: Name, E-Mail-Adresse, Betreff, Nachricht, optionale Anhangsdateien aus dem Kontaktformular, Vorgangs-IDs für Meldungen, Meldestatus, E-Mail-Weiterleitungsstatus und Anhangs-Metadaten für Meldungen von Missbrauch oder illegalen Inhalten.",
           "Sicherheits- und technische Daten: IP-bezogene Anfragedaten, die von Hosting-Anbietern verarbeitet werden, Browser- und Geräte-Metadaten in Server-Logs, Rate-Limit-Daten, CAPTCHA-Überprüfungsdaten, Sitzungs- und Authentifizierungsdaten sowie Browser-Speicherung, die für den Betrieb der App erforderlich ist.",
         ],
@@ -165,7 +165,7 @@ const content = {
         title: "9. Öffentliche Sichtbarkeit",
         paragraphs: [
           "Lomir ist so konzipiert, dass Nutzer keine Profildetails versehentlich veröffentlichen. Neue Accounts bleiben nach der E-Mail-Bestätigung privat, es sei denn, du änderst die Einstellung.",
-          "Wenn dein Profil öffentlich ist, können andere Nutzer Profildetails wie Benutzername, Name, Bio, Avatar, Schwerpunkte, Badges und ungefähre Standortdetails sehen, die du hinzugefügt hast. Ungefähre Standortdetails können Postleitzahl, Stadt, Bezirk, Bundesland oder Land umfassen.",
+          "Wenn dein Profil öffentlich ist, können alle Besucher von Lomir, auch ohne Account, Profildetails wie Benutzername, Name, Bio, Avatar, Schwerpunkte, Badges und ungefähre Standortdetails sehen, die du hinzugefügt hast. Ungefähre Standortdetails können Postleitzahl, Stadt, Bezirk, Bundesland oder Land umfassen.",
           "Wenn dein Profil privat ist, wird es nicht in öffentlichen Suchergebnissen oder Profilansichten angezeigt. Teammitglieder und Gesprächsteilnehmer können jedoch weiterhin Informationen sehen, die für die Teamzusammenarbeit, Nachrichten, Bewerbungen, Einladungen, Badge-Kontext und sicherheitsrelevante Systemnachrichten erforderlich sind.",
           "Du kannst die Sichtbarkeit deines Profils in den Einstellungen ändern. Wenn du dein Profil auf privat setzt, betrifft dies nur die zukünftige öffentliche Sichtbarkeit. Bereits von anderen Nutzern gesehene Informationen oder in Team-/Chat-Kontexten enthaltene Daten werden dadurch nicht entfernt.",
         ],
@@ -173,7 +173,7 @@ const content = {
       {
         title: "10. Empfänger und Weitergabe von Daten",
         items: [
-          "Andere Lomir-Nutzer können personenbezogene Daten erhalten, wenn die App-Funktion dies erfordert, z. B. öffentliche Profilansichten, Suchergebnisse, Teamseiten, Bewerbungen, Einladungen, Nachrichten, Badge-Kontext und Benachrichtigungen.",
+          "Andere Lomir-Nutzer und, bei öffentlichen Profilen, auch Besucher ohne Account können personenbezogene Daten erhalten, wenn die App-Funktion dies erfordert, z. B. öffentliche Profilansichten, Suchergebnisse, Teamseiten, Bewerbungen, Einladungen, Nachrichten, Badge-Kontext und Benachrichtigungen.",
           "Teammitglieder, Team-Eigentümer, Eingeladene, Bewerber und Gesprächsteilnehmer können Informationen erhalten, die für den jeweiligen Zusammenarbeitskontext erforderlich sind.",
           "Die Betreiber des Lomir-Projekts können auf personenbezogene Daten zugreifen, soweit dies für den Betrieb der App, Support, Missbrauchsuntersuchungen, Fehlerbehebung, Sicherheitswartung oder die Einhaltung rechtlicher Verpflichtungen erforderlich ist.",
           "Hosting-, Datenbank-, Upload-, E-Mail-, CAPTCHA-, Geocoding-, Karten- und Infrastruktur-Anbieter verarbeiten personenbezogene Daten, soweit dies für die Bereitstellung der App erforderlich ist. Je nach Anbieter und Kontext handeln sie entweder als Auftragsverarbeiter im Auftrag von Lomir oder als unabhängige Anbieter nach ihren eigenen Datenschutzbestimmungen.",
@@ -349,8 +349,8 @@ const content = {
       {
         title: "5. Profile, Teams und Sichtbarkeit",
         paragraphs: [
-          "Dein Profil ist standardmäßig privat. Du entscheidest, ob du es öffentlich machst. Öffentliche Profilinhalte können für andere Lomir-Nutzer sichtbar sein und in Suchergebnissen, auf Profilseiten und Profilkarten, in der Kartenansicht, in Listen oder Übersichten angezeigt werden.",
-          "Fügst du Standortdaten hinzu, können diese für Matching und Empfehlungen genutzt werden. Je nach Sichtbarkeitseinstellungen und Kontext können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere Nutzer sichtbar sein.",
+          "Dein Profil ist standardmäßig privat. Du entscheidest, ob du es öffentlich machst. Öffentliche Profilinhalte sind für alle Besucher von Lomir sichtbar, auch ohne Account, und können in Suchergebnissen, auf Profilseiten und Profilkarten, in der Kartenansicht, in Listen oder Übersichten angezeigt werden.",
+          "Fügst du Standortdaten hinzu, können diese für Matching und Empfehlungen genutzt werden. Je nach Sichtbarkeitseinstellungen und Kontext können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account.",
           "Die Sichtbarkeit von Teams und Rollen hängt von den Team-Einstellungen und dem Mitgliedschaftskontext ab. Selbst wenn dein Profil privat ist, können Informationen, die für Teams, Bewerbungen, Einladungen, Nachrichten oder Benachrichtigungen erforderlich sind, den relevanten Teilnehmern angezeigt werden.",
         ],
       },
