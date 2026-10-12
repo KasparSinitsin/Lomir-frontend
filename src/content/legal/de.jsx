@@ -333,15 +333,15 @@ const content = {
       {
         title: "3. Berechtigung",
         paragraphs: [
-          "Du darfst einen Account erstellen und Lomir nutzen, nur wenn du mindestens 16 Jahre alt bist. Du musst korrekte Account-Daten angeben und deine Anmeldedaten sicher aufbewahren.",
+          "Du darfst nur dann einen Account erstellen und Lomir nutzen, wenn du mindestens 16 Jahre alt bist. Du musst korrekte Account-Daten angeben und deine Anmeldedaten sicher aufbewahren.",
         ],
       },
       {
         title: "4. Account-Regeln",
         items: [
           "Erstelle keine Accounts für andere Personen ohne deren Erlaubnis.",
-          "Gib kein Passwort, Anmeldelinks, Bestätigungscodes oder andere Account-Daten weiter.",
-          "Nutze Lomir nicht, um andere zu belästigen, zu täuschen, Spam zu versenden, zu bedrohen oder gegen Gesetze zu diskriminieren.",
+          "Gib keine Passwörter, Anmeldelinks, Bestätigungscodes oder andere Account-Daten weiter.",
+          "Nutze Lomir nicht, um andere zu belästigen, zu täuschen, Spam zu versenden, zu bedrohen oder rechtswidrig zu diskriminieren.",
           "Lade keine Malware, illegale Inhalte, vertrauliche Informationen Dritter oder Inhalte hoch, die Rechte an geistigem Eigentum verletzen.",
           "Versuche nicht, Sicherheitsvorkehrungen zu umgehen, private Daten abzugreifen oder ohne Autorisierung auf Accounts, Teams, Nachrichten oder API-Endpunkte zuzugreifen.",
         ],
