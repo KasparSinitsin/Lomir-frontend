@@ -105,7 +105,7 @@ const content = {
           "Messages and notifications: direct messages, team messages, mentions, typing/read indicators, system messages, notification records, and message metadata.",
           "Uploads: profile avatars, team avatars, chat images, chat files, and contact form attachments.",
           "Location data: postal code, city, district, state, country, and coordinates derived from the location data you provide. Lomir does not ask for a street address. Postal code and other location details are used as approximate location information for search, distance-based matching, recommendations, and profile/team/role location display. Depending on visibility settings and context, postal code, city, district, state, or country may be visible to others, and with a public profile also to visitors without an account. Public search results and map views show rounded approximate coordinates, not exact stored coordinates.",
-          "Contact and report data: name, email address, subject, message, optional contact form attachments, report reference IDs, report status, email-forwarding status, and attachment metadata for abuse or illegal-content reports.",
+          "Contact and report data: name, email address, topic, message, optional contact form attachments, report reference IDs, report status, email-forwarding status, and attachment metadata for abuse or illegal-content reports.",
           "Security and technical data: IP-related request data handled by hosting providers, browser and device metadata in server logs, rate-limit data, CAPTCHA verification data, session and authentication data, and browser storage needed for the app to work.",
         ],
       },
