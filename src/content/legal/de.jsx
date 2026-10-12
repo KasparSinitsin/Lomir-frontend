@@ -105,7 +105,7 @@ const content = {
         title: "4. Von uns verarbeitete Daten",
         items: [
           "Account-Daten: Benutzername, E-Mail-Adresse, Passwort-Hash, E-Mail-Bestätigungsstatus, Zeitstempel und Account-Einstellungen.",
-          "Rechtliche Bestätigungsdaten: Zeitstempel und Dokumentenversionen für akzeptierte Nutzungsbedingungen, bestätigte Datenschutzerklärung und die separate Bestätigung, dass du mindestens 16 Jahre alt bist.",
+          "Rechtliche Bestätigungsdaten: Zeitstempel und Dokumentenversionen für akzeptierte Nutzungsbedingungen, die zur Kenntnis genommene Datenschutzerklärung und die separate Bestätigung, dass du mindestens 16 Jahre alt bist.",
           "Profildaten: Optionaler Vor- und Nachname, Bio, Avatar, Schwerpunkte, Badges, optionale Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland und Land sowie der öffentliche/private Sichtbarkeitsstatus.",
           "Team- und Rollendaten: Teamnamen, Beschreibungen, Avatare, Mitglieder, Rollen, Bewerbungen, Einladungen und Team-Standortpräferenzen.",
           "Nachrichten und Benachrichtigungen: Direktnachrichten, Teamnachrichten, Erwähnungen, Tipp-/Lesebestätigungen, Systemnachrichten, Benachrichtigungsprotokolle und Nachrichten-Metadaten.",
