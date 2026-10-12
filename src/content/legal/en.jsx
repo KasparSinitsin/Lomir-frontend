@@ -424,7 +424,7 @@ const content = {
   legalNotice: {
     title: "Legal Notice / Impressum",
     intro:
-      "Provider information under Section 18(1) of the German Interstate Media Treaty (Medienstaatsvertrag, MStV) and, where applicable, Section 5 of the German Digital Services Act (Digitale-Dienste-Gesetz, DDG).",
+      "Provider information under Section 18(1) of the German Interstate Media Treaty (Medienstaatsvertrag, MStV) and, where applicable, Section 5 of the Digitale-Dienste-Gesetz (DDG, the German Digital Services Act).",
     sections: [
       {
         title: "Provider",
