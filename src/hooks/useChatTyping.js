@@ -7,8 +7,14 @@ import {
   resolveConversationUser,
 } from "../utils/chatHelpers";
 import { formatDisplayName } from "../utils/nameFormatters";
+import { isConversation } from "../utils/conversationIdentity";
 
-const useChatTyping = ({ conversationId, currentUser, activeConversation }) => {
+const useChatTyping = ({
+  conversationId,
+  conversationType = "direct",
+  currentUser,
+  activeConversation,
+}) => {
   const [typingUsers, setTypingUsers] = useState({});
   const [resolvedUsers, setResolvedUsers] = useState({});
   const typingTimeoutRef = useRef(null);
@@ -48,7 +54,13 @@ const useChatTyping = ({ conversationId, currentUser, activeConversation }) => {
 
   const handleTypingUpdate = useCallback(
     async (data) => {
-      if (String(data.conversationId) !== String(conversationId)) {
+      if (
+        !isConversation(
+          { type: data.type, id: data.conversationId },
+          conversationType,
+          conversationId,
+        )
+      ) {
         return;
       }
 
@@ -93,7 +105,7 @@ const useChatTyping = ({ conversationId, currentUser, activeConversation }) => {
         return updated;
       });
     },
-    [activeConversation, conversationId, resolvedUsers],
+    [activeConversation, conversationId, conversationType, resolvedUsers],
   );
 
   const activeTypingUsers = useMemo(

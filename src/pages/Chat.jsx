@@ -143,6 +143,7 @@ const Chat = () => {
     handleTypingUpdate,
   } = useChatTyping({
     conversationId,
+    conversationType: searchParams.get("type") || "direct",
     currentUser: user,
     activeConversation,
   });
@@ -330,12 +331,16 @@ const Chat = () => {
       const next = prev.filter(
         (conversation) =>
           !isTransientEmptyDirectConversation(conversation) ||
-          String(conversation.id) === String(conversationId),
+          isConversation(
+            conversation,
+            searchParams.get("type") || "direct",
+            conversationId,
+          ),
       );
 
       return next.length === prev.length ? prev : next;
     });
-  }, [conversationId, setConversations]);
+  }, [conversationId, searchParams, setConversations]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -444,14 +449,14 @@ const Chat = () => {
       return;
     }
 
-    const conversationExists = conversations.some(
-      (conv) => String(conv.id) === String(conversationId),
+    const type =
+      new URLSearchParams(window.location.search).get("type") || "direct";
+    const conversationExists = conversations.some((conv) =>
+      isConversation(conv, type, conversationId),
     );
     if (conversationExists) return;
     if (seededVirtualConvRef.current === String(conversationId)) return;
 
-    const type =
-      new URLSearchParams(window.location.search).get("type") || "direct";
     if (type !== "direct") return;
 
     seededVirtualConvRef.current = String(conversationId);
