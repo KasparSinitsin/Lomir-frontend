@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test test/*.test.mjs",
     "i18n:check": "node scripts/i18n-check.mjs",
     "legal:check": "node scripts/legal-parity.mjs",
     "preview": "vite preview"
