@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { isConversation } from "../../utils/conversationIdentity";
 import {
   AlertTriangle,
   Archive,
@@ -330,6 +331,7 @@ const renderPreviewWithMentions = (
 const ConversationList = ({
   conversations,
   activeConversationId,
+  activeConversationType,
   onSelectConversation,
   loading,
   onActiveConversationVisibilityChange,
@@ -432,7 +434,7 @@ const ConversationList = ({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, activeConversationType]);
 
   useEffect(() => {
     if (!onActiveConversationVisibilityChange) return undefined;
@@ -462,6 +464,7 @@ const ConversationList = ({
     return () => observer.disconnect();
   }, [
     activeConversationId,
+    activeConversationType,
     conversations,
     onActiveConversationVisibilityChange,
   ]);
@@ -751,7 +754,8 @@ const ConversationList = ({
               : conversation.updatedAt;
 
           const isActive =
-            chatVisible && String(activeConversationId) === String(conversation.id);
+            chatVisible &&
+            isConversation(conversation, activeConversationType, activeConversationId);
 
           // Archived (deleted, scheduled-for-deletion) team conversation —
           // backend getConversations exposes archived_at/status on the team.
@@ -785,7 +789,9 @@ const ConversationList = ({
                       : "bg-white/80 border-base-200"
                   }
                 `}
-                onClick={() => onSelectConversation(conversation.id)}
+                onClick={() =>
+                  onSelectConversation(conversation.id, conversation.type)
+                }
               >
               <div className="flex items-center">
                 {/* Avatar - Clickable for both team and direct conversations */}
@@ -1027,7 +1033,7 @@ const ConversationList = ({
                       aria-label={isActive ? t("chatPage.deselectConversation") : t("chatPage.openConversation")}
                       onClick={(event) => {
                         event.stopPropagation();
-                        onSelectConversation(conversation.id);
+                        onSelectConversation(conversation.id, conversation.type);
                       }}
                       className={`flex items-center justify-center p-2 transition-opacity ${
                         isActive
