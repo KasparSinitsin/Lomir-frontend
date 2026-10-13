@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -9,11 +10,12 @@ import TagInput from "../tags/TagInput";
 import LocationInput from "../common/LocationInput";
 import LocationModeToggle from "../common/LocationModeToggle";
 import FormSectionDivider from "../common/FormSectionDivider";
-import { UI_TEXT } from "../../constants/uiText";
 import { teamService } from "../../services/teamService";
 import { uploadToImageKit } from "../../config/imagekit";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import TeamDetailsModal from "./TeamDetailsModal";
 import {
   Users,
@@ -34,6 +36,11 @@ import {
  * @param {Function} onTeamCreated - Callback when team is successfully created (receives new team data)
  */
 const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const navigate = useNavigate();
 
   const UNLIMITED_VALUE = null; // submit null when unlimited
@@ -63,7 +70,11 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
 
   // Location auto-fill hook
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -111,15 +122,15 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     const errors = {};
 
     if (!formData.name) {
-      errors.name = "Team name is required";
+      errors.name = t("teams:teamForm.validation.nameRequired");
     } else if (formData.name.length < 3) {
-      errors.name = "Team name must be at least 3 characters";
+      errors.name = t("teams:teamForm.validation.nameTooShort");
     }
 
     if (!formData.description) {
-      errors.description = "Team description is required";
+      errors.description = t("teams:teamForm.validation.descriptionRequired");
     } else if (formData.description.length < 10) {
-      errors.description = "Description must be at least 10 characters";
+      errors.description = t("teams:teamForm.validation.descriptionTooShort");
     }
 
     // Validate maxMembers only when not unlimited
@@ -130,7 +141,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
           : parseInt(formData.maxMembers, 10);
 
       if (!Number.isNaN(parsed) && parsed < 2) {
-        errors.maxMembers = "Team size must be at least 2 members";
+        errors.maxMembers = t("teams:teamForm.validation.sizeTooSmall");
       }
     }
 
@@ -140,6 +151,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     formData.description,
     formData.maxMembers,
     formData.maxMembersMode,
+    t,
   ]);
 
   // Handle form field changes
@@ -255,6 +267,20 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
       return;
     }
 
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setSubmitError(message);
+      return;
+    }
+
     setLoading(true);
     setSubmitError(null);
 
@@ -314,9 +340,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
     } catch (error) {
       console.error("Team creation error:", error);
       setSubmitError(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to create team. Please try again.",
+        t("teams:teamForm.create.failed"),
       );
     } finally {
       setLoading(false);
@@ -342,7 +366,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
   };
 
   const modalTitle = (
-    <h2 className="text-xl font-medium text-primary leading-[110%]">Create New Team</h2>
+    <h2 className="text-xl font-medium text-primary leading-[110%]">{t("teams:teamForm.create.title")}</h2>
   );
 
   return (
@@ -386,17 +410,17 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-base-content mb-2">
-              Team Created Successfully!
+              {t("teams:teamForm.create.success")}
             </h3>
             <p className="text-base-content/70 mb-6">
-              Your team "{formData.name}" has been created.
+              {t("teams:teamForm.create.createdBody", { teamName: formData.name })}
             </p>
             <div className="flex justify-center gap-3">
               <Button variant="ghost" onClick={handleClose}>
-                Go to My Teams
+                {t("teams:teamForm.create.goToMyTeams")}
               </Button>
               <Button variant="primary" onClick={handleViewTeamDetails}>
-                View Team Details
+                {t("teams:teamForm.create.viewTeamDetails")}
               </Button>
             </div>
           </div>
@@ -404,7 +428,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Team Avatar Section */}
             <section className="space-y-4">
-              <FormSectionDivider text="Team Avatar" icon={Camera} />
+              <FormSectionDivider text={t("teams:teamForm.sections.avatar")} icon={Camera} />
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
                   <ImageUploader
@@ -426,7 +450,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                     size="mdPlus"
                     shape="circle"
                     fallbackText={getTeamInitials()}
-                    helpText={AVATAR_UPLOAD_NOTICE}
+                    helpText={t("privacy.avatarUpload")}
                     disabled={loading}
                   />
                 </div>
@@ -434,19 +458,19 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
             </section>
 
             {/* Team Details Section */}
-            <FormSectionDivider text="Team Details" icon={Users} />
+            <FormSectionDivider text={t("teams:teamForm.sections.details")} icon={Users} />
 
             {/* Team Name */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Team Name *</span>
+                <span className="label-text">{t("teams:teamForm.nameLabel")}</span>
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Enter team name"
+                placeholder={t("teams:teamForm.namePlaceholder")}
                 className={`input input-bordered w-full ${
                   formErrors.name ? "input-error" : ""
                 }`}
@@ -465,13 +489,13 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
             {/* Team Description */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Description *</span>
+                <span className="label-text">{t("teams:teamForm.descriptionLabel")}</span>
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Describe your team's goals and what you're working on"
+                placeholder={t("teams:teamForm.descriptionPlaceholder")}
                 className={`textarea textarea-bordered w-full h-24 ${
                   formErrors.description ? "textarea-error" : ""
                 }`}
@@ -489,7 +513,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
             {/* Team Settings Section */}
             <section className="space-y-4 mt-12">
-              <FormSectionDivider text="Team Settings" icon={Settings} />
+              <FormSectionDivider text={t("teams:teamForm.sections.settings")} icon={Settings} />
 
               {/* Team Visibility Toggle */}
               <div className="form-control">
@@ -497,17 +521,17 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}
-                  label="Team Visibility"
+                  label={t("teams:teamForm.visibilityLabel")}
                   entityType="team"
-                  visibleLabel="Public Team"
-                  hiddenLabel="Private Team"
+                  visibleLabel={t("teams:teamForm.publicTeam")}
+                  hiddenLabel={t("teams:teamForm.privateTeam")}
                 />
               </div>
 
               {/* Maximum Members */}
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Maximum Members *</span>
+                  <span className="label-text">{t("teams:teamForm.maxMembersLabel")}</span>
                 </label>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -530,7 +554,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                         });
                       }}
                     >
-                      Preset
+                      {t("teams:teamForm.preset")}
                     </button>
 
                     <button
@@ -551,7 +575,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                         });
                       }}
                     >
-                      Custom
+                      {t("teams:teamForm.custom")}
                     </button>
 
                     <button
@@ -570,7 +594,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                       }}
                     >
                       <InfinityIcon size={14} />
-                      Unlimited
+                      {t("teams:teamForm.unlimited")}
                     </button>
                   </div>
 
@@ -590,7 +614,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                       >
                         {PRESET_OPTIONS.map((n) => (
                           <option key={n} value={n}>
-                            {n} members
+                            {t("teams:teamForm.memberOption", { count: n })}
                           </option>
                         ))}
                       </select>
@@ -604,7 +628,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                         className="input input-bordered w-full"
                         value={formData.maxMembers ?? ""}
                         onChange={handleChange}
-                        placeholder="min. 2"
+                        placeholder={t("teams:teamForm.minPlaceholder", { count: 2 })}
                         disabled={loading}
                       />
                     )}
@@ -612,7 +636,7 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                     {formData.maxMembersMode === "unlimited" && (
                       <div className="input input-bordered w-full flex items-center gap-2 opacity-70">
                         <InfinityIcon size={16} />
-                        No member limit
+                        {t("teams:teamForm.noMemberLimit")}
                       </div>
                     )}
                   </div>
@@ -630,17 +654,12 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
             {/* Team Location */}
             <section className="space-y-4 mt-12">
-              <FormSectionDivider text="Location" icon={MapPin} />
+              <FormSectionDivider text={t("teams:teamForm.sections.location")} icon={MapPin} />
 
               <LocationModeToggle
                 name="hasLocation"
                 checked={!formData.isRemote} // ✅ checked means "team with location"
                 disabled={loading}
-                label="Location Mode"
-                locationLabel="This is a team with a location"
-                remoteLabel="This is a remote team"
-                locationHelper="Provide location information for your team. This information is optional."
-                remoteHelper="Remote teams don't have a physical meeting location."
                 onChange={(e) => {
                   const hasLocation = e.target.checked;
                   // checked=true => has location => isRemote=false
@@ -660,6 +679,8 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
               {/* Only show fields when NOT remote */}
               {!formData.isRemote && (
                 <LocationInput
+                  onFieldEdited={markFieldAsEdited}
+                  mismatch={locationMismatch}
                   formData={{
                     is_remote: false,
                     postal_code: formData.postalCode ?? "",
@@ -682,18 +703,17 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
 
             {/* Focus Areas (Tags) */}
             <section className="mt-12 space-y-4">
-              <FormSectionDivider text="Focus Areas" icon={Tag} />
+              <FormSectionDivider text={t("focusAreas.title")} icon={Tag} />
 
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">
-                    What will this team focus on? (Optional)
+                    {t("teams:teamForm.focusAreasPrompt")}
                   </span>
                 </label>
                 <TagInput
                   selectedTags={formData.selectedTags}
                   onTagsChange={handleTagSelection}
-                  placeholder={UI_TEXT.focusAreas.searchPlaceholder}
                   showPopularTags={true}
                   maxSuggestions={8}
                 />
@@ -712,16 +732,16 @@ const CreateTeamModal = ({ isOpen, onClose, onTeamCreated }) => {
                 onClick={handleClose}
                 disabled={loading}
               >
-                Cancel
+                {t("teams:teamForm.cancel")}
               </Button>
               <Button type="submit" variant="primary" disabled={loading}>
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-sm mr-2"></span>
-                    Creating...
+                    {t("teams:teamForm.creating")}
                   </>
                 ) : (
-                  "Create Team"
+                  t("teams:teamForm.createTeam")
                 )}
               </Button>
             </div>

@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 
 let socket = null;
 const SOCKET_READY_EVENT = "lomir:socket-ready";
+const SOCKET_RECONNECTED_EVENT = "lomir:socket-reconnected";
 
 const notifySocketReady = (socketInstance) => {
   if (typeof window === "undefined") return;
@@ -39,8 +40,10 @@ const socketService = {
     const newSocket = io(SOCKET_URL, {
       withCredentials: true,
       transports: ["polling", "websocket"],
+      // No attempt limit: after a limited number the client gave up for good
+      // (about 17 s of backend downtime was enough), and the page stayed deaf
+      // to every message and event until it was reloaded, without any sign.
       reconnection: true,
-      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
 
@@ -49,8 +52,14 @@ const socketService = {
     notifySocketReady(newSocket);
 
     // Use newSocket in callbacks to avoid race conditions
+    let hasConnectedBefore = false;
     newSocket.on("connect", () => {
       notifySocketReady(newSocket);
+      // Announced after the ready event, so listeners are attached again first.
+      if (hasConnectedBefore && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(SOCKET_RECONNECTED_EVENT));
+      }
+      hasConnectedBefore = true;
     });
 
     newSocket.on("connect_error", (error) => {
@@ -76,6 +85,16 @@ const socketService = {
 
   // Get the socket instance
   getSocket: () => socket,
+
+  // Fires on every connect of a socket after its first. Whatever the server
+  // emitted in between was lost, so this is the moment to catch up.
+  onSocketReconnected: (callback) => {
+    if (typeof window === "undefined") return () => {};
+    window.addEventListener(SOCKET_RECONNECTED_EVENT, callback);
+    return () => {
+      window.removeEventListener(SOCKET_RECONNECTED_EVENT, callback);
+    };
+  },
 
   onSocketReady: (callback) => {
     if (typeof window === "undefined") return () => {};

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Crown, Shield, User, UserX } from "lucide-react";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
 import RoleBadgePill from "../common/RoleBadgePill";
 import ConfirmModal from "../common/ConfirmModal";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const RoleBadgeDropdown = ({
   member,
@@ -12,6 +14,7 @@ const RoleBadgeDropdown = ({
   isOwner = false,
   isTeamArchived = false,
 }) => {
+  const { t } = useTranslation("teams");
   const [isLoading, setIsLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
 
@@ -20,25 +23,25 @@ const RoleBadgeDropdown = ({
     switch (role) {
       case "owner":
         return {
-          label: "Owner",
+          label: t("common:roles.owner"),
           icon: Crown,
           badgeColor: "badge-role-owner",
         };
       case "admin":
         return {
-          label: "Admin",
+          label: t("common:roles.admin"),
           icon: Shield,
           badgeColor: "badge-role-admin",
         };
       case "member":
         return {
-          label: "Member",
+          label: t("common:roles.member"),
           icon: User,
           badgeColor: "badge-role-member",
         };
       default:
         return {
-          label: "Unknown",
+          label: t("common:roles.unknown"),
           icon: User,
           badgeColor: "badge-neutral",
         };
@@ -58,8 +61,8 @@ const RoleBadgeDropdown = ({
   const getMemberName = () => {
     const first = member.first_name || member.firstName;
     const last = member.last_name || member.lastName;
-    if (first && last) return `${first} ${last}`;
-    return first || member.username || "this member";
+    if (first && last) return joinNameParts(first, last);
+    return first || member.username || t("roleManagement.thisMember");
   };
 
   const handleRoleChange = (newRole) => {
@@ -72,20 +75,20 @@ const RoleBadgeDropdown = ({
     let icon = null;
 
     if (newRole === "owner") {
-      title = "Transfer Ownership";
-      message = `Transfer ownership to ${memberName}? You will become an Admin.`;
-      confirmLabel = "Transfer";
+      title = t("roleManagement.transferTitle");
+      message = t("roleManagement.transferBody", { name: memberName });
+      confirmLabel = t("roleManagement.transferConfirm");
       variant = "warning";
       icon = <Crown size={16} />;
     } else if (newRole === "admin") {
-      title = "Promote Member";
-      message = `Promote ${memberName} to Admin?`;
-      confirmLabel = "Promote";
+      title = t("roleManagement.promoteTitle");
+      message = t("roleManagement.promoteBody", { name: memberName });
+      confirmLabel = t("roleManagement.promoteConfirm");
       icon = <Shield size={16} />;
     } else {
-      title = "Demote Admin";
-      message = `Demote ${memberName} to Member?`;
-      confirmLabel = "Demote";
+      title = t("roleManagement.demoteTitle");
+      message = t("roleManagement.demoteBody", { name: memberName });
+      confirmLabel = t("roleManagement.demoteConfirm");
       icon = <User size={16} />;
     }
 
@@ -95,7 +98,7 @@ const RoleBadgeDropdown = ({
       title,
       message,
       confirmLabel,
-      loadingLabel: "Updating...",
+      loadingLabel: t("roleManagement.updatingLabel"),
       variant,
       icon,
     });
@@ -107,10 +110,10 @@ const RoleBadgeDropdown = ({
 
     setPendingAction({
       type: "remove",
-      title: "Remove Team Member",
-      message: `Remove ${memberName} from the team? This action cannot be undone.`,
-      confirmLabel: "Remove",
-      loadingLabel: "Removing...",
+      title: t("roleManagement.removeTitle"),
+      message: t("roleManagement.removeBody", { name: memberName }),
+      confirmLabel: t("roleManagement.removeConfirm"),
+      loadingLabel: t("roleManagement.removingLabel"),
       variant: "error",
       icon: <UserX size={16} />,
     });
@@ -186,7 +189,7 @@ const RoleBadgeDropdown = ({
             onClick={() => handleRoleChange("admin")}
             variant="default"
           >
-            Promote to Admin
+            {t("roleManagement.promoteToAdmin")}
           </DropdownItem>
         )}
 
@@ -197,7 +200,7 @@ const RoleBadgeDropdown = ({
             onClick={() => handleRoleChange("member")}
             variant="default"
           >
-            Demote to Member
+            {t("roleManagement.demoteToMember")}
           </DropdownItem>
         )}
 
@@ -210,7 +213,7 @@ const RoleBadgeDropdown = ({
               onClick={() => handleRoleChange("owner")}
               variant="warning"
             >
-              Transfer Ownership
+              {t("roleManagement.transferOwnership")}
             </DropdownItem>
           </>
         )}
@@ -225,7 +228,7 @@ const RoleBadgeDropdown = ({
               onClick={handleRemoveMember}
               variant="error"
             >
-              Remove from Team
+              {t("roleManagement.removeFromTeam")}
             </DropdownItem>
           </>
         )}

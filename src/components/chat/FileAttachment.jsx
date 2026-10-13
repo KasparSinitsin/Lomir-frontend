@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Clock, Download } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 import {
@@ -6,11 +7,14 @@ import {
   formatFileSize,
 } from "../../utils/fileExpiration";
 import { getFileIcon } from "../../utils/messageDisplayHelpers";
+import { useFileExpirationText } from "../../hooks/useFileExpirationText";
 
 // Renders a message's file attachment (or an expired/deleted placeholder).
 // Self-contained: derives everything from the message prop. Extracted verbatim
 // from MessageDisplay.renderFileAttachment.
 const FileAttachment = ({ message }) => {
+  const { t } = useTranslation();
+  const expirationText = useFileExpirationText();
   const fileUrl = message?.fileUrl || message?.file_url;
   const fileName = message?.fileName || message?.file_name;
   const fileSize = message?.fileSize || message?.file_size;
@@ -28,11 +32,16 @@ const FileAttachment = ({ message }) => {
         <div className="flex items-center gap-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
           <AlertTriangle size={24} className="text-warning flex-shrink-0" />
           <div className="flex-1 min-w-0">
+            {/* ⚠️ These two keys already existed with German and were unused
+                here. Not a duplicate of MessageBubble's use — that branch
+                handles an expired *image* (`imageUrl && …`), this one an
+                expired *file* (`… && !imageUrl`), mutually exclusive by
+                construction. Both are needed; this one just had to use them. */}
             <p className="text-sm font-medium text-base-content/60">
-              Image or file no longer available
+              {t("messageBubble.mediaExpired")}
             </p>
             <p className="text-xs text-base-content/40">
-              This data has expired.
+              {t("messageBubble.dataExpired")}
             </p>
           </div>
         </div>
@@ -51,12 +60,14 @@ const FileAttachment = ({ message }) => {
       {expirationStatus.status === "expiring-soon" && (
         <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg">
           <Clock size={16} className="text-warning flex-shrink-0" />
-          <p className="text-xs text-warning">{expirationStatus.message}</p>
+          <p className="text-xs text-warning">
+            {expirationText(expirationStatus)}
+          </p>
         </div>
       )}
 
       <Tooltip
-        content="Click to open and download file"
+        content={t("fileAttachment.openTooltip")}
         position="top"
         wrapperClassName="block"
       >
@@ -74,10 +85,10 @@ const FileAttachment = ({ message }) => {
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {fileName || "Download file"}
+              {fileName || t("fileAttachment.downloadFile")}
             </p>
             <p className="text-xs text-base-content/60">
-              {fileSizeDisplay || "Click to download"}
+              {fileSizeDisplay || t("fileAttachment.clickToDownload")}
             </p>
           </div>
 
@@ -94,7 +105,7 @@ const FileAttachment = ({ message }) => {
           <div className="flex items-center gap-2 mt-1 ml-1">
             <Clock size={12} className="text-base-content/40 flex-shrink-0" />
             <p className="text-xs text-base-content/40">
-              {expirationStatus.message}
+              {expirationText(expirationStatus)}
             </p>
           </div>
         )}

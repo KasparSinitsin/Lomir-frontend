@@ -1,43 +1,195 @@
 import api from "./api";
 
+const CITY_LEVEL_ADDRESS_KEYS = [
+  "city",
+  "town",
+  "village",
+  "municipality",
+];
+
+const NON_CITY_LEVEL_ADDRESS_KEYS = [
+  "hamlet",
+  "locality",
+  "neighbourhood",
+  "quarter",
+  "suburb",
+  "city_district",
+  "borough",
+  "isolated_dwelling",
+  "farm",
+];
+
+const CITY_LEVEL_PLACE_TYPES = new Set([
+  "city",
+  "town",
+  "village",
+  "municipality",
+  "administrative",
+]);
+
+const NON_CITY_LEVEL_PLACE_TYPES = new Set([
+  "hamlet",
+  "locality",
+  "neighbourhood",
+  "quarter",
+  "suburb",
+  "isolated_dwelling",
+  "farm",
+]);
+
+const getPlaceType = (value) =>
+  String(
+    value?.placeType ??
+      value?.place_type ??
+      value?.osmValue ??
+      value?.osm_value ??
+      value?.type ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+const hasCityLevelAddressPart = (value) => {
+  const address = value?.rawAddress ?? value?.address ?? null;
+  if (!address || typeof address !== "object") return false;
+
+  return CITY_LEVEL_ADDRESS_KEYS.some((key) => Boolean(address[key]));
+};
+
+const foldPlaceName = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const addressPartMatches = (address, keys, name) => {
+  const foldedName = foldPlaceName(name);
+  if (!foldedName || !address || typeof address !== "object") return false;
+
+  return keys.some((key) => foldPlaceName(address[key]) === foldedName);
+};
+
+const isCityLevelVerification = (value, queriedCity) => {
+  if (!value || value.found !== true) return true;
+
+  const address = value.rawAddress ?? value.address ?? null;
+  if (addressPartMatches(address, CITY_LEVEL_ADDRESS_KEYS, queriedCity)) {
+    return true;
+  }
+  if (addressPartMatches(address, NON_CITY_LEVEL_ADDRESS_KEYS, queriedCity)) {
+    return false;
+  }
+
+  const placeType = getPlaceType(value);
+  if (!placeType) return true;
+  if (CITY_LEVEL_PLACE_TYPES.has(placeType)) return true;
+
+  if (hasCityLevelAddressPart(value)) return true;
+
+  return !NON_CITY_LEVEL_PLACE_TYPES.has(placeType);
+};
+
 class GeocodingService {
   constructor() {
     this.cache = new Map(); // Simple in-memory cache
   }
 
-  // Helper function to detect country code from postal code format
+  /**
+   * Detect the country from a postal code format - but only when the format is
+   * genuinely distinctive.
+   *
+   * A postal code does not identify a country. Four digits are used by AT, CH,
+   * BE, DK, NO, HU and SI; five by DE, FR, IT, ES and FI. This function used to
+   * resolve that ambiguity by guessing (four digits -> NL, five -> DE), which
+   * made the later branches for AT, CH, DK, BE, IT, FR and ES unreachable and
+   * could write a wrong country into a profile: 20099 is Hamburg in Germany and
+   * Sesto San Giovanni in Italy, and the Italian user got Hamburg.
+   *
+   * It now returns null when the format is ambiguous. The caller must ask the
+   * user instead of guessing.
+   *
+   * @param {string} postalCode
+   * @returns {string|null} ISO country code, or null when undeterminable
+   */
   detectCountryCode(postalCode) {
-    if (!postalCode) return "DE";
+    if (!postalCode) return null;
 
     const code = postalCode.toString().trim();
 
-    if (/^11\d{4}$/.test(code)) return "CO"; // Bogota, Colombia: 110111
-    if (/^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z]\s?\d[ABCEGHJ-NPRSTV-Z]\d$/i.test(code)) return "CA"; // Canadian: M5H 2N2
-    if (/^28\d{3}$/.test(code)) return "ES"; // Madrid, Spain: 28001
-    if (code === "2000") return "ZA"; // Johannesburg, South Africa: 2000
-    if (/^\d{5}$/.test(code)) return "DE"; // German: 12345
-    if (/^\d{4}$/.test(code)) return "NL"; // Dutch: 1234
-    if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(code)) return "GB"; // UK: SW1A 1AA
-    if (/^\d{2}-\d{3}$/.test(code)) return "PL"; // Polish: 12-345
-    if (/^\d{5}-\d{3}$/.test(code)) return "PT"; // Portuguese: 12345-123
-    if (/^\d{3}\s\d{2}$/.test(code)) return "SE"; // Swedish: 123 45
-    if (/^\d{4}\s[A-Z]{2}$/i.test(code)) return "NO"; // Norwegian: 1234 AB
-    if (/^\d{4}$/.test(code)) return "DK"; // Danish: 1234
-    if (/^\d{4}$/.test(code)) return "AT"; // Austrian: 1234
-    if (/^\d{4}$/.test(code)) return "CH"; // Swiss: 1234
-    if (/^\d{5}$/.test(code)) return "IT"; // Italian: 12345
-    if (/^\d{5}$/.test(code)) return "FR"; // French: 12345
-    if (/^\d{5}$/.test(code)) return "ES"; // Spanish: 12345
-    if (/^\d{4}$/.test(code)) return "BE"; // Belgian: 1234
-    if (/^\d{2}\s\d{3}$/.test(code)) return "CZ"; // Czech: 12 345
+    // Letters make these formats unmistakable
+    if (/^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z]\s?\d[ABCEGHJ-NPRSTV-Z]\d$/i.test(code)) return "CA"; // M5H 2N2
+    if (/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(code)) return "GB"; // SW1A 1AA
+    if (/^\d{4}\s?[A-Z]{2}$/i.test(code)) return "NL"; // 1012 AB
 
-    return "DE"; // Default fallback
+    // Distinctive separators
+    if (/^\d{2}-\d{3}$/.test(code)) return "PL"; // 12-345
+    if (/^\d{4}-\d{3}$/.test(code)) return "PT"; // 1234-567
+    if (/^\d{3}\s\d{2}$/.test(code)) return "SE"; // 123 45
+
+    // Everything else (four and five bare digits above all) is ambiguous.
+    return null;
+  }
+
+  /**
+   * Check whether a town exists in a country.
+   *
+   * Needed because everything else here starts from a postal code: without one
+   * there was nothing to compare a city against, so "Berlin, Austria" could be
+   * saved. Returns null when the question cannot be answered - no country, no
+   * name, or the service being unavailable - which callers must treat as "no
+   * information", never as "does not exist".
+   *
+   * @param {string} city
+   * @param {string} countryCode - ISO code; required
+   * @returns {Promise<Object|null>} { found, city, state, postalCode, ... }
+   */
+  async verifyCityInCountry(city, countryCode) {
+    const name = String(city || "").trim();
+    const country = String(countryCode || "").trim();
+
+    if (!name || !country) return null;
+
+    const cacheKey = `city:${name.toLowerCase()}-${country.toLowerCase()}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      const response = await api.get(
+        `/api/geocoding/city/${encodeURIComponent(name)}`,
+        { params: { country } },
+      );
+
+      if (!response.data || response.data.found === null) return null;
+
+      const result = isCityLevelVerification(response.data, name)
+        ? response.data
+        : {
+            ...response.data,
+            found: false,
+            rejectedReason: "notCityLevel",
+          };
+
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("City verification error:", error);
+      return null;
+    }
   }
 
   async getLocationFromPostalCode(postalCode, countryCode = null) {
     if (!postalCode) return null;
 
     const detectedCountryCode = countryCode || this.detectCountryCode(postalCode);
+
+    // Without a country the lookup cannot be answered correctly - the same
+    // digits exist in several countries - so do not send a request that would
+    // return a confidently wrong place.
+    if (!detectedCountryCode) return null;
+
     const cacheKey = `${postalCode}-${detectedCountryCode}`;
     
     if (this.cache.has(cacheKey)) {

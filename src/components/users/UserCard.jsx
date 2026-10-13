@@ -1,6 +1,6 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import Card from "../common/Card";
-import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
@@ -16,7 +16,6 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserModal } from "../../contexts/UserModalContext";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -26,14 +25,17 @@ import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
-import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
+import { getBadgeName } from "../../utils/badgeLabels";
 import {
   formatListLocation,
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 /**
  * UserCard Component
@@ -58,6 +60,8 @@ const UserCard = ({
   activeFilters = {},
   showSearchResultTypeOverlay = false,
 }) => {
+  const { t } = useTranslation();
+  const { tagLabel } = useTagLabels();
   const { user: currentUser, isAuthenticated } = useAuth();
   const { openUserModal } = useUserModal();
 
@@ -67,7 +71,7 @@ const UserCard = ({
     const lastName = user.last_name || user.lastName || "";
 
     if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
+      return joinNameParts(firstName, lastName);
     } else if (firstName) {
       return firstName;
     } else if (lastName) {
@@ -75,7 +79,7 @@ const UserCard = ({
     } else if (user.username) {
       return user.username;
     } else {
-      return "User";
+      return t("common:user.fallbackName");
     }
   };
 
@@ -162,12 +166,19 @@ const UserCard = ({
   if (showScore) {
     matchTier = getMatchTier(rawScore);
 
-    const matchType = user.matchType ?? user.match_type;
     const matchDetails = user.matchDetails ?? user.match_details;
 
-    matchTooltipText = getMatchTooltipText(matchTier, matchDetails, {
-      breakdownLabel: matchType === "role_match" ? "role match" : "match",
-    });
+    const matchTooltipParts = getMatchTooltipParts(matchTier, matchDetails);
+    matchTooltipText =
+      matchTooltipParts.variant === "breakdown"
+        ? t("common:matchScore.breakdown", matchTooltipParts.values)
+        : matchTooltipParts.variant === "shared"
+          ? t("common:matchScore.shared", matchTooltipParts.values)
+          : matchTooltipParts.variant === "sharedFocus"
+            ? t("common:matchScore.sharedFocus", matchTooltipParts.values)
+            : matchTooltipParts.variant === "plain"
+              ? t("common:matchScore.plain", matchTooltipParts.values)
+              : "";
 
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
@@ -200,7 +211,7 @@ const UserCard = ({
     <SearchResultTypeOverlay
       icon={User}
       bgClassName={matchTier?.bg ?? "bg-success"}
-      tooltip="Person"
+      tooltip={t("common:mapPopup.typeUser")}
       viewMode={viewMode}
     />
   ) : (
@@ -209,7 +220,7 @@ const UserCard = ({
   const userLocation = normalizeLocationData(user);
   const locationText =
     user.is_remote || user.isRemote
-      ? "Remote"
+      ? t("common:location.section.remote")
       : formatLocation(userLocation, {
           displayType: "short",
           showState: true,
@@ -229,13 +240,21 @@ const UserCard = ({
       });
 
     const distance = user.distanceKm ?? user.distance_km;
-    const showDistance = distance != null && distance < 999999 && !(user.is_remote || user.isRemote);
+    // Same guard as TeamCard: with no location data the distance arrives as
+    // 0 and "0 km" would state something false. ListViewRow draws MapPinX.
+    const showDistance =
+      distance != null &&
+      distance < 999999 &&
+      Boolean(listLocationTextShort) &&
+      !(user.is_remote || user.isRemote);
 
-    const tagNames = extractNames(user.tags);
+    const tagNames = extractNames(user.tags, tagLabel);
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames);
 
-    const badgeNames = extractNames(user.badges);
+    const badgeNames = extractNames(user.badges).map((name) =>
+      getBadgeName(name, t),
+    );
     const { summary: badgesSummary, tooltip: badgesTooltip } =
       summarizeList(badgeNames);
 
@@ -249,7 +268,13 @@ const UserCard = ({
         {scoreSubtitleItem && <span className="flex-shrink-0">{scoreSubtitleItem}</span>}
         {user.username && <span className="truncate min-w-0">@{user.username}</span>}
         {shouldShowVisibilityIcon() && (
-          <Tooltip content={isUserProfilePublic() ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
+          <Tooltip
+            content={
+              isUserProfilePublic()
+                ? t("user.profileVisibilityPublic")
+                : t("user.profileVisibilityPrivate")
+            }
+          >
             {isUserProfilePublic() ? (
               <Eye size={9} className="text-green-600" />
             ) : (
@@ -259,7 +284,7 @@ const UserCard = ({
         )}
         {isSyntheticUser(user) && (
           <Tooltip
-            content={DEMO_PROFILE_TOOLTIP}
+            content={t("demo.profileTooltip")}
             wrapperClassName="flex items-center whitespace-nowrap text-base-content/50"
           >
             <FlaskConical size={9} className="flex-shrink-0" />
@@ -274,11 +299,15 @@ const UserCard = ({
         subtitle={listSubtitle}
         image={getProfileImage()}
         imageFallback={getUserInitials(user)}
-        imageAlt={`${user.username || "User"}'s profile`}
+        imageAlt={
+          user.username
+            ? t("user.profileImageAlt", { name: user.username })
+            : t("user.profileImageAltGeneric")
+        }
         onClick={openUserDetails}
         viewMode="list"
         className=""
-        clickTooltip="Click to view User details"
+        clickTooltip={t("common:mapPopup.clickUserDetails")}
         imageOverlay={avatarOverlay}
         imageInnerOverlay={demoAvatarOverlay}
       >
@@ -310,8 +339,8 @@ const UserCard = ({
             <Tooltip
               content={
                 isUserProfilePublic()
-                  ? "Public Profile - visible for everyone"
-                  : "Private Profile - only visible for you"
+                  ? t("user.profileVisibilityPublic")
+                  : t("user.profileVisibilityPrivate")
               }
             >
               {isUserProfilePublic() ? (
@@ -343,7 +372,7 @@ const UserCard = ({
             )}
           {isSyntheticUser(user) && (
             <Tooltip
-              content={DEMO_PROFILE_TOOLTIP}
+              content={t("demo.profileTooltip")}
               wrapperClassName="flex items-center gap-1 text-base-content/50"
             >
               <FlaskConical
@@ -357,12 +386,16 @@ const UserCard = ({
       hoverable
       image={getProfileImage()}
       imageFallback={getUserInitials(user)}
-      imageAlt={`${user.username || "User"}'s profile`}
+      imageAlt={
+        user.username
+          ? t("user.profileImageAlt", { name: user.username })
+          : t("user.profileImageAltGeneric")
+      }
       imageSize="medium"
       imageShape="circle"
       onClick={openUserDetails}
       truncateContent={true}
-      clickTooltip="Click to view User details"
+      clickTooltip={t("common:mapPopup.clickUserDetails")}
       contentClassName={
         viewMode === "mini"
           ? `!pt-0 !px-4 sm:!px-5 ${activeFilters.showLocation || activeFilters.showTags || activeFilters.showBadges ? "!pb-4 sm:!pb-5" : "!pb-0"}`
@@ -399,17 +432,6 @@ const UserCard = ({
         compact={viewMode === "mini"}
         showCountryCode={viewMode !== "card" && viewMode !== "mini"}
       />
-
-      {/* <div className="mt-auto">
-        <Button
-          variant="primary"
-          size={viewMode === "mini" ? "xs" : "sm"}
-          onClick={openUserDetails}
-          className="w-full"
-        >
-          View Details
-        </Button>
-      </div> */}
     </Card>
   );
 };

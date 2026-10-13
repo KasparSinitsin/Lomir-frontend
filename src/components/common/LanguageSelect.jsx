@@ -1,0 +1,313 @@
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { Check, ChevronDown, Search } from "lucide-react";
+import LanguageFlag from "./LanguageFlag";
+import {
+  SUPPORTED_LANGUAGES,
+  LANGUAGE_SEARCH_THRESHOLD,
+  getLanguageByCode,
+  getSecondaryLanguageName,
+} from "../../constants/languages";
+
+/**
+ * LanguageSelect
+ *
+ * A dropdown over the languages Lomir actually offers. Close relative of
+ * CountrySelect - same shell, same keyboard handling, same clear-on-close
+ * behaviour - but deliberately smaller: it lists what exists rather than
+ * filtering 209 entries, and it has no flags, because a language is not a
+ * country.
+ *
+ * It renders as a plain list while there are few languages and grows a search
+ * field on its own past LANGUAGE_SEARCH_THRESHOLD. That is the whole reason
+ * this is a selector and not a two-state toggle: a toggle would have to be
+ * rebuilt for language three.
+ *
+ * Unlike CountrySelect there is no clear button. "No language" is not a state
+ * the app can render - it would fall back to a guess the user just rejected -
+ * so the control always holds a value.
+ *
+ * @param {Object} props
+ * @param {string} props.value - selected language code
+ * @param {Function} props.onChange - receives a synthetic { target: { name, value } }
+ * @param {string} props.name - form field name
+ * @param {boolean} props.disabled
+ * @param {string} props.className
+ * @param {string} props.id - ties the control to its <label>
+ */
+const LanguageSelect = ({
+  value,
+  onChange,
+  name = "preferredLanguage",
+  disabled = false,
+  className = "",
+  id,
+}) => {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+
+  const showSearch = SUPPORTED_LANGUAGES.length > LANGUAGE_SEARCH_THRESHOLD;
+  const selectedLanguage = getLanguageByCode(value);
+
+  const filteredLanguages = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    if (!showSearch || !search) return SUPPORTED_LANGUAGES;
+
+    return SUPPORTED_LANGUAGES.filter(
+      (language) =>
+        language.endonym.toLowerCase().includes(search) ||
+        Object.values(language.names ?? {}).some((name) =>
+          name.toLowerCase().includes(search),
+        ) ||
+        language.code.toLowerCase() === search,
+    );
+  }, [searchTerm, showSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm("");
+        setHighlightedIndex(-1);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Scroll the highlighted row into view (only reachable once the list is long
+  // enough to scroll, but the cost of keeping it is a single query selector).
+  useEffect(() => {
+    if (highlightedIndex >= 0 && listRef.current) {
+      const highlightedElement = listRef.current.querySelector(
+        `[data-index="${highlightedIndex}"]`,
+      );
+      if (highlightedElement) {
+        highlightedElement.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [highlightedIndex]);
+
+  const close = () => {
+    setIsOpen(false);
+    setSearchTerm("");
+    setHighlightedIndex(-1);
+  };
+
+  const handleSelect = (language) => {
+    onChange({ target: { name, value: language.code } });
+    close();
+  };
+
+  const open = () => {
+    if (disabled) return;
+    setIsOpen(true);
+    setHighlightedIndex(
+      Math.max(
+        0,
+        SUPPORTED_LANGUAGES.findIndex((language) => language.code === value),
+      ),
+    );
+    if (showSearch) setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+
+    if (!isOpen) {
+      if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+        e.preventDefault();
+        open();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setHighlightedIndex((index) =>
+          Math.min(index + 1, filteredLanguages.length - 1),
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setHighlightedIndex((index) => Math.max(index - 1, 0));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (filteredLanguages[highlightedIndex]) {
+          handleSelect(filteredLanguages[highlightedIndex]);
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        close();
+        break;
+      default:
+        break;
+    }
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      {/*
+        `bg-none` is load-bearing, not tidying. daisyUI's `.select` paints its
+        own dropdown arrow as two linear-gradients, and this borrows the class
+        for a custom combobox that renders its own lucide ChevronDown - so both
+        showed, a filled triangle beside the icon. daisyUI suppresses it the
+        same way in its own join rules (`:not(:last-child){background-image:
+        none}`). `px-4` goes with it: `.select` sets `padding-inline: 1rem
+        1.75rem`, the wider end being the reserve for that triangle, which
+        leaves the icon visibly inset once the triangle is gone. Equal padding
+        on both sides is the point, so the shorthand is replaced rather than
+        half-overridden.
+      */}
+      <div
+        id={id}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={id ? `${id}-listbox` : undefined}
+        tabIndex={disabled ? -1 : 0}
+        onClick={() => (isOpen ? close() : open())}
+        onKeyDown={handleKeyDown}
+        className={`
+          select select-bordered bg-none px-4 w-full flex items-center justify-between cursor-pointer
+          ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          ${isOpen ? "border-primary" : ""}
+        `}
+      >
+        {isOpen && showSearch ? (
+          <div className="flex items-center flex-1 gap-2">
+            <Search size={16} className="text-base-content/50 flex-shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setHighlightedIndex(0);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={t("languageSelect.searchPlaceholder")}
+              className="flex-1 bg-transparent outline-none text-sm min-w-0"
+              autoComplete="off"
+            />
+          </div>
+        ) : (
+          <span className="flex min-w-0 items-center gap-2">
+            {selectedLanguage ? (
+              <>
+                {/*
+                  The round flag, framed the way the navbar avatar is - the
+                  caller owns the frame, the component only paints inside it.
+                  `shrink-0` so it never gives way to a long name; the text is
+                  what truncates. See the note above `SUPPORTED_LANGUAGES` for
+                  why flags are here at all (Julia, 2026-09-05) and what the
+                  objection to them was.
+                */}
+                <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                  <LanguageFlag code={selectedLanguage.code} />
+                </span>
+                <span className="truncate">
+                  <span>{selectedLanguage.endonym}</span>
+                  {/*
+                    Endonym, then the same language's name in the other language
+                    on offer: `Deutsch / German` and `English / Englisch`. Both
+                    rows carry two names, which is the point - the secondary
+                    name used to be the English one, so the English row showed a
+                    single word while the German row showed two (Julia,
+                    2026-09-05).
+
+                    The spaces around the slash are explicit text, not a margin.
+                    A margin looks identical on screen but leaves the accessible
+                    name - and anything copied out of the control - reading
+                    `Deutsch/ German`. A render probe caught exactly that.
+                  */}
+                  {getSecondaryLanguageName(selectedLanguage.code) && (
+                    <span className="text-base-content/50 text-sm">
+                      {" / "}
+                      {getSecondaryLanguageName(selectedLanguage.code)}
+                    </span>
+                  )}
+                </span>
+              </>
+            ) : (
+              <span className="truncate text-base-content/50">
+                {t("languageSelect.placeholder")}
+              </span>
+            )}
+          </span>
+        )}
+
+        <ChevronDown
+          size={16}
+          className={`text-base-content/50 flex-shrink-0 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </div>
+
+      {isOpen && !disabled && (
+        <div
+          ref={listRef}
+          id={id ? `${id}-listbox` : undefined}
+          role="listbox"
+          className="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+        >
+          {filteredLanguages.length === 0 ? (
+            <div className="px-3 py-4 text-center text-base-content/50 text-sm">
+              {t("languageSelect.noResults")}
+            </div>
+          ) : (
+            filteredLanguages.map((language, index) => {
+              const isSelected = language.code === value;
+
+              return (
+                <div
+                  key={language.code}
+                  data-index={index}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelect(language)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`
+                    px-3 py-2 cursor-pointer flex items-center justify-between transition-colors
+                    ${highlightedIndex === index ? "bg-primary/10" : "hover:bg-base-200"}
+                    ${isSelected ? "bg-primary/5 font-medium" : ""}
+                  `}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="block h-5 w-5 shrink-0 overflow-hidden rounded-full">
+                      <LanguageFlag code={language.code} />
+                    </span>
+                    <span className="truncate">
+                      <span>{language.endonym}</span>
+                      {getSecondaryLanguageName(language.code) && (
+                        <span className="text-base-content/50 text-sm">
+                          {" / "}
+                          {getSecondaryLanguageName(language.code)}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  {isSelected && (
+                    <Check size={16} className="text-primary flex-shrink-0 ml-2" />
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LanguageSelect;

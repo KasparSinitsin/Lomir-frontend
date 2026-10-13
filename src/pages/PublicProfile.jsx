@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import PageContainer from "../components/layout/PageContainer";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -8,19 +9,46 @@ import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
 import UserAvatar from "../components/users/UserAvatar";
 import DeletedUserProfilePlaceholder from "../components/users/DeletedUserProfilePlaceholder";
 import { useUserProfile } from "../hooks/useUserQueries";
+import { joinNameParts } from "../utils/nameFormatters";
 
-const getUserDisplayName = (user) => {
+// ⚠️ The fallback is resolved by the caller, not here: a name built outside
+// render keeps the old language after a language switch. It also means "no name
+// on record", never "deleted account" — a deleted account is a hard delete, so
+// its profile answers 404 and never reaches this helper.
+const getUserDisplayName = (user, fallbackName) => {
   const firstName = user?.firstName || user?.first_name || "";
   const lastName = user?.lastName || user?.last_name || "";
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = joinNameParts(firstName, lastName);
 
-  return fullName || user?.username || "Unknown User";
+  return fullName || user?.username || fallbackName;
+};
+
+/**
+ * Words a profile-loading failure at render time, from a stored code.
+ *
+ * The state holds the code, not the sentence: the language changes once right
+ * after login, so a sentence built when the request failed is wrong from the
+ * start (see FE #625).
+ *
+ * ⚠️ Keys are written out literally so `npm run i18n:check` can see them —
+ * resolving them through a lookup table reports them as unused (FE #636).
+ */
+const getProfileErrorText = (code, t) => {
+  switch (code) {
+    case "NO_PROFILE_ID":
+      return t("publicProfile.errors.noId");
+    case "LOAD_FAILED":
+      return t("publicProfile.errors.loadFailed");
+    default:
+      return null;
+  }
 };
 
 const PublicProfile = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [error, setError] = useState(null);
+  const [errorCode, setErrorCode] = useState(null);
   const [user, setUser] = useState(null);
   const [showDeletedUserPlaceholder, setShowDeletedUserPlaceholder] =
     useState(false);
@@ -35,18 +63,18 @@ const PublicProfile = () => {
     if (!id) {
       setUser(null);
       setShowDeletedUserPlaceholder(false);
-      setError("No profile ID was provided.");
+      setErrorCode("NO_PROFILE_ID");
       return;
     }
 
-    setError(null);
+    setErrorCode(null);
   }, [id]);
 
   useEffect(() => {
     if (!userProfileQuery.data) return;
 
     setUser(userProfileQuery.data);
-    setError(null);
+    setErrorCode(null);
     setShowDeletedUserPlaceholder(false);
   }, [userProfileQuery.data]);
 
@@ -57,17 +85,21 @@ const PublicProfile = () => {
 
     if (userProfileQuery.error.response?.status === 404 && isNumericUserId) {
       setUser(null);
-      setError(null);
+      setErrorCode(null);
       setShowDeletedUserPlaceholder(true);
       return;
     }
 
     setUser(null);
     setShowDeletedUserPlaceholder(false);
-    setError("Failed to load this profile. Please try again.");
+    setErrorCode("LOAD_FAILED");
   }, [isNumericUserId, userProfileQuery.error]);
 
-  const displayName = useMemo(() => getUserDisplayName(user), [user]);
+  const displayName = useMemo(
+    () => getUserDisplayName(user, t("user.fallbackName")),
+    [user, t],
+  );
+  const errorMessage = getProfileErrorText(errorCode, t);
   const username = user?.username ? `@${user.username}` : null;
   const bio = user?.bio || user?.biography || "";
   const shouldHideBadges =
@@ -77,13 +109,19 @@ const PublicProfile = () => {
     : Array.isArray(user?.badges)
       ? user.badges
       : [];
+  // undefined = not parent-managed, so BadgesDisplaySection resolves its own
+  // translated default; only the hidden case overrides it.
   const badgeEmptyMessage = shouldHideBadges
-    ? "This user's badges are hidden."
-    : "No badges earned yet";
+    ? t("badges.section.hidden")
+    : undefined;
 
   if (loading) {
     return (
-      <PageContainer title="Profile" variant="transparent" frame={false}>
+      <PageContainer
+        title={t("publicProfile.title")}
+        variant="transparent"
+        frame={false}
+      >
         <div className="flex justify-center items-center py-16">
           <div className="loading loading-spinner loading-lg text-primary"></div>
         </div>
@@ -94,19 +132,20 @@ const PublicProfile = () => {
   if (showDeletedUserPlaceholder) {
     return (
       <PageContainer variant="transparent" frame={false}>
-        <DeletedUserProfilePlaceholder
-          title="This user profile does not exist on Lomir"
-          subtitle="This profile is not available"
-        />
+        <DeletedUserProfilePlaceholder />
       </PageContainer>
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
-      <PageContainer title="Profile" variant="transparent" frame={false}>
+      <PageContainer
+        title={t("publicProfile.title")}
+        variant="transparent"
+        frame={false}
+      >
         <div className="flex justify-center py-8">
-          <Alert type="error" message={error} />
+          <Alert type="error" message={errorMessage} />
         </div>
       </PageContainer>
     );
@@ -115,7 +154,11 @@ const PublicProfile = () => {
   const isPrivateProfile = user?.profileAccess === "limited" || user?.profile_access === "limited";
 
   return (
-    <PageContainer title="Profile" variant="transparent" frame={false}>
+    <PageContainer
+      title={t("publicProfile.title")}
+      variant="transparent"
+      frame={false}
+    >
       <div className="flex justify-center">
         <Card className="w-full max-w-2xl bg-base-100 shadow-sm" hoverable={false}>
           <div className="space-y-8">
@@ -138,23 +181,23 @@ const PublicProfile = () => {
 
             {isPrivateProfile ? (
               <div className="text-center text-base-content/60 py-4">
-                <p className="text-sm">This profile is private.</p>
+                <p className="text-sm">{t("userDetails.privateProfile")}</p>
               </div>
             ) : (
               <>
                 <div className="space-y-2 text-center">
                   <h2 className="text-sm font-medium uppercase tracking-[0.12em] text-base-content/50">
-                    Bio
+                    {t("publicProfile.bioHeading")}
                   </h2>
                   <p className="text-base-content/75">
-                    {bio || "This user has not added a bio yet."}
+                    {bio || t("publicProfile.bioEmpty")}
                   </p>
                 </div>
 
                 <BadgesDisplaySection
-                  title="Badges"
                   badges={badges}
                   emptyMessage={badgeEmptyMessage}
+                  hideWhenEmpty={!shouldHideBadges}
                   groupByCategory={true}
                   showCredits={true}
                 />
@@ -163,7 +206,7 @@ const PublicProfile = () => {
 
             <div className="flex justify-center">
               <Button variant="ghost" onClick={() => navigate(-1)}>
-                Back
+                {t("publicProfile.back")}
               </Button>
             </div>
           </div>

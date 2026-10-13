@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import FormSectionDivider from "../components/common/FormSectionDivider";
@@ -35,6 +36,7 @@ import {
   useUserTags,
   userProfileQueryKey,
   userTagsQueryKey,
+  userBadgesQueryKey,
 } from "../hooks/useUserQueries";
 import TagInput from "../components/tags/TagInput";
 import BadgesDisplaySection from "../components/badges/BadgesDisplaySection";
@@ -44,10 +46,12 @@ import BadgeCategoryModal from "../components/badges/BadgeCategoryModal";
 import TagsDisplaySection from "../components/tags/TagsDisplaySection";
 import TagAwardsModal from "../components/badges/TagAwardsModal";
 import LocationDisplay from "../components/common/LocationDisplay";
-import { useLocationAutoFill } from "../hooks/useLocationAutoFill";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../hooks/useLocationAutoFill";
 import ImageUploader from "../components/common/ImageUploader";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../utils/userHelpers";
@@ -55,16 +59,13 @@ import DemoAvatarOverlay from "../components/users/DemoAvatarOverlay";
 import ConfirmModal from "../components/common/ConfirmModal";
 import LocationInput from "../components/common/LocationInput";
 import VisibilityToggle from "../components/common/VisibilityToggle";
-import {
-  AVATAR_UPLOAD_NOTICE,
-  PROFILE_VISIBILITY_SETTINGS_NOTICE,
-  USER_LOCATION_PRIVACY_NOTICE,
-} from "../constants/privacyText";
-import { format } from "date-fns";
+import { formatMonthYear } from "../utils/dateHelpers";
+import { joinNameParts } from "../utils/nameFormatters";
 
 const EMPTY_QUERY_ARRAY = [];
 
 const Profile = () => {
+  const { t } = useTranslation("profile");
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [localUser, setLocalUser] = useState(null);
@@ -155,7 +156,11 @@ const Profile = () => {
   const hiddenAwardIds = displayUser?.hiddenAwardIds ?? [];
 
   // Auto-fill city from postal code lookup
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode,
     city: formData.city,
     country: formData.country,
@@ -165,12 +170,12 @@ const Profile = () => {
   // Format member since date
   const getMemberSinceDate = () => {
     const date = user?.created_at || user?.createdAt;
-    if (!date) return "Unknown";
+    if (!date) return t("view.memberSinceUnknown");
     try {
-      return format(new Date(date), "MMMM yyyy");
+      return formatMonthYear(new Date(date));
     } catch (error) {
       console.error("Error formatting member since date:", error);
-      return "Unknown";
+      return t("view.memberSinceUnknown");
     }
   };
 
@@ -263,7 +268,19 @@ const Profile = () => {
   }, [structuredTags]);
 
   useEffect(() => {
-    setSelectedTags(fetchedUserTags.map((tag) => tag.id));
+    // 🔴 **The edit list is not the display list.** It used to be seeded from
+    // every focus area, including the ones a badge giver's award created — and
+    // since saving the profile writes back exactly what this holds, every save
+    // silently adopted them as the user's own, for good. That is how the
+    // distinction was destroyed before `user_tags.source` existed; measured on
+    // user 374, whose award-created `Testing & QA` had picked up the default
+    // levels of a hand-edited row.
+    // The display keeps showing everything: `userTagObjects` is untouched.
+    setSelectedTags(
+      fetchedUserTags
+        .filter((tag) => tag.source !== "award")
+        .map((tag) => tag.id),
+    );
     setUserTagObjects(fetchedUserTags);
   }, [fetchedUserTags]);
 
@@ -282,9 +299,9 @@ const Profile = () => {
   useEffect(() => {
     if (profileUserError) {
       console.error("Error fetching user details:", profileUserError);
-      setError("Failed to load user data. Please try again.");
+      setError(t("errors.loadUser"));
     }
-  }, [profileUserError]);
+  }, [profileUserError, t]);
 
   // Reset image error state when user changes
   useEffect(() => {
@@ -473,17 +490,15 @@ const Profile = () => {
           profileImage: null,
         }));
 
-        setSuccess("Profile picture removed successfully");
+        setSuccess(t("status.pictureRemoved"));
         setIsAvatarDeleteDialogOpen(false);
       } else {
-        setError(response.message || "Failed to remove profile picture");
+        setError(response.message || t("errors.removePicture"));
       }
     } catch (error) {
       console.error("Error deleting avatar:", error);
       setError(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to remove profile picture. Please try again.",
+        t("errors.removePictureRetry"),
       );
     } finally {
       setAvatarDeleteLoading(false);
@@ -491,37 +506,20 @@ const Profile = () => {
   };
 
   const getAwardId = (award) => award?.awardId ?? award?.award_id ?? award?.id;
-  const getBadgeId = (awardOrBadge) => {
-    const explicitBadgeId = awardOrBadge?.badgeId ?? awardOrBadge?.badge_id;
-    if (explicitBadgeId !== undefined && explicitBadgeId !== null) {
-      return explicitBadgeId;
-    }
-
-    const hasAwardId =
-      awardOrBadge?.awardId !== undefined || awardOrBadge?.award_id !== undefined;
-    return hasAwardId ? undefined : awardOrBadge?.id;
-  };
-  const getBadgeName = (awardOrBadge) =>
-    (
-      awardOrBadge?.badgeName ??
-      awardOrBadge?.badge_name ??
-      awardOrBadge?.name ??
-      ""
-    ).trim();
   const getAwardContextLabel = (award) => {
     const contextType = award?.contextType ?? award?.context_type;
 
     switch (contextType) {
       case "team":
-        return "Team Contribution";
+        return t("common:badges.award.team");
       case "project":
-        return "Project Contribution";
+        return t("common:badges.award.project");
       case "personal":
       case "profile":
       case "chat":
-        return "Personal Contribution";
+        return t("common:badges.award.personal");
       default:
-        return "Contribution";
+        return t("common:badges.award.generic");
     }
   };
   const getAwarderName = (award) => {
@@ -529,43 +527,62 @@ const Profile = () => {
       award?.awardedByFirstName ?? award?.awarded_by_first_name ?? "";
     const lastName =
       award?.awardedByLastName ?? award?.awarded_by_last_name ?? "";
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = joinNameParts(firstName, lastName);
 
     return (
       fullName ||
       award?.awardedByUsername ||
       award?.awarded_by_username ||
-      "another user"
+      t("common:badges.award.unknownAwarder")
     );
   };
-  const getAwardTagName = (award) => award?.tagName ?? award?.tag_name ?? null;
+  const updateLocalUserBadges = (updater) => {
+    // `updateUser` used to be called inside the `setLocalUser` updater. React
+    // may run an updater during render, and updating AuthProvider from there is
+    // the "Cannot update a component while rendering a different component"
+    // warning — and it made the local patch land unreliably. An updater has to
+    // be pure, so the two writes happen side by side instead.
+    const source = localUser || user;
+    if (!source) return;
 
-  const sameBadge = (badge, awardOrBadge) => {
-    const badgeId = getBadgeId(badge);
-    const targetBadgeId = getBadgeId(awardOrBadge);
-    if (
-      badgeId !== undefined &&
-      badgeId !== null &&
-      targetBadgeId !== undefined &&
-      targetBadgeId !== null
-    ) {
-      return String(badgeId) === String(targetBadgeId);
-    }
-
-    const badgeName = getBadgeName(badge).toLowerCase();
-    const targetBadgeName = getBadgeName(awardOrBadge).toLowerCase();
-    return Boolean(badgeName && targetBadgeName && badgeName === targetBadgeName);
+    const nextUser = updater(source);
+    setLocalUser(nextUser);
+    updateUser(nextUser);
   };
 
-  const updateLocalUserBadges = (updater) => {
-    setLocalUser((prev) => {
-      const source = prev || user;
-      if (!source) return prev;
+  // Making an award visible, hiding it again or deleting it changes what the
+  // server counts:
+  // credits only count once an award is shown (BE #339), and a hidden award takes
+  // its focus area with it (BE #336). Patching `hiddenAwardIds` locally is not
+  // enough — the totals, the pills and the focus-area list all come from the
+  // server, so they have to be refetched or the page keeps showing the old
+  // numbers until a reload.
+  const refetchBadgeDerivedData = () => {
+    if (!user?.id) return;
+    for (const key of [
+      userProfileQueryKey(user.id),
+      userTagsQueryKey(user.id),
+      userBadgesQueryKey(user.id),
+    ]) {
+      queryClient.invalidateQueries({ queryKey: key });
+    }
 
-      const nextUser = updater(source);
-      updateUser(nextUser);
-      return nextUser;
-    });
+    // 🔴 **A member's badges are team data too, and this list used to stop at
+    // the user.** Every team the member belongs to aggregates their awards into
+    // its focus-area credits, the pill colour, the header total and the badge
+    // wall — so hiding one badge changes what those teams show, and a team view
+    // already in the cache kept the old numbers until a reload. Found by
+    // walking BE #341 on 2026-09-29: the profile updated at once, the team
+    // details modal only after reloading My Teams.
+    // Invalidating the whole `["teams", …]` prefix covers the detail payload,
+    // the member badges and the paginated list in one go. It refetches a little
+    // more than strictly needed — open roles and the viewer's role hang off the
+    // same prefix — and that is the cheaper trade against enumerating which
+    // teams this member is in.
+    // ⚠️ Only the acting user's own session is fixed here. An award granted or
+    // hidden by someone else still reaches this client no earlier than its next
+    // fetch; nothing pushes it, and that is a different problem.
+    queryClient.invalidateQueries({ queryKey: ["teams"] });
   };
 
   const handleHideBadge = (award) => {
@@ -586,7 +603,7 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not hide this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdHide"));
       return;
     }
 
@@ -612,14 +629,13 @@ const Profile = () => {
         };
       });
 
-      setSuccess("Badge hidden from others.");
+      refetchBadgeDerivedData();
+      setSuccess(t("status.badgeHidden"));
       setPendingBadgeAction(null);
     } catch (err) {
       console.error("Failed to hide badge:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to hide badge. Please try again.",
+        t("errors.hideBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -631,7 +647,7 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not show this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdShow"));
       return;
     }
 
@@ -655,13 +671,12 @@ const Profile = () => {
         };
       });
 
-      setSuccess("Badge visible for others.");
+      refetchBadgeDerivedData();
+      setSuccess(t("status.badgeVisible"));
     } catch (err) {
       console.error("Failed to show badge:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to make badge visible. Please try again.",
+        t("errors.showBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -673,79 +688,40 @@ const Profile = () => {
 
     const awardId = getAwardId(award);
     if (!awardId) {
-      setError("Could not delete this badge award because it is missing an ID.");
+      setError(t("errors.badgeMissingIdDelete"));
       return;
     }
 
     const loadingKey = `delete-${awardId}`;
-    const removedCredits = Number(award?.credits ?? 0);
+    // A hidden award counts towards nothing, so deleting one must not subtract
+    // anything either. The open modal is the only surface that cannot refetch
+    // itself — its header total is state from when it was opened — so it is the
+    // one place still patched by hand, and it needs to know this.
+    const countedTowardsTotal = !hiddenAwardIds
+      .map((value) => String(value))
+      .includes(String(awardId));
 
     try {
       setError(null);
       setBadgeActionLoadingKey(loadingKey);
       await userService.deleteUserBadgeAward(user.id, awardId);
 
-      removeAwardFromBadgeModal(award);
-      setUserTagObjects((currentTags) => {
-        const awardTagName = getAwardTagName(award);
-        if (!awardTagName) return currentTags;
+      removeAwardFromBadgeModal(award, { countedTowardsTotal });
+      // Everything else is refetched rather than patched, exactly as hiding and
+      // showing an award already does. The three subtractions that used to live
+      // here each had to know the visibility rule on their own, and none of them
+      // did: they lowered the credit totals, the focus-area pill and the badge
+      // by the credits of an award that had never been counted, and the
+      // "drop what reaches zero" filters then removed pills that were only ever
+      // at zero — every focus area without counted credits, not just this one.
+      refetchBadgeDerivedData();
 
-        return currentTags
-          .map((tag) => {
-            const tagName = tag.name ?? tag.tag_name;
-            if (tagName !== awardTagName) return tag;
-
-            const currentCredits = Number(
-              tag.badgeCredits ?? tag.badge_credits ?? 0,
-            );
-            const nextCredits = Math.max(0, currentCredits - removedCredits);
-
-            return {
-              ...tag,
-              badgeCredits: nextCredits,
-              badge_credits: nextCredits,
-            };
-          })
-          .filter((tag) => Number(tag.badgeCredits ?? tag.badge_credits ?? 0) > 0);
-      });
-      updateLocalUserBadges((currentUser) => ({
-        ...currentUser,
-        badges: Array.isArray(currentUser.badges)
-          ? currentUser.badges
-              .map((badge) => {
-                if (!sameBadge(badge, award)) return badge;
-
-                const currentCredits = Number(
-                  badge.total_credits ?? badge.totalCredits ?? 0,
-                );
-                const currentAwardCount = Number(
-                  badge.award_count ?? badge.awardCount ?? 1,
-                );
-                const nextCredits = Math.max(0, currentCredits - removedCredits);
-                const nextAwardCount = Math.max(0, currentAwardCount - 1);
-
-                if (nextCredits <= 0 || nextAwardCount <= 0) return null;
-
-                return {
-                  ...badge,
-                  total_credits: nextCredits,
-                  totalCredits: nextCredits,
-                  award_count: nextAwardCount,
-                  awardCount: nextAwardCount,
-                };
-              })
-              .filter(Boolean)
-          : currentUser.badges,
-      }));
-
-      setSuccess("Badge award deleted.");
+      setSuccess(t("status.badgeDeleted"));
       setPendingBadgeAction(null);
     } catch (err) {
       console.error("Failed to delete badge award:", err);
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to delete badge award. Please try again.",
+        t("errors.deleteBadge"),
       );
     } finally {
       setBadgeActionLoadingKey(null);
@@ -758,14 +734,14 @@ const Profile = () => {
 
     // Username validation
     if (!formData.username.trim()) {
-      errors.username = "Username is required";
+      errors.username = t("validation.usernameRequired");
     } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username.trim())) {
-      errors.username = "Use 3–20 chars: letters, numbers, underscore";
+      errors.username = t("validation.usernameFormat");
     }
 
     // First name validation (optional)
     if (!formData.firstName.trim()) {
-      errors.firstName = "First name is required";
+      errors.firstName = t("validation.firstNameRequired");
     }
 
     // Add more validations if needed
@@ -776,6 +752,20 @@ const Profile = () => {
 
   const handleProfileUpdate = async () => {
     if (!user) return;
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setError(message);
+      return;
+    }
 
     // Validate form before proceeding
     if (!validateForm()) {
@@ -812,9 +802,7 @@ const Profile = () => {
           setImagePreview(avatarUrl);
         } else {
           console.error("Avatar upload failed:", uploadResult.error);
-          setError(
-            "Failed to upload image. Please try a different image or try again later.",
-          );
+          setError(t("errors.imageUpload"));
           setLoading(false);
           return;
         }
@@ -828,7 +816,9 @@ const Profile = () => {
           response?.message || "No response received",
         );
         setError(
-          "Failed to update profile: " + (response?.message || "Unknown error"),
+          t("errors.updateProfile", {
+            reason: response?.message || t("errors.unknown"),
+          }),
         );
       } else {
         // Update tags along with profile
@@ -844,7 +834,7 @@ const Profile = () => {
 
         setIsEditing(false);
         clearEditModeParam();
-        setSuccess("Profile updated successfully");
+        setSuccess(t("status.updated"));
 
         // Create updated user object with correct avatar URL
         const updatedUser = {
@@ -896,7 +886,9 @@ const Profile = () => {
     } catch (error) {
       console.error("Error updating profile:", error);
       setError(
-        "Failed to update profile: " + (error.message || "Unknown error"),
+        t("errors.updateProfile", {
+          reason: error.message || t("errors.unknown"),
+        }),
       );
     } finally {
       setLoading(false);
@@ -910,11 +902,11 @@ const Profile = () => {
           <Card>
             <div className="text-center p-4">
               <h2 className="text-xl font-semibold text-error mb-4">
-                User Not Found
+                {t("notFound.title")}
               </h2>
-              <p className="mb-6">Please login again to access your profile.</p>
+              <p className="mb-6">{t("notFound.body")}</p>
               <Link to="/login" className="btn btn-primary">
-                Go to Login
+                {t("notFound.loginCta")}
               </Link>
             </div>
           </Card>
@@ -938,11 +930,25 @@ const Profile = () => {
   );
   const pendingBadgeAward = pendingBadgeAction?.award;
   const pendingBadgeActionType = pendingBadgeAction?.type;
-  const pendingBadgeAwardDescription = pendingBadgeAward
-    ? `"${getAwardContextLabel(pendingBadgeAward)}" Award from ${getAwarderName(
-        pendingBadgeAward,
-      )}`
-    : "this badge award";
+  // Whole sentences per case rather than one description spliced into two
+  // carrier sentences: German places the quoted context and the awarder
+  // differently, and a fragment gives a translator nothing to reorder.
+  const pendingBadgeActionBody = () => {
+    if (!pendingBadgeAward) {
+      return pendingBadgeActionType === "delete"
+        ? t("badges.deleteBodyGeneric")
+        : t("badges.hideBodyGeneric");
+    }
+
+    const values = {
+      context: getAwardContextLabel(pendingBadgeAward),
+      awarder: getAwarderName(pendingBadgeAward),
+    };
+
+    return pendingBadgeActionType === "delete"
+      ? t("badges.deleteBody", values)
+      : t("badges.hideBody", values);
+  };
   const pendingBadgeActionLoading = Boolean(
     pendingBadgeAward &&
       badgeActionLoadingKey ===
@@ -994,12 +1000,12 @@ const Profile = () => {
           >
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Edit size={22} className="flex-shrink-0" />
-              Edit Profile
+              {t("edit.title")}
             </h2>
 
             {/* Profile Picture */}
             <section className="space-y-4">
-              <FormSectionDivider text="Profile Picture" icon={Camera} />
+              <FormSectionDivider text={t("edit.pictureSection")} icon={Camera} />
 
               <div className="w-full flex justify-center">
                 <div className="w-full max-w-md mt-5">
@@ -1020,12 +1026,12 @@ const Profile = () => {
                     size="xl"
                     disabled={loading}
                     loading={avatarDeleteLoading}
-                    helpText={AVATAR_UPLOAD_NOTICE}
+                    helpText={t("common:privacy.avatarUpload")}
                     showRemoveButton={
                       !!(imagePreview || user?.avatarUrl) &&
                       !formData.profileImage
                     }
-                    removeButtonText="Remove Current Picture"
+                    removeButtonText={t("edit.removeCurrentPicture")}
                   />
                 </div>
               </div>
@@ -1033,13 +1039,13 @@ const Profile = () => {
 
             {/* Profile Details */}
             <section className="space-y-4">
-              <FormSectionDivider text="Profile Details" icon={User} />
+              <FormSectionDivider text={t("edit.detailsSection")} icon={User} />
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Username */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Username</span>
+                    <span className="label-text">{t("edit.username")}</span>
                   </label>
                   <input
                     type="text"
@@ -1049,7 +1055,7 @@ const Profile = () => {
                     className={`input input-bordered w-full ${
                       formErrors.username ? "input-error" : ""
                     }`}
-                    placeholder="Username"
+                    placeholder={t("edit.usernamePlaceholder")}
                     autoComplete="off"
                   />
                   {formErrors.username && (
@@ -1060,14 +1066,14 @@ const Profile = () => {
                     </label>
                   )}
                   <p className="form-helper-text">
-                    3–20 characters, letters/numbers/underscore.
+                    {t("edit.usernameHelp")}
                   </p>
                 </div>
 
                 {/* First Name */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">First Name</span>
+                    <span className="label-text">{t("edit.firstName")}</span>
                   </label>
                   <input
                     type="text"
@@ -1077,7 +1083,7 @@ const Profile = () => {
                     className={`input input-bordered w-full ${
                       formErrors.firstName ? "input-error" : ""
                     }`}
-                    placeholder="First Name"
+                    placeholder={t("edit.firstNamePlaceholder")}
                   />
                   {formErrors.firstName && (
                     <label className="label">
@@ -1091,7 +1097,7 @@ const Profile = () => {
                 {/* Last Name */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Last Name</span>
+                    <span className="label-text">{t("edit.lastName")}</span>
                   </label>
                   <input
                     type="text"
@@ -1099,21 +1105,21 @@ const Profile = () => {
                     value={formData.lastName}
                     onChange={handleChange}
                     className="input input-bordered w-full"
-                    placeholder="Last Name"
+                    placeholder={t("edit.lastNamePlaceholder")}
                   />
                 </div>
               </div>
 
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">About Me</span>
+                  <span className="label-text">{t("edit.bio")}</span>
                 </label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
                   className="textarea textarea-bordered w-full"
-                  placeholder="Tell us about yourself"
+                  placeholder={t("edit.bioPlaceholder")}
                   rows="4"
                 />
               </div>
@@ -1123,16 +1129,16 @@ const Profile = () => {
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}
-                  label="Profile Visibility"
+                  label={t("visibility.label")}
                   entityType="profile"
-                  visibleLabel="Public Profile"
-                  hiddenLabel="Private Profile"
-                  visibleDescription="Your profile can be discovered by other Lomir users."
-                  hiddenDescription="Your profile is hidden from search results, but may still appear where you interact."
+                  visibleLabel={t("visibility.public")}
+                  hiddenLabel={t("visibility.private")}
+                  visibleDescription={t("visibility.publicDescription")}
+                  hiddenDescription={t("visibility.privateDescription")}
                   disabled={loading}
                 />
                 <p className="form-helper-text mt-2 px-1">
-                  {PROFILE_VISIBILITY_SETTINGS_NOTICE}
+                  {t("common:privacy.profileVisibilitySettings")}
                 </p>
               </div>
             </section>
@@ -1140,6 +1146,8 @@ const Profile = () => {
             {/* Location Section */}
             <section>
               <LocationInput
+                onFieldEdited={markFieldAsEdited}
+                mismatch={locationMismatch}
                 formData={{
                   postal_code: formData.postalCode,
                   city: formData.city,
@@ -1154,23 +1162,22 @@ const Profile = () => {
                 disabled={loading}
                 showRemoteToggle={false}
                 showDivider={true}
-                dividerText="Location"
-                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
+                privacyNotice={t("common:privacy.userLocation")}
               />
             </section>
 
             {/* Focus Areas */}
             <section className="space-y-4">
-              <FormSectionDivider text="Focus Areas" icon={Tag} />
+              <FormSectionDivider text={t("edit.focusAreasSection")} icon={Tag} />
 
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">
                     <span className="sm:hidden">
-                      Pick your interests and skills
+                      {t("edit.focusAreasLabelShort")}
                     </span>
                     <span className="hidden sm:inline">
-                      Select focus areas matching your interests and skills
+                      {t("edit.focusAreasLabel")}
                     </span>
                   </span>
                 </label>
@@ -1178,7 +1185,7 @@ const Profile = () => {
                 <TagInput
                   selectedTags={selectedTags}
                   onTagsChange={handleSelectedTagsChange}
-                  placeholder="Type to search focus areas..."
+                  placeholder={t("edit.focusAreasPlaceholder")}
                 />
               </div>
             </section>
@@ -1196,11 +1203,11 @@ const Profile = () => {
                   }}
                   disabled={loading}
                 >
-                Cancel
+                {t("edit.cancel")}
               </Button>
 
               <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? "Saving..." : "Save Changes"}
+                {loading ? t("edit.saving") : t("edit.save")}
               </Button>
             </section>
           </form>
@@ -1209,7 +1216,7 @@ const Profile = () => {
             {/* Page Header with Title and Actions */}
             <div className="flex items-center justify-between p-6 pb-4">
               <h1 className="text-2xl sm:text-3xl font-medium text-primary">
-                Your Profile
+                {t("view.title")}
               </h1>
               <div className="flex gap-2">
                 <Button
@@ -1219,7 +1226,7 @@ const Profile = () => {
                   className="hover:bg-[#7ace82] hover:text-[#036b0c]"
                   icon={<Edit size={16} />}
                 >
-                  Edit
+                  {t("view.edit")}
                 </Button>
               </div>
             </div>
@@ -1235,7 +1242,7 @@ const Profile = () => {
                     {user.avatarUrl && !imageError ? (
                       <img
                         src={user.avatarUrl}
-                        alt="Profile"
+                        alt={t("view.avatarAlt")}
                         className="rounded-full object-cover w-full h-full"
                         onError={() => setImageError(true)}
                       />
@@ -1262,29 +1269,29 @@ const Profile = () => {
                     className="flex items-center text-base-content/70 tooltip tooltip-bottom tooltip-lomir cursor-help"
                     data-tip={
                       isProfilePublic()
-                        ? "Public Profile - visible for everyone\nChange in profile settings"
-                        : "Private Profile - only visible for you\nChange in profile settings"
+                        ? t("view.publicTooltip")
+                        : t("view.privateTooltip")
                     }
                   >
                     {isProfilePublic() ? (
                       <>
                         <Eye size={20} className="mr-1 text-green-600" />
-                        <span>Public</span>
+                        <span>{t("view.public")}</span>
                       </>
                     ) : (
                       <>
                         <EyeClosed size={20} className="mr-1 text-gray-500" />
-                        <span>Private</span>
+                        <span>{t("view.private")}</span>
                       </>
                     )}
                   </div>
                   {isSyntheticUser(user) && (
                     <Tooltip
-                      content={DEMO_PROFILE_TOOLTIP}
+                      content={t("common:demo.profileTooltip")}
                       wrapperClassName="flex items-start text-base-content/50"
                     >
                       <FlaskConical className="h-3.5 w-auto mr-0.5 flex-shrink-0 mt-px" />
-                      <span className="leading-[1.15]">Demo Profile</span>
+                      <span className="leading-[1.15]">{t("view.demoProfile")}</span>
                     </Tooltip>
                   )}
                 </div>
@@ -1293,7 +1300,7 @@ const Profile = () => {
               {/* Member Since - DESKTOP ONLY, far right */}
               <div
                 className="hidden md:flex items-center text-base text-base-content/60 tooltip tooltip-bottom tooltip-lomir cursor-help flex-shrink-0"
-                data-tip={`Joined Lomir in ${getMemberSinceDate()}`}
+                data-tip={t("view.joined", { date: getMemberSinceDate() })}
               >
                 <Calendar size={16} className="mr-1" />
                 <span>{getMemberSinceDate()}</span>
@@ -1327,7 +1334,7 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">Email</h3>
+                          <h3 className="font-medium">{t("view.email")}</h3>
                         </div>
                         <p className="text-sm text-base-content/60">
                           {user.email}
@@ -1339,7 +1346,7 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">Location</h3>
+                          <h3 className="font-medium">{t("view.location")}</h3>
                         </div>
                         {hasProfileLocation ? (
                           <LocationDisplay
@@ -1354,20 +1361,20 @@ const Profile = () => {
                           />
                         ) : (
                           <p className="text-sm text-base-content/60">
-                            No location added yet.
+                            {t("view.noLocation")}
                           </p>
                         )}
                       </div>
                       <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
-                          title="Focus Areas"
+                          title={t("view.focusAreas")}
                           tags={
                             userTagObjects.length > 0
                               ? userTagObjects
                               : selectedTags
                           }
                           allTags={tags}
-                          emptyMessage="No focus areas added yet."
+                          emptyMessage={t("view.noFocusAreas")}
                           onTagClick={handleTagClick}
                           onSupercategoryClick={handleSupercategoryClick}
                           highlightTagName={highlightTagName}
@@ -1380,10 +1387,10 @@ const Profile = () => {
                             size={18}
                             className="mr-2 text-primary flex-shrink-0"
                           />
-                          <h3 className="font-medium">My Badges</h3>
+                          <h3 className="font-medium">{t("view.badges")}</h3>
                         </div>
                         <p className="text-sm text-base-content/60">
-                          No badges earned yet.
+                          {t("view.noBadges")}
                         </p>
                       </div>
                     </div>
@@ -1397,7 +1404,7 @@ const Profile = () => {
                               size={18}
                               className="mr-2 text-primary flex-shrink-0"
                             />
-                            <h3 className="font-medium">Email</h3>
+                            <h3 className="font-medium">{t("view.email")}</h3>
                           </div>
                           <p className="text-sm text-base-content/60">
                             {user.email}
@@ -1409,7 +1416,7 @@ const Profile = () => {
                               size={18}
                               className="mr-2 text-primary flex-shrink-0"
                             />
-                            <h3 className="font-medium">Location</h3>
+                            <h3 className="font-medium">{t("view.location")}</h3>
                           </div>
                           {hasProfileLocation ? (
                             <LocationDisplay
@@ -1424,21 +1431,21 @@ const Profile = () => {
                             />
                           ) : (
                             <p className="text-sm text-base-content/60">
-                              No location added yet.
+                              {t("view.noLocation")}
                             </p>
                           )}
                         </div>
                       </div>
                       <div ref={focusAreasSectionRef}>
                         <TagsDisplaySection
-                          title="Focus Areas"
+                          title={t("view.focusAreas")}
                           tags={
                             userTagObjects.length > 0
                               ? userTagObjects
                               : selectedTags
                           }
                           allTags={tags}
-                          emptyMessage="No focus areas added yet."
+                          emptyMessage={t("view.noFocusAreas")}
                           onTagClick={handleTagClick}
                           onSupercategoryClick={handleSupercategoryClick}
                           highlightTagName={highlightTagName}
@@ -1447,9 +1454,9 @@ const Profile = () => {
                       </div>
                       <div ref={badgesSectionRef}>
                         <BadgesDisplaySection
-                          title="My Badges"
+                          title={t("view.badges")}
                           badges={displayBadges}
-                          emptyMessage="No badges earned yet."
+                          emptyMessage={t("view.noBadges")}
                           maxVisible={8}
                           groupByCategory={true}
                           showCredits={true}
@@ -1485,16 +1492,15 @@ const Profile = () => {
         isOpen={isAvatarDeleteDialogOpen}
         onClose={closeAvatarDeleteDialog}
         onConfirm={confirmAvatarDelete}
-        title="Remove Profile Picture"
+        title={t("avatar.removeTitle")}
         loading={avatarDeleteLoading}
-        confirmLabel="Remove"
-        loadingLabel="Removing..."
+        confirmLabel={t("avatar.removeConfirm")}
+        loadingLabel={t("avatar.removing")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Remove your profile picture? Your profile will show your initials
-          instead.
+          {t("avatar.removeBody")}
         </p>
       </ConfirmModal>
 
@@ -1502,17 +1508,15 @@ const Profile = () => {
         isOpen={Boolean(pendingBadgeAction)}
         onClose={closePendingBadgeAction}
         onConfirm={confirmPendingBadgeAction}
-        title={pendingBadgeActionType === "delete" ? "Delete Badge Award" : "Hide Badge Award"}
+        title={pendingBadgeActionType === "delete" ? t("badges.deleteTitle") : t("badges.hideTitle")}
         loading={pendingBadgeActionLoading}
-        confirmLabel={pendingBadgeActionType === "delete" ? "Delete" : "Hide"}
-        loadingLabel={pendingBadgeActionType === "delete" ? "Deleting..." : "Hiding..."}
+        confirmLabel={pendingBadgeActionType === "delete" ? t("badges.deleteConfirm") : t("badges.hideConfirm")}
+        loadingLabel={pendingBadgeActionType === "delete" ? t("badges.deleting") : t("badges.hiding")}
         confirmVariant={pendingBadgeActionType === "delete" ? "error" : "primary"}
         confirmIcon={pendingBadgeActionType === "delete" ? <Trash2 size={16} /> : <EyeClosed size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          {pendingBadgeActionType === "delete"
-            ? `Delete ${pendingBadgeAwardDescription} permanently? This removes only this awarded instance, not other awards for the same badge.`
-            : `Hide ${pendingBadgeAwardDescription} from others? You will still see it on your profile with a closed-eye marker.`}
+          {pendingBadgeActionBody()}
         </p>
       </ConfirmModal>
 

@@ -1,4 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  collectEventPersonIds,
+  collectEventRoleRefs,
+  matchesViewer,
+} from "../../utils/describeEvent";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 import {
   formatDateHeading as formatMessageDateHeading,
   getDateGroupKey,
@@ -21,6 +29,7 @@ import { vacantRoleService } from "../../services/vacantRoleService";
 import { createEventRenderers } from "./messageEventRenderers";
 import MessageBubble from "./MessageBubble";
 import Tooltip from "../common/Tooltip";
+import ScreenAlert from "../common/ScreenAlert";
 import {
   DELETED_USER_DISPLAY_NAME,
   getDisplayName as getDeletedUserDisplayName,
@@ -31,9 +40,15 @@ import {
   getTeamAvatarUrl,
   mergeResolvedTeamData,
   mergeResolvedUserData,
+  resolveRoleNames,
 } from "../../utils/chatEntityResolvers";
+import { getCurrentRoleName, rememberRoleName } from "../../utils/roleNameRegistry";
 import { parseSystemMessage } from "../../utils/messageSystemParser";
+import { getTeamErrorCode } from "../../utils/teamErrorText";
 import { renderHighlightedSearchText } from "../../utils/messageDisplayRenderers";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
+import { isArchivedTeamData } from "../../utils/chatHelpers";
 
 const MessageDisplay = ({
   messages,
@@ -55,6 +70,47 @@ const MessageDisplay = ({
   onConversationHeaderVisibilityChange,
   searchQuery = "",
 }) => {
+  const { t } = useTranslation();
+  // Loaded here so the deleted-role warning never renders as its raw key: the
+  // chat page does not otherwise guarantee the "teams" namespace.
+  const { t: tTeams } = useTranslation("teams");
+  const { user: currentUser, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames, requestIds: requestMentionIds } = useMentionNames();
+
+  /**
+   * Every person id the rendered events name, asked for ONCE per message list
+   * rather than per banner.
+   *
+   * ⚠️ The request deliberately does not live inside `MentionById`.
+   * That component is defined inside this one, so React sees a new type on
+   * every render and remounts it — a `useEffect` in there would re-fire for
+   * every banner on every keystroke in the composer.
+   */
+  const eventPersonIds = useMemo(() => {
+    const ids = new Set();
+    for (const message of messages || []) {
+      for (const id of collectEventPersonIds(message?.content ?? null)) {
+        ids.add(id);
+      }
+    }
+    return [...ids];
+  }, [messages]);
+
+  useEffect(() => {
+    if (eventPersonIds.length > 0) requestMentionIds(eventPersonIds);
+  }, [eventPersonIds, requestMentionIds]);
+
+  /**
+   * The same tooltip appears at nine sites in this file, and again in
+   * ConversationHeader and ConversationList. A display name can resolve to
+   * an empty string, and an empty interpolation reads "View  details" - in
+   * German a sentence with no object - so the nameless case has its own key.
+   */
+  const detailsTooltip = (name) =>
+    name
+      ? t("chatHeader.viewDetails", { name })
+      : t("chatHeader.viewDetailsGeneric");
+
   const messagesEndRef = useRef(null);
   const highlightedMessageRef = useRef(null);
   const [conversationHeaderElement, setConversationHeaderElement] =
@@ -69,6 +125,13 @@ const MessageDisplay = ({
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  // A team link the reader clicked wins, in a team chat too: event messages
+  // there can name OTHER teams. Without a selection (the header) a team chat
+  // opens its own team, with the data it already has.
+  const teamModalId =
+    selectedTeamId ?? (conversationType === "team" ? teamData?.id : null);
+  const teamModalInitialData =
+    selectedTeamId == null && conversationType === "team" ? teamData : null;
   const [teamMembersRefreshKey, setTeamMembersRefreshKey] = useState(0);
 
   // State for user details modal
@@ -79,7 +142,41 @@ const MessageDisplay = ({
 
   // Mention lookup (frontend-only)
   const [resolvingName, setResolvingName] = useState(false);
+  // A code + the name, resolved at render, so an open warning follows a
+  // language switch instead of keeping the sentence it was set with.
   const [nameResolveError, setNameResolveError] = useState(null);
+  const nameResolveErrorText = !nameResolveError
+    ? null
+    : nameResolveError.code === "notFound"
+      ? t("chatPage.mentionNotFound", { name: nameResolveError.name })
+      : t("chatPage.mentionLookupFailed", { name: nameResolveError.name });
+  // A role link in an event whose role has been deleted since. Without this the
+  // modal opened on the event's name alone, as an open role you could apply to.
+  const [roleNotFound, setRoleNotFound] = useState(false);
+  // A team link whose team is gone or private to this reader (item 34).
+  const [teamAlertKey, setTeamAlertKey] = useState(null);
+  const screenAlerts = [
+    {
+      type: "error",
+      message: nameResolveErrorText,
+      onClose: () => setNameResolveError(null),
+    },
+    {
+      type: "error",
+      message: roleNotFound ? tTeams("teamErrors.roleNotFound") : null,
+      onClose: () => setRoleNotFound(false),
+    },
+    {
+      type: "error",
+      message:
+        teamAlertKey === "notFound"
+          ? tTeams("teamErrors.teamNotFound")
+          : teamAlertKey === "notAccessible"
+            ? tTeams("teamErrors.teamNotAccessible")
+            : null,
+      onClose: () => setTeamAlertKey(null),
+    },
+  ];
 
   const [nameToIdCache, setNameToIdCache] = useState({});
   const [resolvedChatUsers, setResolvedChatUsers] = useState({});
@@ -169,7 +266,7 @@ const MessageDisplay = ({
     const nextContent = editingContent.trim();
 
     if (!nextContent) {
-      setEditingError("Message cannot be empty.");
+      setEditingError(t("chatMessage.emptyError"));
       return;
     }
 
@@ -179,12 +276,8 @@ const MessageDisplay = ({
       await onEditMessage(messageId, nextContent);
       setEditingMessageId(null);
       setEditingContent("");
-    } catch (err) {
-      setEditingError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Could not save your edit.",
-      );
+    } catch {
+      setEditingError(t("chatMessage.saveEditFailed"));
     } finally {
       setSavingEditMessageId(null);
     }
@@ -211,22 +304,30 @@ const MessageDisplay = ({
     if (!userData) return "";
     const first = userData.firstName ?? userData.first_name;
     const last = userData.lastName ?? userData.last_name;
-    if (first && last) return `${first} ${last}`;
+    if (first && last) return joinNameParts(first, last);
     if (first) return first;
     return userData.username ?? "";
   };
 
   const formatReadByTooltip = (names) => {
     const uniqueNames = [...new Set((names || []).filter(Boolean))];
-    if (uniqueNames.length === 0) return "Read.";
-    if (uniqueNames.length === 1) return `Read by ${uniqueNames[0]}.`;
+    if (uniqueNames.length === 0) return t("readReceipt.readNoNames");
+    if (uniqueNames.length === 1) {
+      return t("readReceipt.readByOne", { name: uniqueNames[0] });
+    }
     if (uniqueNames.length === 2) {
-      return `Read by ${uniqueNames[0]} and ${uniqueNames[1]}.`;
+      return t("readReceipt.readByTwo", {
+        first: uniqueNames[0],
+        second: uniqueNames[1],
+      });
     }
 
     const lastName = uniqueNames[uniqueNames.length - 1];
     const leadingNames = uniqueNames.slice(0, -1).join(", ");
-    return `Read by ${leadingNames} and ${lastName}.`;
+    return t("readReceipt.readByMany", {
+      leading: leadingNames,
+      last: lastName,
+    });
   };
 
   const getReadByTooltip = (message) => {
@@ -273,25 +374,16 @@ const MessageDisplay = ({
   }, [highlightMessageIds]);
 
   useEffect(() => {
-    const openTeamModalId =
-      conversationType === "team" ? teamData?.id : selectedTeamId;
-
     if (
       !teamMembersRefreshSignal?.teamId ||
       !isTeamModalOpen ||
-      String(openTeamModalId) !== String(teamMembersRefreshSignal.teamId)
+      String(teamModalId) !== String(teamMembersRefreshSignal.teamId)
     ) {
       return;
     }
 
     setTeamMembersRefreshKey((prev) => prev + 1);
-  }, [
-    conversationType,
-    isTeamModalOpen,
-    selectedTeamId,
-    teamData?.id,
-    teamMembersRefreshSignal,
-  ]);
+  }, [isTeamModalOpen, teamModalId, teamMembersRefreshSignal]);
 
   useEffect(() => {
     const userIdsToFetch = [];
@@ -461,6 +553,199 @@ const MessageDisplay = ({
     teamData?.id != null ? resolvedChatTeams[String(teamData.id)] : null,
   );
 
+  // Role ids named by this chat's events whose role has been deleted, so their
+  // names render as text, not as links. Two sources: a 🗑️ ROLE_DELETED event
+  // proves it anywhere; the bulk lookup only in a live team chat, whose reader
+  // is a member, so an id it leaves out was deleted. Anywhere else absence can
+  // also mean "not visible to you", and nothing is marked from it.
+  const roleLookupTeamId =
+    conversationType === "team" && !isArchivedTeamData(teamData)
+      ? teamData?.id ?? null
+      : null;
+  const { eventRoleIdsKey, roleIdsDeletedByEvent, hasIdLessRoleNames } = useMemo(() => {
+    const ids = new Set();
+    const deletedByEvent = new Set();
+    let idLess = false;
+    for (const message of messages) {
+      const parsed = parseSystemMessage(message?.content);
+      const roleId = parsed?.roleId;
+      if (roleId == null || roleId === "") {
+        if (parsed?.roleName) idLess = true;
+        continue;
+      }
+      ids.add(String(roleId));
+      if (parsed.type === "role_deleted") deletedByEvent.add(String(roleId));
+    }
+    return {
+      eventRoleIdsKey:
+        roleLookupTeamId == null ? "" : [...ids].sort().join(","),
+      roleIdsDeletedByEvent: deletedByEvent,
+      hasIdLessRoleNames: idLess,
+    };
+  }, [messages, roleLookupTeamId]);
+  const [deletedRoleIds, setDeletedRoleIds] = useState(() => new Set());
+  const isRoleDeleted = (roleId) =>
+    roleId != null &&
+    (roleIdsDeletedByEvent.has(String(roleId)) ||
+      deletedRoleIds.has(String(roleId)));
+
+  useEffect(() => {
+    if (!eventRoleIdsKey) {
+      setDeletedRoleIds(new Set());
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const roleIds = eventRoleIdsKey.split(",");
+
+    vacantRoleService
+      .getVacantRolesByIds(roleLookupTeamId, roleIds)
+      .then((response) => {
+        if (isCancelled) return;
+        const roles = response?.data ?? response;
+        if (!Array.isArray(roles)) return;
+        // The same answer carries each living role's CURRENT name (item 38).
+        for (const role of roles) rememberRoleName(role?.id, getRoleName(role));
+        const livingIds = new Set(roles.map((role) => String(role?.id)));
+        setDeletedRoleIds(new Set(roleIds.filter((id) => !livingIds.has(id))));
+      })
+      // A failed lookup keeps every link: a living role must never lose its own.
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventRoleIdsKey, roleLookupTeamId]);
+
+  // Old events that name a role without its id (e.g. the 🔓 prose account
+  // deletion wrote until item 37) can only be matched by name. In a live team
+  // chat the reader sees every role of the team, so a name no living role
+  // carries is gone — deleted, or renamed, which cannot be told apart without
+  // an id — and renders as text. `null` = not known: every name stays a link.
+  // Keyed by team: names of another team's roles must never decide here, so a
+  // chat switch reads "not known" until this team's answer arrives.
+  const [livingRoleNames, setLivingRoleNames] = useState(null);
+  const isIdLessRoleGone = (roleId, roleName) =>
+    roleId == null &&
+    livingRoleNames != null &&
+    String(livingRoleNames.teamId) === String(roleLookupTeamId) &&
+    !livingRoleNames.names.has(normalizeRoleLookupValue(roleName));
+
+  useEffect(() => {
+    setLivingRoleNames(null);
+    if (roleLookupTeamId == null || !hasIdLessRoleNames) return undefined;
+
+    let isCancelled = false;
+
+    vacantRoleService
+      .getVacantRoles(roleLookupTeamId, "all")
+      .then((response) => {
+        if (isCancelled) return;
+        const roles = response?.data ?? response;
+        if (!Array.isArray(roles)) return;
+        setLivingRoleNames({
+          teamId: roleLookupTeamId,
+          names: new Set(
+            roles.map((role) => normalizeRoleLookupValue(getRoleName(role))),
+          ),
+        });
+      })
+      // A failed lookup keeps every link, as for the id lookup above.
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [roleLookupTeamId, hasIdLessRoleNames]);
+
+  // Current role names everywhere else (DMs, archived team chats): the live
+  // team chat gets them from the bulk lookup above. A role the answer leaves
+  // out keeps its stored name. The counter re-renders once names arrive.
+  const eventRoleRefsKey = useMemo(() => {
+    if (roleLookupTeamId != null) return "";
+    const chatTeamId = conversationType === "team" ? teamData?.id ?? null : null;
+    const refs = new Set();
+    for (const message of messages) {
+      for (const ref of collectEventRoleRefs(message?.content ?? null, chatTeamId)) {
+        refs.add(`${ref.teamId}:${ref.roleId}`);
+      }
+    }
+    return [...refs].sort().join(",");
+  }, [messages, roleLookupTeamId, conversationType, teamData?.id]);
+  const [, setRoleNamesResolved] = useState(0);
+
+  useEffect(() => {
+    if (!eventRoleRefsKey) return undefined;
+
+    let isCancelled = false;
+    const refs = eventRoleRefsKey.split(",").map((key) => {
+      const [teamId, roleId] = key.split(":");
+      return { teamId, roleId };
+    });
+
+    resolveRoleNames(refs).then(() => {
+      if (!isCancelled) setRoleNamesResolved((count) => count + 1);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventRoleRefsKey]);
+
+  // Current team names for the teams named by this chat's events, so a link
+  // shows what the team is called now, as person links already do. Where a
+  // team cannot be fetched (deleted, or private/archived to this reader — the
+  // API answers 404 for all three) the stored name stays as it is.
+  const eventTeamIdsKey = useMemo(() => {
+    const ids = new Set();
+    for (const message of messages) {
+      const teamId = parseSystemMessage(message?.content)?.teamId;
+      if (teamId != null && teamId !== "") ids.add(String(teamId));
+    }
+    return [...ids].sort().join(",");
+  }, [messages]);
+  const [currentTeamNames, setCurrentTeamNames] = useState({});
+  // Teams the API reports as gone (TEAM_NOT_FOUND: hard-deleted, or archived
+  // to a non-member). Their last stored name stays, as text (item 34). A
+  // private team answers TEAM_NOT_ACCESSIBLE instead and keeps its link.
+  const [goneTeamIds, setGoneTeamIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (!eventTeamIdsKey) return undefined;
+
+    let isCancelled = false;
+    const teamIds = eventTeamIdsKey.split(",");
+
+    Promise.allSettled(
+      teamIds.map((teamId) => getCachedChatTeamProfile(teamId)),
+    ).then((results) => {
+      if (isCancelled) return;
+      const names = {};
+      const gone = [];
+      results.forEach((result, index) => {
+        if (
+          result.status === "rejected" &&
+          getTeamErrorCode(result.reason) === "TEAM_NOT_FOUND"
+        ) {
+          gone.push(teamIds[index]);
+        }
+        const name =
+          result.status === "fulfilled" ? (result.value?.name || "").trim() : "";
+        if (name) names[teamIds[index]] = name;
+      });
+      if (Object.keys(names).length > 0) {
+        setCurrentTeamNames((prev) => ({ ...prev, ...names }));
+      }
+      if (gone.length > 0) {
+        setGoneTeamIds((prev) => new Set([...prev, ...gone]));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [eventTeamIdsKey]);
+
   const getResolvedUserData = (userData, userId = null) =>
     mergeResolvedUserData(
       userData,
@@ -502,7 +787,7 @@ const MessageDisplay = ({
   const getTeamMemberFullName = (m) => {
     const first = m.first_name ?? m.firstName;
     const last = m.last_name ?? m.lastName;
-    if (first && last) return `${first} ${last}`;
+    if (first && last) return joinNameParts(first, last);
     if (first) return first;
     return m.username ?? "";
   };
@@ -556,14 +841,14 @@ const MessageDisplay = ({
       const userId = await resolveUserIdByName(safe);
 
       if (!userId) {
-        setNameResolveError(`Could not open "${safe}" (user not found).`);
+        setNameResolveError({ code: "notFound", name: safe });
         return;
       }
 
       handleUserClick(userId, safe);
     } catch (err) {
       console.error("Error resolving user by name:", err);
-      setNameResolveError(`Could not look up "${safe}".`);
+      setNameResolveError({ code: "lookupFailed", name: safe });
     } finally {
       setResolvingName(false);
     }
@@ -572,16 +857,27 @@ const MessageDisplay = ({
   const Mention = ({ name }) => {
     const safe = (name || "").trim();
     if (!safe) return null;
+    // The stored name is the English wire value; only the display translates.
     if (safe === DELETED_USER_DISPLAY_NAME) {
       return (
         <span className="font-medium text-base-content/50">
-          {renderHighlightedSearchText(safe, searchQuery)}
+          {renderHighlightedSearchText(t("user.formerUser"), searchQuery)}
+        </span>
+      );
+    }
+    // A block in either direction anonymizes the mention the same way it
+    // already does in InlineUserLink/AwardCard (F12) — before any click, not
+    // just when one fails.
+    if (blockedRelationshipNames?.has?.(normalizeName(safe))) {
+      return (
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(t("badges.card.privateProfile"), searchQuery)}
         </span>
       );
     }
 
     return (
-      <Tooltip content={`Open ${safe}`} position="top">
+      <Tooltip content={detailsTooltip(safe)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
@@ -594,20 +890,40 @@ const MessageDisplay = ({
     );
   };
 
+  /**
+   * A person named by an event banner.
+   *
+   * 🟢 `name` is already the CURRENT name: `describeEvent`'s
+   * `buildPerson` resolves it from the id against the lookup, so all four
+   * paths that render an event agree. Nothing is resolved here — a hook in
+   * this component would re-fire for every banner on every render, because it
+   * is defined inside `MessageDisplay` and React remounts it each time.
+   *
+   * ⚠️ Without an id there is nothing to resolve from, and the stored
+   * name is all there is for legacy ownership, team-deletion and prose rows
+   * written before their writers emitted tokens.
+   */
   const MentionById = ({ userId, name }) => {
-    const safeName = (name || "").trim() || "User";
+    const safeName = (name || "").trim() || t("user.fallbackName");
     if (!userId) {
       return safeName === DELETED_USER_DISPLAY_NAME ? (
         <span className="font-medium text-base-content/50">
-          {renderHighlightedSearchText(safeName, searchQuery)}
+          {renderHighlightedSearchText(t("user.formerUser"), searchQuery)}
         </span>
       ) : (
         <Mention name={safeName} />
       );
     }
+    if (blockedRelationshipIds?.has?.(String(userId))) {
+      return (
+        <span className="font-medium text-base-content/50">
+          {renderHighlightedSearchText(t("badges.card.privateProfile"), searchQuery)}
+        </span>
+      );
+    }
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
@@ -627,32 +943,52 @@ const MessageDisplay = ({
     );
   }
 
-  const openTeamModal = (teamId) => {
+  const openTeamModal = async (teamId) => {
     if (!teamId) return;
+    // Cached per session, so normally no request: a gone or private team says
+    // so instead of opening a modal that can only show an error (item 34).
+    try {
+      await getCachedChatTeamProfile(teamId);
+    } catch (error) {
+      const code = getTeamErrorCode(error);
+      if (code === "TEAM_NOT_FOUND") {
+        setGoneTeamIds((prev) => new Set(prev).add(String(teamId)));
+        setTeamAlertKey("notFound");
+        return;
+      }
+      if (code === "TEAM_NOT_ACCESSIBLE") {
+        setTeamAlertKey("notAccessible");
+        return;
+      }
+      // Anything else (network, an old backend without a code): open as before.
+    }
     setSelectedTeamId(teamId);
     setIsTeamModalOpen(true);
   };
 
+  // No quotation marks here: the event sentences carry their own („…“ in
+  // German, D6).
   const TeamMentionById = ({ teamId, name }) => {
-    const safeName = (name || "").trim() || "Team";
+    const currentName = teamId ? currentTeamNames[String(teamId)] : null;
+    const safeName = (currentName || name || "").trim() || t("team.unknownName");
 
-    // legacy / missing id => non-clickable fallback
-    if (!teamId) {
+    // legacy / missing id, or a team that is gone => its last name, not a link
+    if (!teamId || goneTeamIds.has(String(teamId))) {
       return (
         <span className="font-medium">
-          "{renderHighlightedSearchText(safeName, searchQuery)}"
+          {renderHighlightedSearchText(safeName, searchQuery)}
         </span>
       );
     }
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:text-primary transition-colors"
           onClick={() => openTeamModal(teamId)}
         >
-          "{renderHighlightedSearchText(safeName, searchQuery)}"
+          {renderHighlightedSearchText(safeName, searchQuery)}
         </button>
       </Tooltip>
     );
@@ -679,7 +1015,7 @@ const MessageDisplay = ({
       user.firstName ?? user.first_name ?? role?.filledByUserFirstName ?? role?.filled_by_user_first_name ?? "";
     const lastName =
       user.lastName ?? user.last_name ?? role?.filledByUserLastName ?? role?.filled_by_user_last_name ?? "";
-    const fullName = `${firstName} ${lastName}`.trim();
+    const fullName = joinNameParts(firstName, lastName);
     return (
       fullName ||
       user.username ||
@@ -763,8 +1099,8 @@ const MessageDisplay = ({
 
     const fallbackRole = {
       id: roleId,
-      roleName: safeName || "Vacant Role",
-      role_name: safeName || "Vacant Role",
+      roleName: safeName || DEFAULT_ROLE_NAME,
+      role_name: safeName || DEFAULT_ROLE_NAME,
       status: fallbackStatus,
       teamId,
       team_id: teamId,
@@ -793,15 +1129,27 @@ const MessageDisplay = ({
         } else {
           const response = await vacantRoleService.getVacantRoles(teamId, "all");
           const roles = response?.data ?? response ?? [];
-          resolvedRole =
-            findMatchingRole(roles, {
-              roleId,
-              roleName: safeName,
-              filledUserId,
-              filledUserName: safeFilledUserName,
-            }) ?? fallbackRole;
+          const matchingRole = findMatchingRole(roles, {
+            roleId,
+            roleName: safeName,
+            filledUserId,
+            filledUserName: safeFilledUserName,
+          });
+          if (!matchingRole && Array.isArray(roles)) {
+            // No role of the team carries this name any more: say so instead
+            // of opening a modal built from the event alone (item 37).
+            setRoleNotFound(true);
+            return;
+          }
+          resolvedRole = matchingRole ?? fallbackRole;
         }
       } catch (error) {
+        if (roleId && error?.response?.status === 404) {
+          // Deleted while this chat was open: unlink it now, not on reload.
+          setDeletedRoleIds((prev) => new Set(prev).add(String(roleId)));
+          setRoleNotFound(true);
+          return;
+        }
         console.warn("Could not fetch role details for chat event:", error);
       }
     }
@@ -821,10 +1169,23 @@ const MessageDisplay = ({
     filledUserName = null,
     filledAt = null,
   }) => {
-    const safeName = (name || "").trim() || "Role";
+    // ⚠️ "Role" is unreachable: every role format the parser matches carries
+    // a non-empty name. Not "Open Role" either (nor the older "Vacant Role")
+    // — those are saved names.
+    // The CURRENT name where it has been fetched (item 38), else the stored one.
+    const safeName = (getCurrentRoleName(roleId) || name || "").trim() || "Role";
+
+    // A deleted role keeps its name as text, like the 🗑️ banner shows it.
+    if (isRoleDeleted(roleId) || isIdLessRoleGone(roleId, safeName)) {
+      return (
+        <span className="font-medium">
+          {renderHighlightedSearchText(safeName, searchQuery)}
+        </span>
+      );
+    }
 
     return (
-      <Tooltip content={`Open ${safeName}`} position="top">
+      <Tooltip content={detailsTooltip(safeName)} position="top">
         <button
           type="button"
           className="font-medium underline underline-offset-2 hover:no-underline hover:opacity-80 transition-opacity"
@@ -867,31 +1228,11 @@ const MessageDisplay = ({
     });
   };
 
-  const isCurrentViewer = (userId) =>
-    userId != null &&
-    currentUserId != null &&
-    String(userId) === String(currentUserId);
-
-  const userMentionOrYou = (userId, name, { capitalized = false } = {}) => {
-    if (isCurrentViewer(userId)) return capitalized ? "You" : "you";
-
-    return userId ? (
-      <MentionById userId={userId} name={name} />
-    ) : (
-      <Mention name={name} />
-    );
-  };
-
-  const possessiveUserMentionOrYour = (userId, name) => {
-    if (isCurrentViewer(userId)) return "Your";
-
-    return (
-      <>
-        {userMentionOrYou(userId, name)}
-        {"'s"}
-      </>
-    );
-  };
+  // ⚠️ `name` is not decoration: the id-less wire formats (see matchesViewer)
+  // can only recognise the reader by name, and without it the transcript told
+  // you that *you* had added a member — under your own name.
+  const isCurrentViewer = (userId, name = null) =>
+    matchesViewer(userId, name, currentUser ?? (currentUserId != null ? { id: currentUserId } : null));
 
   // Group messages by date
   const messagesByDate = messages.reduce((groups, message) => {
@@ -1001,14 +1342,14 @@ const MessageDisplay = ({
   // Get display name with former member indicator
   const getSenderDisplayName = (senderInfo, includeFormerLabel = true) => {
     if (!senderInfo || senderInfo.isDeletedUser) {
-      return DELETED_USER_DISPLAY_NAME;
+      return t("user.formerUser");
     }
 
-    let name = getDeletedUserDisplayName(senderInfo, "Unknown");
+    let name = getDeletedUserDisplayName(senderInfo, t("user.unknown"));
 
-    // Add "(former team member)" suffix if they're no longer a member
+    // Add the "(former team member)" suffix if they're no longer a member
     if (includeFormerLabel && senderInfo.isCurrentMember === false) {
-      name += " (former team member)";
+      name = t("chatPage.formerTeamMember", { name });
     }
     return name;
   };
@@ -1024,7 +1365,7 @@ const MessageDisplay = ({
 
     if (isDeletedSender) {
       return (
-        <Tooltip content={DELETED_USER_DISPLAY_NAME} wrapperClassName="inline-flex flex-shrink-0 mr-2">
+        <Tooltip content={t("user.formerUser")} wrapperClassName="inline-flex flex-shrink-0 mr-2">
           <UserAvatar
             user={senderInfo}
             deleted
@@ -1038,7 +1379,7 @@ const MessageDisplay = ({
     if (!isFormerMember) {
       return (
         <Tooltip
-          content={isClickable ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+          content={isClickable ? detailsTooltip(getSenderDisplayName(senderInfo, false)) : undefined}
           wrapperClassName="inline-flex flex-shrink-0 mr-2"
         >
           <UserAvatar
@@ -1057,9 +1398,9 @@ const MessageDisplay = ({
     }
 
     const formerMemberTooltip = isClickable
-      ? `View ${getSenderDisplayName(senderInfo, false)} details`
+      ? detailsTooltip(getSenderDisplayName(senderInfo, false))
       : isFormerMember
-        ? "Former team member"
+        ? t("chatPage.formerTeamMemberTooltip")
         : undefined;
 
     return (
@@ -1075,7 +1416,7 @@ const MessageDisplay = ({
             className="avatar-fallback bg-base-300 text-base-content/60 flex items-center justify-center w-full h-full rounded-full absolute inset-0"
           >
             <span className="text-sm font-medium event-message-text">
-              FM
+              {t("chatPage.formerTeamMemberInitials")}
             </span>
           </div>
         </div>
@@ -1094,7 +1435,7 @@ const MessageDisplay = ({
 
     return (
       <Tooltip
-        content={canClick ? `View ${getSenderDisplayName(senderInfo, false)} details` : undefined}
+        content={canClick ? detailsTooltip(getSenderDisplayName(senderInfo, false)) : undefined}
         position="top"
       >
         <div
@@ -1123,7 +1464,7 @@ const MessageDisplay = ({
 
     return (
       <Tooltip
-        content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+        content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
         wrapperClassName="inline-flex mb-2 mx-auto"
       >
         <UserAvatar
@@ -1147,7 +1488,7 @@ const MessageDisplay = ({
     const teamAvatarUrl = getTeamAvatarUrl(resolvedTeamData);
 
     return (
-      <Tooltip content={`View ${resolvedTeamData.name} details`} wrapperClassName="inline-flex mb-2">
+      <Tooltip content={detailsTooltip(resolvedTeamData.name)} wrapperClassName="inline-flex mb-2">
       <div
         className="avatar cursor-pointer hover:opacity-80 transition-opacity"
         onClick={handleTeamClick}
@@ -1195,6 +1536,7 @@ const MessageDisplay = ({
     renderRoleInvitationFilledMessage,
     renderRoleInvitationAcceptedMessage,
     renderRoleInvitationAssignedLegacyMessage,
+    renderRoleInvitationAcceptedLegacyMessage,
     renderRoleReopenedMessage,
     renderRoleReopenedAdminMessage,
     renderRoleFilledMessage,
@@ -1210,6 +1552,7 @@ const MessageDisplay = ({
     renderInvitationDeclinedMessage,
     renderApplicationResponseMessage,
     renderApplicationDeclinedMessage,
+    renderRequestVoidMessage,
     renderInvitationResponseMessage,
     renderApplicationCancelledMessage,
     renderRoleChangedMessage,
@@ -1218,21 +1561,24 @@ const MessageDisplay = ({
     renderMemberRemovedMessage,
     renderTeamDeletedMessage,
   } = createEventRenderers({
+    mentionNames,
     Mention,
     MentionById,
     TeamMentionById,
     RoleMentionById,
-    userMentionOrYou,
-    possessiveUserMentionOrYour,
     isCurrentViewer,
     renderAvatar,
     renderSenderName,
     highlightEventContent,
     getReadByTooltip,
     currentUserId,
+    // The id alone cannot decide "is this me?" for the wire formats that carry
+    // names only, including legacy OWNERSHIP_TEAM rows.
+    currentUser,
     conversationType,
     teamMembers,
     searchQuery,
+    t,
   });
 
   // --------------------------------------------
@@ -1241,10 +1587,8 @@ const MessageDisplay = ({
   if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <>
+        <ScreenAlert alerts={screenAlerts} />
         <div className="space-y-6">
-          {nameResolveError && (
-            <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
-          )}
 
           {resolvedConversationPartner && conversationType === "direct" && (
             <div
@@ -1253,7 +1597,7 @@ const MessageDisplay = ({
             >
               {renderConversationPartnerAvatar()}
               <Tooltip
-                content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+                content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
                 wrapperClassName="block"
               >
                 <h3
@@ -1262,7 +1606,10 @@ const MessageDisplay = ({
                 >
                   {resolvedConversationPartner.firstName &&
                   resolvedConversationPartner.lastName
-                    ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                    ? joinNameParts(
+                        resolvedConversationPartner.firstName,
+                        resolvedConversationPartner.lastName,
+                      )
                     : resolvedConversationPartner.username}
                 </h3>
               </Tooltip>
@@ -1276,7 +1623,7 @@ const MessageDisplay = ({
             >
               {renderTeamConversationAvatar()}
               <Tooltip
-                content={`View ${resolvedTeamData.name} details`}
+                content={detailsTooltip(resolvedTeamData.name)}
                 wrapperClassName="block"
               >
                 <h3
@@ -1290,17 +1637,17 @@ const MessageDisplay = ({
           )}
 
           <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-base-content/70">No messages yet</p>
+            <p className="text-base-content/70">{t("chatPage.noMessagesYet")}</p>
             <p className="text-sm text-base-content/50 mt-2">
-              Send a message to start the conversation
+              {t("chatPage.sendFirstMessage")}
             </p>
           </div>
         </div>
 
         <TeamDetailsModal
           isOpen={isTeamModalOpen}
-          teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
-          initialTeamData={conversationType === "team" ? teamData : null}
+          teamId={teamModalId}
+          initialTeamData={teamModalInitialData}
           membersRefreshKey={teamMembersRefreshKey}
           hideMatchData
           onClose={handleTeamModalClose}
@@ -1358,10 +1705,8 @@ const MessageDisplay = ({
 
   return (
     <>
+      <ScreenAlert alerts={screenAlerts} />
       <div className="space-y-6">
-        {nameResolveError && (
-          <div className="mb-2 text-sm text-warning">{nameResolveError}</div>
-        )}
 
         {/* Show conversation partner header for direct messages - CLICKABLE */}
         {resolvedConversationPartner && conversationType === "direct" && (
@@ -1371,7 +1716,7 @@ const MessageDisplay = ({
           >
             {renderConversationPartnerAvatar()}
             <Tooltip
-              content={`View ${resolvedConversationPartner.firstName || resolvedConversationPartner.username} details`}
+              content={detailsTooltip(resolvedConversationPartner.firstName || resolvedConversationPartner.username)}
               wrapperClassName="block"
             >
               <h3
@@ -1380,7 +1725,10 @@ const MessageDisplay = ({
               >
                 {resolvedConversationPartner.firstName &&
                 resolvedConversationPartner.lastName
-                  ? `${resolvedConversationPartner.firstName} ${resolvedConversationPartner.lastName}`
+                  ? joinNameParts(
+                      resolvedConversationPartner.firstName,
+                      resolvedConversationPartner.lastName,
+                    )
                   : resolvedConversationPartner.username}
               </h3>
             </Tooltip>
@@ -1395,7 +1743,7 @@ const MessageDisplay = ({
           >
             {renderTeamConversationAvatar()}
             <Tooltip
-              content={`View ${resolvedTeamData.name} details`}
+              content={detailsTooltip(resolvedTeamData.name)}
               wrapperClassName="block"
             >
               <h3
@@ -1418,7 +1766,7 @@ const MessageDisplay = ({
               {loadingMore ? (
                 <span className="loading loading-spinner loading-xs"></span>
               ) : (
-                "Load earlier messages"
+                t("chatPage.loadEarlier")
               )}
             </button>
           </div>
@@ -1466,7 +1814,7 @@ const MessageDisplay = ({
                     canReactMessage ? (
                       <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 z-10">
                         <Tooltip
-                          content="React"
+                          content={t("messageBubble.respond")}
                           position="top"
                           wrapperClassName="inline-flex"
                         >
@@ -1505,7 +1853,7 @@ const MessageDisplay = ({
                               })
                             }
                             className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-                            aria-label="React to message"
+                            aria-label={t("messageBubble.respondAria")}
                           >
                             <Reply
                               size={14}
@@ -1658,6 +2006,22 @@ const MessageDisplay = ({
                     return renderSystemMessage(
                       renderRoleInvitationAssignedLegacyMessage(message, parsedMessage),
                     );
+                  } else if (
+                    parsedMessage.type === "role_invitation_accepted_legacy"
+                  ) {
+                    // No de-duplication against a richer frontend message here,
+                    // unlike the sibling above: this format is written only when
+                    // the role was NOT filled, so there is no role to match on
+                    // and no ROLE_INVITATION_FILLED counterpart to collide with.
+                    return renderSystemMessage(
+                      renderRoleInvitationAcceptedLegacyMessage(
+                        message,
+                        parsedMessage,
+                        senderInfo,
+                        isCurrentUser,
+                        messageGroup.senderId,
+                      ),
+                    );
                   } else if (parsedMessage.type === "role_reopened") {
                     return renderSystemMessage(
                       renderRoleReopenedMessage(message, parsedMessage),
@@ -1723,6 +2087,10 @@ const MessageDisplay = ({
                           parsedMessage,
                           isCurrentUser,
                         ),
+                    );
+                  } else if (parsedMessage.type === "request_void") {
+                    return renderSystemMessage(
+                      renderRequestVoidMessage(message, parsedMessage),
                     );
                   } else if (parsedMessage.type === "application_approved_dm") {
                     return renderSystemMessage(
@@ -1912,8 +2280,8 @@ const MessageDisplay = ({
                 </div>
                 <span className="text-sm ml-2">
                   {typingUsers.length === 1
-                    ? `${typingUsers[0]} is typing...`
-                    : `${typingUsers.length} people are typing...`}
+                    ? t("chatPage.typingOne", { name: typingUsers[0] })
+                    : t("chatPage.typingMany", { count: typingUsers.length })}
                 </span>
               </div>
             </div>
@@ -1925,8 +2293,8 @@ const MessageDisplay = ({
 
       <TeamDetailsModal
         isOpen={isTeamModalOpen}
-        teamId={conversationType === "team" ? teamData?.id : selectedTeamId}
-        initialTeamData={conversationType === "team" ? teamData : null}
+        teamId={teamModalId}
+        initialTeamData={teamModalInitialData}
         membersRefreshKey={teamMembersRefreshKey}
         hideMatchData
         onClose={handleTeamModalClose}

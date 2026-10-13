@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Tag, Award, Users } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -15,6 +16,7 @@ import {
 import Modal from "../common/Modal";
 import TeamDetailsModal from "../teams/TeamDetailsModal";
 import AwardCard from "./AwardCard";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 const SupercategoryAwardsModal = ({
   isOpen,
@@ -37,6 +39,8 @@ const SupercategoryAwardsModal = ({
   canViewPrivateAwardees = false,
   showAwarderAtBottom = false,
 }) => {
+  const { t } = useTranslation();
+  const { tagLabel, supercategoryLabel } = useTagLabels();
   // Internal TeamDetailsModal state (so the team click works even if parent doesn’t manage it)
   const [selectedTeamForDetails, setSelectedTeamForDetails] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -65,18 +69,35 @@ const SupercategoryAwardsModal = ({
       : false;
   };
 
-  const visibleAwards = showHiddenBadgeAwards
+  const listedAwards = showHiddenBadgeAwards
     ? awards
     : awards.filter((award) => !isAwardHidden(award));
 
+  // The awards carry only the stored tag name, so the id for the SHOWN title comes
+  // from this group's own tag list. Grouping and matching stay on the stored name.
+  const tagIdByName = new Map(
+    (Array.isArray(tags) ? tags : [])
+      .filter((tag) => tag?.name && tag?.id != null)
+      .map((tag) => [tag.name, tag.id]),
+  );
+
   // Group awards by tag name
-  const awardsByTag = visibleAwards.reduce((acc, award) => {
+  const awardsByTag = listedAwards.reduce((acc, award) => {
     const tagName = award.tagName ?? award.tag_name ?? "Unknown";
     if (!acc[tagName]) {
       acc[tagName] = { awards: [], totalCredits: 0 };
     }
     acc[tagName].awards.push(award);
-    acc[tagName].totalCredits += Number(award.credits ?? 0);
+    // Credits count only once the award behind them is shown (BE #339, and the
+    // rule holds for the owner too). The list itself keeps every award the
+    // viewer may see — the owner's hidden ones render grey with the closed eye,
+    // which is where they go to make one visible — so only the SUM skips them.
+    // ⚠️ Counts are deliberately not filtered here: the app shows what is
+    // waiting and leaves it out of the totals, the same split as
+    // `BadgesDisplaySection` ("24 ct. in 15 Bereichen").
+    if (!isAwardHidden(award)) {
+      acc[tagName].totalCredits += Number(award.credits ?? 0);
+    }
     return acc;
   }, {});
 
@@ -91,12 +112,12 @@ const SupercategoryAwardsModal = ({
   const personCount =
     entityType === "team"
       ? new Set(
-          visibleAwards
+          listedAwards
             .map((a) => a.awardedToUserId || a.awarded_to_user_id)
             .filter(Boolean),
         ).size
       : new Set(
-          visibleAwards
+          listedAwards
             .map((a) => a.awardedByUserId || a.awarded_by_user_id)
             .filter(Boolean),
         ).size;
@@ -111,14 +132,18 @@ const SupercategoryAwardsModal = ({
     >
       <span className="leading-[100%]">
         <span className="hidden md:inline">
-          Earned badges in the focus area of{" "}
+          {t("badges.modal.supercategoryTitleLong")}{" "}
         </span>
-        <span className="md:hidden">Earned Badges in </span>
+        <span className="md:hidden">
+          {t("badges.modal.supercategoryTitleShort")}{" "}
+        </span>
         <span className="block md:inline">
           <span className="inline-block align-middle mr-1.5 shrink-0">
             {getSupercategoryIcon(supercategory, 20)}
           </span>
-          <span className="font-semibold">{supercategory}</span>
+          <span className="font-semibold">
+            {supercategoryLabel(supercategory)}
+          </span>
         </span>
       </span>
     </h2>
@@ -143,7 +168,7 @@ const SupercategoryAwardsModal = ({
             </div>
           ) : sortedTags.length === 0 ? (
             <p className="text-base-content/60 text-center py-8">
-              No badge awards linked to focus areas in this category yet.
+              {t("badges.modal.emptySupercategory")}
             </p>
           ) : (
             <>
@@ -152,9 +177,11 @@ const SupercategoryAwardsModal = ({
                 <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-base-content/60 min-w-0">
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Award size={14} />
-                    <span className="font-medium">{visibleAwards.length}</span>
+                    <span className="font-medium">{listedAwards.length}</span>
                     <span className="hidden sm:inline">
-                      award{visibleAwards.length !== 1 ? "s" : ""}
+                      {t("badges.modal.awards", {
+                        count: listedAwards.length,
+                      })}
                     </span>
                   </span>
 
@@ -163,10 +190,10 @@ const SupercategoryAwardsModal = ({
                     <span className="font-medium">{personCount}</span>
                     <span className="hidden sm:inline">
                       {entityType === "team"
-                        ? `team member${personCount !== 1 ? "s" : ""} with badges`
-                        : personCount === 1
-                          ? "person"
-                          : "people"}
+                        ? t("badges.modal.peopleTeam", { count: personCount })
+                        : t("badges.modal.peoplePersonal", {
+                            count: personCount,
+                          })}
                     </span>
                   </span>
 
@@ -177,7 +204,7 @@ const SupercategoryAwardsModal = ({
                       {totalTagCount > 0 ? `/${totalTagCount}` : ""}
                     </span>
                     <span className="hidden sm:inline">
-                      focus areas with awards
+                      {t("badges.modal.focusAreas")}
                     </span>
                   </span>
                 </div>
@@ -194,6 +221,11 @@ const SupercategoryAwardsModal = ({
 
               {/* Awards grouped by tag */}
               {sortedTags.map(([tagName, tagData]) => {
+                // 🟢 This total is never displayed — it only orders the badge
+                // categories inside a tag, so it deliberately counts hidden
+                // awards too. Filtering it would sort a tag's only waiting
+                // award last, away from its peers, and that card is where its
+                // owner goes to make it visible.
                 const awardsByCategory = tagData.awards.reduce((acc, award) => {
                   const category =
                     award.badgeCategory || award.badge_category || "Other";
@@ -230,10 +262,16 @@ const SupercategoryAwardsModal = ({
                           className="font-medium text-sm"
                           style={{ color: FOCUS_GREEN_DARK }}
                         >
-                          {tagName}
+                          {tagLabel(tagIdByName.get(tagName), tagName)}
                         </span>
                       </div>
 
+                      {/* ✅ Julia, 2026-09-29: a total of 0 is written out here, unlike
+                          everywhere else in the app, where a credit figure is
+                          guarded by `> 0`. This modal is about counting, so a
+                          tag whose only award is still hidden should say that it
+                          counts nothing — the grey card below gives the reason.
+                          Do not add a `> 0` guard here for consistency. */}
                       <span
                         className="text-sm font-medium px-3 py-0.5 rounded-full whitespace-nowrap"
                         style={{

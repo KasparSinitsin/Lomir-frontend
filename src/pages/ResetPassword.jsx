@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../utils/authErrorText";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -12,8 +14,10 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { hasLetter, hasNumber } from "../utils/passwordRules";
 
 const ResetPassword = () => {
+  const { t } = useTranslation("auth");
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState("idle"); // idle, submitting, success, error
   const [message, setMessage] = useState("");
@@ -30,31 +34,29 @@ const ResetPassword = () => {
     // Check if token exists in URL
     if (!token) {
       setStatus("error");
-      setMessage(
-        "No reset token found. Please request a new password reset link.",
-      );
+      setMessage(t("auth:resetPassword.invalidToken"));
     }
-  }, [token]);
+  }, [token, t]);
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("auth:resetPassword.errors.passwordRequired");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = t("auth:resetPassword.errors.passwordLength");
     } else if (
-      !/[A-Za-z]/.test(formData.password) ||
-      !/\d/.test(formData.password)
+      !hasLetter(formData.password) ||
+      !hasNumber(formData.password)
     ) {
       newErrors.password =
-        "Password must contain at least one letter and one number";
+        t("auth:resetPassword.errors.passwordLetterNumber");
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = t("auth:resetPassword.errors.confirmRequired");
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t("auth:resetPassword.errors.passwordsMismatch");
     }
 
     setErrors(newErrors);
@@ -94,16 +96,15 @@ const ResetPassword = () => {
 
       if (response.data.success) {
         setStatus("success");
-        setMessage(
-          response.data.message || "Your password has been reset successfully!",
-        );
+        // See ForgotPassword: the backend's success prose always wins over a
+        // `||` fallback, so the translation never rendered.
+        setMessage(t("auth:resetPassword.successFallback"));
       }
     } catch (error) {
       console.error("Reset password error:", error);
       setStatus("error");
       setMessage(
-        error.response?.data?.message ||
-          "Failed to reset password. The link may be invalid or expired.",
+        getAuthErrorText(error, t, t("auth:resetPassword.fallbackError")),
       );
     }
   };
@@ -117,14 +118,14 @@ const ResetPassword = () => {
             <div className="card-body text-center py-10 px-8">
               <XCircle size={56} className="mx-auto mb-4 text-error" />
               <h2 className="card-title text-2xl font-bold justify-center mb-3">
-                Invalid Link
+                {t("auth:resetPassword.invalidTitle")}
               </h2>
               <p className="text-base-content/70 mb-8">
-                No reset token found. Please request a new password reset link.
+                {t("auth:resetPassword.invalidToken")}
               </p>
               <Link to="/forgot-password" className="w-full">
                 <Button variant="primary" fullWidth>
-                  Request New Link
+                  {t("auth:resetPassword.requestNew")}
                 </Button>
               </Link>
             </div>
@@ -144,14 +145,14 @@ const ResetPassword = () => {
               <CheckCircle size={56} className="mx-auto mb-4 text-success" />
 
               <h2 className="card-title text-2xl font-bold justify-center mb-3">
-                Password Reset!
+                {t("auth:resetPassword.successTitle")}
               </h2>
 
               <p className="text-base-content/70 mb-8">{message}</p>
 
               <Link to="/login" className="w-full">
                 <Button variant="primary" fullWidth>
-                  Log in with new password
+                  {t("auth:resetPassword.loginWithNewPassword")}
                 </Button>
               </Link>
             </div>
@@ -171,7 +172,7 @@ const ResetPassword = () => {
               <XCircle size={56} className="mx-auto mb-4 text-error" />
 
               <h2 className="card-title text-2xl font-bold justify-center mb-3">
-                Reset Failed
+                {t("auth:resetPassword.errorTitle")}
               </h2>
 
               <p className="text-base-content/70 mb-8">{message}</p>
@@ -179,12 +180,12 @@ const ResetPassword = () => {
               <div className="space-y-3">
                 <Link to="/forgot-password" className="w-full block">
                   <Button variant="primary" fullWidth>
-                    Request New Reset Link
+                    {t("auth:resetPassword.requestNewReset")}
                   </Button>
                 </Link>
                 <Link to="/login" className="w-full block">
                   <Button variant="ghost" fullWidth>
-                    Back to Login
+                    {t("auth:common.backToLogin")}
                   </Button>
                 </Link>
               </div>
@@ -204,16 +205,16 @@ const ResetPassword = () => {
             <div className="text-center mb-6">
               <KeyRound size={48} className="mx-auto mb-4 text-primary" />
               <h2 className="text-2xl font-bold text-primary">
-                Create New Password
+                {t("auth:resetPassword.title")}
               </h2>
               <p className="text-base-content/70 mt-2">
-                Enter your new password below.
+                {t("auth:resetPassword.description")}
               </p>
             </div>
 
             <form onSubmit={handleSubmit}>
               <FormGroup
-                label="New Password"
+                label={t("auth:common.newPassword")}
                 htmlFor="password"
                 error={errors.password}
                 required
@@ -235,6 +236,12 @@ const ResetPassword = () => {
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={
+                      showPassword
+                        ? t("auth:common.hidePassword")
+                        : t("auth:common.showPassword")
+                    }
+                    aria-pressed={showPassword}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -242,7 +249,7 @@ const ResetPassword = () => {
               </FormGroup>
 
               <FormGroup
-                label="Confirm New Password"
+                label={t("auth:common.confirmNewPassword")}
                 htmlFor="confirmPassword"
                 error={errors.confirmPassword}
                 required
@@ -264,6 +271,12 @@ const ResetPassword = () => {
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={
+                      showConfirmPassword
+                        ? t("auth:common.hidePassword")
+                        : t("auth:common.showPassword")
+                    }
+                    aria-pressed={showConfirmPassword}
                   >
                     {showConfirmPassword ? (
                       <EyeOff size={20} />
@@ -284,10 +297,10 @@ const ResetPassword = () => {
                   {status === "submitting" ? (
                     <>
                       <Loader2 size={20} className="animate-spin mr-2" />
-                      Resetting...
+                      {t("auth:resetPassword.submitting")}
                     </>
                   ) : (
-                    "Reset Password"
+                    t("auth:resetPassword.submit")
                   )}
                 </Button>
               </div>
@@ -295,7 +308,7 @@ const ResetPassword = () => {
 
             <div className="text-center mt-6">
               <Link to="/login" className="link link-primary text-sm">
-                Back to Login
+                {t("auth:common.backToLogin")}
               </Link>
             </div>
           </div>

@@ -95,6 +95,7 @@ const useAwardModals = ({
   const [tagAwardsModal, setTagAwardsModal] = useState({
     isOpen: false,
     tagName: null,
+    tagId: null,
     dominantBadgeCategory: null,
     totalCredits: 0,
   });
@@ -193,6 +194,8 @@ const useAwardModals = ({
       setTagAwardsModal({
         isOpen: true,
         tagName: tag.name,
+        // the id only picks the SHOWN title; the stored name stays the key below
+        tagId: tag.id ?? null,
         dominantBadgeCategory:
           tag.dominantBadgeCategory ?? tag.dominant_badge_category,
         totalCredits: tag.badgeCredits ?? tag.badge_credits ?? 0,
@@ -273,6 +276,7 @@ const useAwardModals = ({
     setTagAwardsModal({
       isOpen: false,
       tagName: null,
+      tagId: null,
       dominantBadgeCategory: null,
       totalCredits: 0,
     });
@@ -289,14 +293,28 @@ const useAwardModals = ({
     setSupercategoryAwards([]);
   }, []);
 
-  const removeAwardFromBadgeModal = useCallback((removedAward) => {
-    const removedAwardCredits = Number(removedAward?.credits ?? 0);
+  /**
+   * Drops a deleted award from whichever award modal is open and lowers that
+   * modal's header total by what the award actually contributed.
+   *
+   * ⚠️ `countedTowardsTotal` is not optional information: a hidden award has
+   * never been in any of these totals (BE #339 counts only awards that are
+   * shown, for the owner too), so deleting one must subtract nothing. Only the
+   * caller knows the visibility — this hook has no access to `hiddenAwardIds`.
+   */
+  const removeAwardFromBadgeModal = useCallback((
+    removedAward,
+    { countedTowardsTotal = true } = {},
+  ) => {
+    const removedAwardCredits = countedTowardsTotal
+      ? Number(removedAward?.credits ?? 0)
+      : 0;
 
     setDetailedBadgeAwards((prevAwards) => {
       let removedCredits = 0;
       const nextAwards = prevAwards.filter((award) => {
         if (!sameAward(award, removedAward)) return true;
-        removedCredits += Number(award.credits ?? 0);
+        removedCredits += countedTowardsTotal ? Number(award.credits ?? 0) : 0;
         return false;
       });
 
@@ -399,6 +417,7 @@ const useAwardModals = ({
     isOpen: tagAwardsModal.isOpen,
     onClose: closeTagAwardsModal,
     tagName: tagAwardsModal.tagName,
+    tagId: tagAwardsModal.tagId,
     dominantBadgeCategory: tagAwardsModal.dominantBadgeCategory,
     totalCredits: tagAwardsModal.totalCredits,
     awards: tagAwards,

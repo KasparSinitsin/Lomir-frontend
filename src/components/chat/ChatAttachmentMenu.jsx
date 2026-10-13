@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Smile, Image, X, FileText } from "lucide-react";
 import ChatImageUploader from "./ChatImageUploader";
 import ChatFileUploader from "./ChatFileUploader";
@@ -9,6 +10,7 @@ const ChatAttachmentMenu = ({
   onFileSelect,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showImageUploader, setShowImageUploader] = useState(false);
@@ -73,7 +75,7 @@ const ChatAttachmentMenu = ({
         className={`btn btn-ghost btn-circle ${isOpen ? "bg-base-200" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        aria-label="Add attachment"
+        aria-label={t("chatUploader.addAttachmentAria")}
       >
         {isOpen ? <X size={18} /> : <Plus size={18} />}
       </button>
@@ -90,7 +92,7 @@ const ChatAttachmentMenu = ({
               onClick={() => handleOptionClick("emoji")}
             >
               <Smile size={18} className="text-yellow-500" />
-              <span className="text-sm">Emoji</span>
+              <span className="text-sm">{t("chatUploader.optionEmoji")}</span>
             </button>
             <button
               type="button"
@@ -98,7 +100,7 @@ const ChatAttachmentMenu = ({
               onClick={() => handleOptionClick("image")}
             >
               <Image size={18} className="text-blue-500" />
-              <span className="text-sm">Image</span>
+              <span className="text-sm">{t("chatUploader.optionImage")}</span>
             </button>
             <button
               type="button"
@@ -106,7 +108,7 @@ const ChatAttachmentMenu = ({
               onClick={() => handleOptionClick("file")}
             >
               <FileText size={18} className="text-green-500" />
-              <span className="text-sm">File</span>
+              <span className="text-sm">{t("chatUploader.optionFile")}</span>
             </button>
           </div>
         )}

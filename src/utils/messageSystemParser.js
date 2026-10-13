@@ -5,6 +5,22 @@
 // callers (eventPreview, MessageNotifications) can share it without importing
 // the component.
 
+/**
+ * `"157:Anna Kowalski"` -> `{ id: 157, name: "Anna Kowalski" }`, and a token
+ * with no id prefix -> `{ id: null, name: token }`.
+ *
+ * ⚠️ That fallback is the whole compatibility story for the five PROSE
+ * formats (👋 / 🎉 / 🎯). They are the ones the backend
+ * wrote with a bare name, so every row already stored keeps parsing unchanged
+ * while new rows carry an id. The tolerance is structural, not a timed window
+ * like `LEGACY_REPORT_TOPIC` — there is nothing here to remove later, because
+ * rows written years apart stay readable side by side.
+ *
+ * 🔴 Deploy order follows from this, in one direction only: the FRONTEND
+ * must ship before the backend starts writing tokens. Until the person slots
+ * below go through this function, a captured `"157:Anna Kowalski"` is rendered
+ * verbatim as the person's name, so an id would appear in the sentence.
+ */
 const parseIdNameToken = (token) => {
   const t = (token || "").trim();
   const m = t.match(/^(\d+)\s*:(.+)$/);
@@ -16,7 +32,7 @@ const parseIdNameToken = (token) => {
  * Parse system messages (join notifications, invitation responses)
  * Returns structured data if it's a system message, null otherwise
  */
-export const parseSystemMessage = (content) => {
+const parseSystemMessageRaw = (content) => {
   if (!content) return null;
 
   // Pattern 1: Team join message — with optional role and optional personal message
@@ -28,9 +44,11 @@ export const parseSystemMessage = (content) => {
     /^👋\s+(.+?)\s+joined the team as (.+?)!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinWithRoleMatch) {
+    const user = parseIdNameToken(joinWithRoleMatch[1]);
     return {
       type: "team_join",
-      userName: joinWithRoleMatch[1].trim(),
+      userId: user.id,
+      userName: user.name,
       roleName: joinWithRoleMatch[2].trim(),
       personalMessage: joinWithRoleMatch[3]?.trim() ?? null,
     };
@@ -40,9 +58,11 @@ export const parseSystemMessage = (content) => {
     /^👋\s+(.+?)\s+joined the team!\s*(?:\n\n"([\s\S]+)")?$/,
   );
   if (joinMatch) {
+    const user = parseIdNameToken(joinMatch[1]);
     return {
       type: "team_join",
-      userName: joinMatch[1].trim(),
+      userId: user.id,
+      userName: user.name,
       personalMessage: joinMatch[2]?.trim() ?? null,
     };
   }
@@ -53,10 +73,52 @@ export const parseSystemMessage = (content) => {
     /^📋\s+Response to your invitation for "(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (declineMatch) {
+    // The team may carry its id inside the quotes ("12:Chor") since item 35.
+    const team = parseIdNameToken(declineMatch[1].trim());
     return {
       type: "invitation_response",
-      teamName: declineMatch[1].trim(),
+      teamId: team.id,
+      teamName: team.name,
       personalMessage: declineMatch[2].trim(),
+    };
+  }
+
+  // Pattern 2b (legacy, Jan 2026; writer not found in either repo): an
+  // application decline DM, decliner (the sender) → applicant. Read as the
+  // marker's type; the applicant is the DM's receiver and not named.
+  // Format: 📋 Your application to "<team>" was declined by <decliner>.
+  const legacyApplicationDeclinedMatch = content.match(
+    /^📋\s+Your application to "(.+?)" was declined by (.+?)\.$/,
+  );
+  if (legacyApplicationDeclinedMatch) {
+    const team = parseIdNameToken(legacyApplicationDeclinedMatch[1].trim());
+    const approver = parseIdNameToken(legacyApplicationDeclinedMatch[2].trim());
+    return {
+      type: "application_declined",
+      teamId: team.id,
+      teamName: team.name,
+      approverId: approver.id,
+      approverName: approver.name,
+      applicantId: null,
+      applicantName: null,
+      hasPersonalMessage: false,
+    };
+  }
+
+  // Pattern 2c (legacy, BE 68df287, Dec 2025): application decline response
+  // that names no applicant, DM decliner → applicant.
+  // Format: 📋 Response to your application for "<team>":\n\n"<message>"
+  const legacyApplicationResponseMatch = content.match(
+    /^📋\s+Response to your application for "(.+?)":\s*\n\n"(.+)"$/s,
+  );
+  if (legacyApplicationResponseMatch) {
+    const team = parseIdNameToken(legacyApplicationResponseMatch[1].trim());
+    return {
+      type: "application_response",
+      applicantName: null,
+      teamId: team.id,
+      teamName: team.name,
+      personalMessage: legacyApplicationResponseMatch[2].trim(),
     };
   }
 
@@ -67,10 +129,14 @@ export const parseSystemMessage = (content) => {
   );
 
   if (applicationApprovedMatch) {
+    const applicant = parseIdNameToken(applicationApprovedMatch[1]);
+    const approver = parseIdNameToken(applicationApprovedMatch[2]);
     return {
       type: "application_approved",
-      applicantName: applicationApprovedMatch[1].trim(),
-      approverName: applicationApprovedMatch[2].trim(),
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      approverId: approver.id,
+      approverName: approver.name,
     };
   }
 
@@ -388,11 +454,35 @@ export const parseSystemMessage = (content) => {
     /^🎯\s+(.+?)\s+was assigned the role\s+(.+?)!(?:\s*\n+"(.+)")?$/s,
   );
   if (roleInvitationAssignedMatch) {
+    const invitee = parseIdNameToken(roleInvitationAssignedMatch[1]);
     return {
       type: "role_invitation_assigned_legacy",
-      inviteeName: roleInvitationAssignedMatch[1].trim(),
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
       roleName: roleInvitationAssignedMatch[2].trim(),
       personalMessage: roleInvitationAssignedMatch[3]?.trim() ?? null,
+    };
+  }
+
+  // Pattern 4K: the sibling of 4J, written when an existing member accepts an
+  // internal role invitation but the role is NOT filled (the invitation's role
+  // was closed or taken in the meantime), so there is no role name to show.
+  // Format: 🎯 Name accepted a role invitation!\n\n"personal message"
+  //
+  // Until this pattern existed the format fell through every branch and was
+  // shown as its raw stored text — an English sentence naming a person in a
+  // German chat — and, because the unparsed path is the ordinary-message path,
+  // the chat offered its sender Edit and Delete on a team event record.
+  const roleInvitationAcceptedLegacyMatch = content.match(
+    /^🎯\s+(.+?)\s+accepted a role invitation!(?:\s*\n+"(.+)")?$/s,
+  );
+  if (roleInvitationAcceptedLegacyMatch) {
+    const invitee = parseIdNameToken(roleInvitationAcceptedLegacyMatch[1]);
+    return {
+      type: "role_invitation_accepted_legacy",
+      inviteeId: invitee.id,
+      inviteeName: invitee.name,
+      personalMessage: roleInvitationAcceptedLegacyMatch[2]?.trim() ?? null,
     };
   }
 
@@ -402,10 +492,13 @@ export const parseSystemMessage = (content) => {
     /^📋\s+Application declined:\s+(.+?)\s+for\s+"(.+?)":\s*\n\n"(.+)"$/s,
   );
   if (applicationDeclineMatch) {
+    // The team may carry its id inside the quotes ("12:Chor") since item 35.
+    const team = parseIdNameToken(applicationDeclineMatch[2].trim());
     return {
       type: "application_response",
       applicantName: applicationDeclineMatch[1].trim(),
-      teamName: applicationDeclineMatch[2].trim(),
+      teamId: team.id,
+      teamName: team.name,
       personalMessage: applicationDeclineMatch[3].trim(),
     };
   }
@@ -682,10 +775,14 @@ export const parseSystemMessage = (content) => {
     /^(?:👑\s*)?OWNERSHIP_TEAM:\s+(.+?)\s+\|\s+(.+)$/,
   );
   if (ownershipTeamMatch) {
+    const prev = parseIdNameToken(ownershipTeamMatch[1]);
+    const next = parseIdNameToken(ownershipTeamMatch[2]);
     return {
       type: "ownership_team",
-      prevOwnerName: ownershipTeamMatch[1].trim(),
-      newOwnerName: ownershipTeamMatch[2].trim(),
+      prevOwnerId: prev.id,
+      prevOwnerName: prev.name,
+      newOwnerId: next.id,
+      newOwnerName: next.name,
     };
   }
 
@@ -706,5 +803,108 @@ export const parseSystemMessage = (content) => {
     };
   }
 
+  // Pattern 16: a deleted team voids an open application or invitation (DM,
+  // owner -> applicant/invitee). The recipient is the DM's receiver and is
+  // deliberately not named in the row.
+  // Format: 🗑️ REQUEST_VOID: teamId:teamName | ownerId:ownerName | application|invitation|role_application|role_invitation | archived|deleted | hasPersonalMessage
+  // The role_* kinds are a MEMBER's application for / invitation to a role.
+  const requestVoidMatch = content.match(
+    /^🗑️\s+REQUEST_VOID:\s+(.+?)\s+\|\s+(.+?)\s+\|\s+(application|invitation|role_application|role_invitation)\s+\|\s+(archived|deleted)\s+\|\s+(true|false)$/,
+  );
+  if (requestVoidMatch) {
+    const team = parseIdNameToken(requestVoidMatch[1].trim());
+    const owner = parseIdNameToken(requestVoidMatch[2].trim());
+
+    return {
+      type: "request_void",
+      teamId: team.id,
+      teamName: team.name,
+      ownerId: owner.id,
+      ownerName: owner.name,
+      requestKind: requestVoidMatch[3],
+      deletionMode: requestVoidMatch[4],
+      hasPersonalMessage: requestVoidMatch[5] === "true",
+    };
+  }
+
   return null;
 };
+
+/**
+ * Placeholder names both repos write INTO the stored message when a name
+ * cannot be resolved — `roleEventMessages.js`, `vacantRoleController.js`,
+ * `teamMembersController.js`, `invitationController.js`,
+ * `teamApplicationsController.js`.
+ *
+ * ⚠️ They sit in historical rows and cannot be migrated away, so the frontend
+ * has to keep recognising them no matter what the backend does later.
+ */
+export const PERSON_NAME_PLACEHOLDERS = Object.freeze(["someone", "unknown"]);
+
+/**
+ * The same problem for the two entity slots — but shorter than it looks, and
+ * one candidate had to be removed after reading a real transcript.
+ *
+ * 🔴 **The default role name is NOT a placeholder.** It is the default
+ * `roleName` in `CreateVacantRoleModal.jsx`, saved to the database as a real
+ * role name and deliberately kept English (settled decision, STATUS.md).
+ * Neutralising it would erase a name a user actually chose.
+ *
+ * ⚠️ **Two spellings, both real.** The default is **"Open Role"** since
+ * 2026-09-28; before that it was **"Vacant Role"**, and stored chats keep the
+ * old one — a chat from 18 May 2026 shows it as a clickable role: "The new
+ * role Vacant Role has been created by you". Neither may be neutralised, and
+ * a user may also have typed either by hand.
+ *
+ * ⚠️ NOT neutralised yet either: a null role or team name needs a sentence
+ * that does not mention one ("The role was closed"), and those arrive with the
+ * per-family translation PRs.
+ */
+export const ENTITY_NAME_PLACEHOLDERS = Object.freeze([
+  "this role",
+  "their current role",
+  "your team",
+]);
+
+const ENTITY_NAME_KEYS = new Set(["teamName", "roleName", "currentRoleName"]);
+
+const isPlaceholderPersonName = (value) =>
+  typeof value === "string" &&
+  PERSON_NAME_PLACEHOLDERS.includes(value.trim().toLowerCase());
+
+/**
+ * Turns an unresolvable person name into `null`, so that no renderer has to
+ * compare a name against an English word to find out whether it knows who
+ * acted. Before this, `"someone"` was compared at ten sites across the four
+ * event files — and two of them had no such guard, which is why the same
+ * ROLE_FILLED message read "was marked as filled" in the transcript and
+ * "has been filled by Someone" in the conversation list.
+ *
+ * ⚠️ An account genuinely called "Someone" is treated as nameless. That was
+ * already true wherever a guard existed; it is the price of a placeholder
+ * that lives in the same slot as real data.
+ */
+const normalizePlaceholderNames = (parsed) => {
+  if (!parsed) return parsed;
+
+  let changed = false;
+  const normalized = {};
+
+  for (const [key, value] of Object.entries(parsed)) {
+    if (
+      key.endsWith("Name") &&
+      !ENTITY_NAME_KEYS.has(key) &&
+      isPlaceholderPersonName(value)
+    ) {
+      normalized[key] = null;
+      changed = true;
+      continue;
+    }
+    normalized[key] = value;
+  }
+
+  return changed ? normalized : parsed;
+};
+
+export const parseSystemMessage = (content) =>
+  normalizePlaceholderNames(parseSystemMessageRaw(content));

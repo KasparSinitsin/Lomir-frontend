@@ -31,11 +31,12 @@ To test the live demo, just **register your own account** directly in the deploy
 - **Search & Discovery** — Find teams, users, and vacant roles by keyword, tags, badges, or location; use Boolean search helpers, responsive filter/sort controls, and shared card/mini/list/map view toggles
 - **Best Match Sorting** — Weighted matching algorithm scores teams and roles against your profile (tags 40%, badges 30%, distance 30%)
 - **Map View** — Leaflet-powered map with custom markers for teams, users, and roles; popups with detail cards; distance-based filtering and proximity sorting
-- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search
-- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
+- **Team Management** — Create teams, manage members and roles, post vacant roles, handle applications and invitations with role-specific targeting; My Teams uses the same responsive sort and result-view controls as search; deleting a team archives it, and everyone with an open application or invitation is told in a direct message from the owner, who can add a personal note; an archived team is read-only (no role management, no handling of requests), while removing members and leaving it stay possible
+- **User Profiles** — Customizable profiles with interest tags, badges, avatar uploads (ImageKit — from the profile, once the email address is confirmed; registration takes no picture), and geocoded location; profile header shows city and country code; non-public profiles are protected — non-owners and non-teammates see only the username and avatar ("This profile is private"); owners see public/private visibility indicators on profile, card, list, mini-card, and map views; signed-in users can block another profile from the user details modal
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO); blocked users are hidden from direct conversations, team rosters, mention lists, and rendered message streams
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — Navbar bell and chat badges with interactive hover tooltips that summarize unread items by type; clear everything behind a badge in one click, or click a type-group to work through its notifications from oldest to newest; notifications whose target was already handled by someone else resolve with an explanation instead of opening an empty view
+- **Bilingual Interface (English / German)** — UI text, the chat's system-event sentences and the legal pages exist in both languages (i18next with ICU messages); translation is being rolled out page by page, and the language picker stays hidden unless `VITE_LANGUAGE_FEATURE_VISIBLE=true` is set (see [Internationalisation](#internationalisation))
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
@@ -56,12 +57,14 @@ To test the live demo, just **register your own account** directly in the deploy
 | Server State | TanStack React Query 5 |
 | Real-time | Socket.IO Client |
 | Maps | Leaflet + React Leaflet |
+| Internationalisation | i18next + react-i18next, ICU message format (i18next-icu), English and German |
 | Typography | Roboto (self-hosted woff2, GDPR-compliant — no Google CDN) |
 | Icons | Lucide React, React Icons |
 | Date Utilities | date-fns |
 | Autocomplete | Downshift |
 | Image Uploads | ImageKit (client-side upload with server-authenticated tokens) |
 | CAPTCHA | Cloudflare Turnstile (feature-flagged) |
+| CI | GitHub Actions — lint, i18n check and build on pull requests to, and pushes to, `dev` and `main` |
 
 ---
 
@@ -69,8 +72,8 @@ To test the live demo, just **register your own account** directly in the deploy
 
 ### Prerequisites
 
-- **Node.js** v18+ and npm
-- The [Lomir backend](https://github.com/KasparSinitsin/Lomir-backend) running on `http://localhost:5001`
+- **Node.js** v18+ and npm (CI runs on Node 22)
+- The [Lomir backend](https://github.com/KasparSinitsin/Lomir-backend) running on `http://localhost:5001` (its README sets up a local demo database with `npm run demo-db`)
 
 ### 1. Clone the repo
 
@@ -96,7 +99,8 @@ VITE_API_URL=http://localhost:5001
 # Optional Socket.IO override (defaults to http://localhost:5001 if unset)
 # VITE_SOCKET_URL=http://localhost:5001
 
-# ImageKit (image/file uploads — get values from the project owner)
+# ImageKit — only needed for uploads; use keys from your own ImageKit account.
+# Without them the app runs, and only uploading a picture or a file fails.
 VITE_IMAGEKIT_PUBLIC_KEY=<your-public-key>
 VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
@@ -105,9 +109,24 @@ VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
 # Contact page — set to a Lomir user ID to route authenticated users to in-app chat
 # VITE_LOMIR_CONTACT_USER_ID=<lomir-team-user-id>
+
+# Bilingual interface — the English/German language picker is being built and
+# is hidden unless this is set to true. Restart the dev server after changing it.
+# VITE_LANGUAGE_FEATURE_VISIBLE=true
 ```
 
-> Get the ImageKit values from the project owner.
+While running `npm run dev` you can also turn the language picker on from the
+browser console without restarting anything, and off again the same way:
+
+```js
+localStorage.setItem("lomir.languageFeaturePreview", "true"); // then reload
+localStorage.removeItem("lomir.languageFeaturePreview");      // then reload
+```
+
+This second switch exists only in a development server; it is compiled out of
+production builds.
+
+> Without ImageKit values the app runs against a local demo backend; only uploads need keys from your own ImageKit account. Maintainers of the shared environment get its values from the project owner.
 
 ### 4. Start the dev server
 
@@ -127,6 +146,8 @@ The app starts on `http://localhost:5173` with hot module replacement.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint |
+| `npm run i18n:check` | Fail when a translation key is used but not defined, when English and German have drifted apart, or when a message is not valid ICU |
+| `npm run legal:check` | Fail when the German and English legal texts (`src/content/legal/`) no longer have the same shape — sections, paragraphs, embedded links, numbers, legal citations |
 
 ---
 
@@ -134,8 +155,14 @@ The app starts on `http://localhost:5173` with hot module replacement.
 
 ```text
 Lomir-frontend/
+├── .github/workflows/ci.yml        # CI: npm ci, lint, i18n:check, build (no secrets, no .env)
 ├── public/
-│   └── fonts/                      # Self-hosted Roboto woff2 files (weights 300/400/500/700)
+│   ├── fonts/                      # Self-hosted Roboto woff2 files (weights 300/400/500/700)
+│   ├── screenshots/                # App screenshots
+│   └── Lomir-logowordmark-square-color.svg
+├── scripts/
+│   ├── i18n-check.mjs              # npm run i18n:check
+│   └── legal-parity.mjs            # npm run legal:check
 ├── src/
 │   ├── main.jsx                    # App entry point
 │   ├── App.jsx                     # Root component with routing
@@ -148,10 +175,11 @@ Lomir-frontend/
 │   │   ├── Profile.jsx             # User profile editing
 │   │   ├── PublicProfile.jsx       # Other users' public profiles; shows "private" message for
 │   │   │                           #   limited-access profiles; placeholder for deleted users
-│   │   ├── Register.jsx            # Multi-step registration with CAPTCHA
+│   │   ├── Register.jsx            # Registration (RegisterForm): one form with legal consent and CAPTCHA; no picture until the email is confirmed
 │   │   ├── Login.jsx
 │   │   ├── Chat.jsx                # Direct + team messaging with file sharing; filters blocked users
 │   │   ├── BadgeOverview.jsx       # Badge catalog and details
+│   │   ├── FocusAreaOverview.jsx   # /focusareas: every focus area by supercategory and category; a focus area opens the search with it set
 │   │   ├── Settings.jsx            # Visibility, blocklist, password/email changes (password change sends a
 │   │   │                           #   confirmation email and logs you out of all sessions; email change sends
 │   │   │                           #   a verification link) + account deletion modal
@@ -161,15 +189,18 @@ Lomir-frontend/
 │   │   ├── VerifyEmailChange.jsx   # Confirms email-change links for logged-in users (verifying/success/error states)
 │   │   ├── Contact.jsx             # Contact form with file attachments, report reference display,
 │   │   │                           #   privacy notice, and in-app chat routing
-│   │   └── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
+│   │   ├── LegalPage.jsx            # Shared page for /about, /terms, /privacy, /legal-notice
+│   │   └── DesignSystem.jsx        # Component playground — deliberately NOT routed (see the note at its top)
 │   ├── components/
 │   │   ├── BooleanSearchInput.jsx  # Textarea-based Boolean search input with operator helpers
 │   │   ├── SearchHelp.jsx          # Search Tips popup panel
 │   │   ├── auth/                   # LoginForm, RegisterForm
 │   │   ├── teams/                  # TeamCard, TeamDetailsModal, TeamAvatar, TeamEditForm,
-│   │   │                           #   TeamFocusAreaSection, TeamMembersSection, TeamRoleManager,
+│   │   │                           #   TeamFocusAreaSection, TeamMembersSection,
 │   │   │                           #   VacantRoleCard, VacantRoleDetailsModal (lazy-loaded via VacantRoleDetailsModalLazy), VacantRolesSection,
 │   │   │                           #   CreateTeamModal, CreateVacantRoleModal, RoleBadgeDropdown,
+│   │   │                           #   TeamDeleteDialog (shared by the team modal and the team card; a
+│   │   │                           #   second page notifies open applicants and invitees),
 │   │   │                           #   TeamApplicationButton, TeamApplicationModal,
 │   │   │                           #   TeamApplicationsModal, TeamApplicationDetailsModal,
 │   │   │                           #   TeamInviteModal, TeamInvitesModal,
@@ -185,13 +216,16 @@ Lomir-frontend/
 │   │   │                           #   DeletedUserProfilePlaceholder
 │   │   ├── badges/                 # Badge display, awarding, category modals, AwardCard
 │   │   ├── tags/                   # Tag input, display, and selection
-│   │   ├── chat/                   # Chat UI, message bubbles, file/image previews,
+│   │   ├── focusAreas/             # The focus area overview: FocusAreaSupercategorySection, FocusAreaCategoryCard
+│   │   ├── chat/                   # Chat UI (ConversationSidebar / ConversationList / ConversationHeader,
+│   │   │                           #   MessageArea, MessageInput, MessageNotifications, ArchivedTeamBanner),
+│   │   │                           #   message bubbles, file/image previews and uploaders,
 │   │   │                           #   MentionDropdown, MessageText (mentions + URLs),
 │   │   │                           #   reply previews, system event messages.
 │   │   │                           #   MessageDisplay.jsx is a thin orchestrator after the
 │   │   │                           #   Stage 1–4c decomposition; extracted modules:
 │   │   │                           #   messageEventRenderers.jsx (createEventRenderers(ctx)
-│   │   │                           #   factory for the 29 system/event renderers),
+│   │   │                           #   factory for the system/event renderers),
 │   │   │                           #   MessageBubble.jsx, ReadReceipt.jsx, FileAttachment.jsx
 │   │   ├── search/                 # SearchMapView (Leaflet map with markers/popups)
 │   │   ├── common/                 # Shared UI primitives and composed widgets:
@@ -206,16 +240,28 @@ Lomir-frontend/
 │   │   │                           #   SearchResultTypeOverlay, NotificationBadge,
 │   │   │                           #   PersonRequestCard, RequestListModal, SendMessageButton,
 │   │   │                           #   VisibilityToggle, ScreenAlert, ConfirmModal,
-│   │   │                           #   ErrorBoundary
-│   │   └── layout/                 # Navbar, Footer, PageContainer, ProtectedRoute, Grid, Section
+│   │   │                           #   ErrorBoundary, LanguageSelect, LanguageFlag,
+│   │   │                           #   CommunicationSection, LocationDistanceTagsRow, TagDisplay,
+│   │   │                           #   LegalLink (links to the legal pages, opened in a new tab),
+│   │   │                           #   ModalTest (only used by the unrouted DesignSystem page)
+│   │   └── layout/                 # Navbar, NavbarLanguageMenu, Footer, PageContainer, ProtectedRoute, Grid, Section
 │   ├── contexts/
 │   │   ├── AuthContext.jsx         # Authentication state (httpOnly cookie session, restored via /api/auth/me) and block relationship state
 │   │   ├── UserModalContext.jsx    # Global user detail modal stack
 │   │   ├── TeamModalContext.jsx    # Global team detail modal state
+│   │   ├── LanguageContext.jsx     # Active interface language (explicit choice → profile country → browser → English)
+│   │   ├── MentionNamesContext.jsx # id → current name lookup, so chat events and mentions show CURRENT names
 │   │   ├── ToastContext.jsx        # Toast notification state + dispatch
 │   │   └── ModalLayerContext.jsx   # Modal z-index stacking
 │   ├── lib/
 │   │   └── queryClient.js          # TanStack React Query client configuration
+│   ├── i18n/
+│   │   └── index.js                # i18next setup: `common` bundled, page namespaces lazy-loaded, ICU, no language detector
+│   ├── locales/
+│   │   ├── en/                     # common, home, auth, profile, teams (.json)
+│   │   └── de/                     # same keys in German — `npm run i18n:check` keeps the two in step
+│   ├── content/
+│   │   └── legal/                  # Terms, Privacy, About and Legal Notice as one file per language (de.jsx, en.jsx, shared.jsx)
 │   ├── services/
 │   │   ├── api.js                  # Axios instance with default camelCase ↔ snake_case interceptors;
 │   │   │                           #   preserves FormData requests so multipart boundaries are set by
@@ -236,6 +282,7 @@ Lomir-frontend/
 │   ├── hooks/
 │   │   ├── useUserQueries.js       # React Query hooks for user profile/tags/badges (useUserProfile, useUserTags, useUserBadges) + unwrap helpers
 │   │   ├── useTagQueries.js        # React Query hooks for structured tags
+│   │   ├── useTagLabels.js         # The labels to show for tags, categories and supercategories in the active language
 │   │   ├── useBadgeQueries.js      # React Query hooks for badge catalog and shared-teams lookups
 │   │   ├── useTeamQueries.js       # React Query hooks/keys for teams: paginated user-teams list, bulk + per-team member badges, team detail (fetchTeamById), open-roles, and viewer team-role (MyTeams, SearchPage, TeamCard)
 │   │   ├── useSearchQueries.js     # React Query hook for the global search (SearchPage): whole criteria object as query key, keepPreviousData
@@ -249,6 +296,8 @@ Lomir-frontend/
 │   │   ├── useHydratedRole.js      # Fetch full role details + match score for modals; polls role status every 20 s
 │   │   ├── useLocationAutoFill.js  # Geocoding-based city/country auto-fill from postal code
 │   │   ├── useLocation.js          # Reverse-geocode current device location
+│   │   ├── useCityInCountry.js     # Debounced city lookup against the rate-limited geocoding endpoint
+│   │   ├── useFileExpirationText.js # Turns the file-expiry status into a translated sentence
 │   │   ├── useMyTeamsSort.js       # Sort state for MyTeams page
 │   │   ├── useClientPagination.js  # Client-side pagination state for lists
 │   │   ├── useSocketEvents.js      # Subscribe to a set of Socket.IO events with React-safe cleanup
@@ -277,9 +326,24 @@ Lomir-frontend/
 │   │   ├── vacantRoleUtils.js      # Role status helpers (filled, closed, open) + display labels
 │   │   ├── teamRequestUtils.js     # Invitation + application helper functions (build card data, labels)
 │   │   ├── eventPreview.js         # Parse + format chat system event messages for previews and toasts
+│   │   ├── describeEvent.js        # One descriptor per event (people, team, role, reader) shared by all four render paths
+│   │   ├── eventSentences.js       # The translated sentence of every event type (keys under `chatEvents.*`); names go in after translation, never through `t()`
 │   │   ├── roleEventMessages.js    # Build role event message strings (filled, closed, updated, deleted, reopened)
 │   │   ├── chatEntityResolvers.js  # Merge/resolve user/team entities for chat; conversation list trusts the embedded getConversations payload (name/avatar/synthetic) — per-entity fetch only as a fallback when the synthetic flag is missing
 │   │   ├── messageSystemParser.js  # parseSystemMessage: parse chat system/event message payloads (MessageDisplay)
+│   │   ├── chatHelpers.js          # Conversation/team helpers for the chat (e.g. isArchivedTeamData)
+│   │   ├── chatSearch.js           # Chat search indexing, filtering and notification highlighting
+│   │   ├── mentions.js             # @mention tokens: split, resolve labels
+│   │   ├── teamCapacity.js         # Member count / capacity helpers
+│   │   ├── teamErrorText.js        # Translated text for the backend's team error codes
+│   │   ├── authErrorText.js        # Translated text for the backend's account error codes (login, registration, password, email)
+│   │   ├── passwordRules.js        # The password rule's checks: a letter and a number of any script
+│   │   ├── searchOperators.js      # The search operator words per interface language (AND/OR/NOT, UND/ODER/NICHT)
+│   │   ├── tagLabels.js            # Display labels for the focus-area taxonomy (the stored English names stay data)
+│   │   ├── teamNameRegistry.js     # Current team names, so events show a team as it is called NOW
+│   │   ├── roleNameRegistry.js     # Same for role names
+│   │   ├── badgeLabels.js          # Display labels for badge taxonomy values (the stored values stay untranslated)
+│   │   ├── languageUtils.js        # resolveLanguage: the one rule for which language is active
 │   │   ├── messageDisplayHelpers.js # Pure MessageDisplay helpers: getEventReactionPreview, formatReplyTooltipText, getFileIcon
 │   │   ├── messageDisplayRenderers.jsx # JSX render helpers for MessageDisplay: renderReplyContent, renderHighlightedSearchText
 │   │   ├── messageNotificationUtils.js # Unread count + notification badge helpers for chat
@@ -291,12 +355,14 @@ Lomir-frontend/
 │   ├── constants/
 │   │   ├── badgeConstants.js       # Badge category metadata (names, colors, icons)
 │   │   ├── privacyText.js          # Shared privacy, storage, upload, and visibility notices
-│   │   ├── uiText.js               # Shared UI strings
+│   │   ├── languages.js            # Languages on offer, country → language map, language-feature visibility
+│   │   ├── roleDefaults.js         # Default role name
 │   │   └── pagination.js           # Pagination page-size defaults
 │   ├── config/
 │   │   └── imagekit.js             # ImageKit upload helper with folder routing
 │   └── assets/                     # Logos, gradients, and icon assets
 ├── tailwind.config.js
+├── vercel.json                     # Rewrites /api and /socket.io to the backend, SPA fallback, security headers (CSP, HSTS)
 ├── postcss.config.js
 ├── vite.config.js
 ├── eslint.config.js                # Flat config; react/jsx-no-undef catches missing component imports
@@ -313,7 +379,7 @@ Lomir-frontend/
 |---|---|---|
 | `/` | Landing Page | Public homepage with feature overview |
 | `/login` | Login | Sign in, register redirect, and forgot-password entry point |
-| `/register` | Register | Multi-step registration with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile |
+| `/register` | Register | One form with legal consent, private-by-default visibility copy, username availability helper, and optional Turnstile; no profile picture (uploaded from the profile once the email is confirmed); a line under the button says that the click sends a verification email whose link completes the registration |
 | `/verify-email` | Verify Email | Confirms new-account email verification links before login |
 | `/verify-email-change` | Verify Email Change | Confirms an email-change link for a logged-in user and updates the account email |
 | `/forgot-password` | Forgot Password | Request a password reset email |
@@ -323,13 +389,17 @@ Lomir-frontend/
 | `/profile` | Profile | Edit your profile, tags, avatar, and location |
 | `/profile/:id` | Public Profile | View any user's profile; shows "private" message for non-public profiles; placeholder for deleted users |
 | `/chat` | Chat | Direct messages and team group chat with file/image sharing, @mentions, and reply threading |
+| `/chat/:conversationId` | Chat | Opens a specific conversation |
 | `/badges` | Badges | Browse all 30 badges across 5 categories |
+| `/focusareas` | Focus Areas | Every focus area by supercategory and category; a focus area opens the search with it set |
 | `/settings` | Settings | Change profile visibility, manage blocked users, update password (logs you out of all sessions and sends a confirmation email), request a verified email change, and delete account |
 | `/contact` | Contact | Email form with file attachments and privacy notice; abuse/content reports show a reference ID; authenticated users with a contact user ID configured are routed to in-app chat |
 | `/about` | About | Project description, status, and contact information |
-| `/terms` | Terms | Full Terms of Service (14 sections, German law) |
+| `/terms` | Terms | Full Terms of Service (15 sections, German law; the German text is authoritative) |
 | `/privacy` | Privacy | Full GDPR-aligned Privacy Policy (19 sections) |
 | `/legal-notice` | Legal Notice / Impressum | Legal notice per DDG §5 |
+
+`/teams` and `/profile/edit` are placeholder routes; the real pages are `/teams/my-teams` and `/profile`.
 
 ---
 
@@ -353,11 +423,12 @@ The search page supports multiple sort and filter modes:
 
 ## Account Deletion
 
-The deletion flow in Settings follows a three-step process:
+The deletion dialog in Settings has two steps:
 
 1. **Password confirmation** — Validates identity before showing any impact data
-2. **Impact preview** — Shows teams to be transferred (with successor override), teams to be deleted, roles to be reopened, and affected counts
-3. **Confirm & execute** — Triggers the backend transaction; on success, logs out and redirects to home
+2. **Impact preview and confirmation** — Shows teams to be transferred (with successor override), teams to be deleted, roles to be reopened, and affected counts; confirming triggers the backend transaction, and on success the app logs out and redirects to home
+
+The backend deletes the direct messages together with their images and files, the avatar, and the files of teams deleted with the account (see the backend README).
 
 All components handle deleted user references gracefully: chat messages show "Former Lomir User" with a grey avatar, badge awards preserve the badge but show a null awarder, and profile links show a placeholder page.
 
@@ -382,22 +453,26 @@ The chat page supports both direct (1-to-1) and team group conversations.
 **Archived (deleted) team chats**
 - When an owner deletes a team that still has other members, the team is archived (scheduled for deletion) and the chat stays open as a "farewell" window — remaining members can still read and post until they leave or the grace period (14 days) elapses
 - The chat shows a red archive banner with the actual time left before deletion (days, then hours on the final day) plus a "leave now" action; the deletion moment is also posted as an in-chat event and sent as a notification
-- Archived team conversations are marked with a red archive icon (and a red active-card state), remain searchable, and their name opens the full Team Details modal with an "Archived" badge/tooltip and no edit/manage actions
+- Archived team conversations are marked with a red archive icon (and a red active-card state), remain searchable, and their name opens the full Team Details modal with an "Archived" badge/tooltip and no edit/manage actions: no "Add role", no role editing, no handling of applications or invitations. Removing a member and leaving the team stay available, and the owner may leave without transferring ownership first
+- **Deleting a team** opens a confirmation that gets a second page when the team has open applications or invitations — including members' applications for, or invitations to, a role. It shows how many people are affected and the sentence they will read, and takes an optional personal note. Each of them then receives a direct message from the owner (and the note as a separate message), and their request is closed
 
 **@Mentions**
 - Type `@` in the message input to open a dropdown of conversation participants
 - Select a person or "All members" to insert a mention token
 - Mention tokens render as styled `@Name` chips in message bubbles, reply previews, and notification toasts
+- Chat search resolves person mentions to their current display names before indexing them, including result snippets and last-message previews. Blocked and deleted accounts use the same labels as the message display; unresolved lookups retain the stored label. Names typed as ordinary text remain searchable as written. Reload the page to refresh name lookups after a rename during an open session.
+- Event messages in last-message previews use the same translated, resolved text as the message search index.
 - Unread @mention count is tracked separately and shown in the navbar badge
 
 **File & image sharing**
 - Images are uploaded to ImageKit and shown inline with a filename caption and a download overlay on hover
 - Non-image files (PDFs, Word docs, spreadsheets, etc.) render as a downloadable card with icon, filename, and file size
 - Excel / CSV files are labelled as "Spreadsheet"; other files as "File"
-- Uploaded files expire after 60 days; messages show a countdown and a warning when expiry is within 7 days
+- Uploaded files expire after 60 days; messages show a countdown and a warning when expiry is within 7 days. Files in direct messages are deleted with the account, and a team's files with the team
 
 **System event messages**
 - Team actions (joins, role changes, invitations accepted/declined, ownership transfers) post styled event banners into the team chat automatically
+- Event sentences are translated (`chatEvents.*`) and rendered the same way in the transcript, quoted replies, conversation-list previews and the search index; names are resolved to their CURRENT form, so a renamed person, team or role shows its new name, and deleted accounts read "Former Lomir User"
 - Role lifecycle events post dedicated banners: role filled (via application or invitation acceptance), role closed, role updated, role deleted, and role reopened — each with a distinct icon and colour
 - Conversation list cards show a colour-coded icon and short preview for event messages instead of raw system text; notification toasts resolve the same icons and preview text
 - Conversation list cards render each team's/partner's name, avatar, and demo overlay directly from the embedded conversation payload — no per-conversation profile fetch on chat load (only the active conversation resolves its own details)
@@ -426,6 +501,18 @@ The navbar carries two badges: a bell for general notifications (invitations, ap
 - A notification can go stale while still unread — for example a team application that another admin has meanwhile approved or declined
 - Opening one shows an explanatory message instead of an empty or non-highlighting modal, and the modal closes when nothing else is left to review
 - The backend also removes invitation notifications once the invitation is accepted, declined, or withdrawn, so resolved invites disappear from the bell on their own
+
+---
+
+## Internationalisation
+
+The interface is available in English and German.
+
+- **Which language is active** is decided in one place, `resolveLanguage()` in `src/utils/languageUtils.js`: an explicit choice first, then the profile's country, then the browser, then English. There is deliberately no language-detector plugin — a second rule would disagree with the account.
+- **Strings** live in `src/locales/<lang>/` — `common.json` is bundled, `home`, `auth`, `profile` and `teams` load on demand — and are written as ICU messages. Keys must appear as literal `t("…")` calls so `npm run i18n:check` can see them.
+- **Chat events** are the exception to "one string per UI element": every combination of who is addressed (you / a named person / a deleted account / unknown) has its own sentence under `chatEvents.*`, and `utils/eventSentences.js` picks it. Names are inserted after the sentence is translated, never passed into `t()`, because a display name is user input.
+- **Legal pages** are one file per language (`src/content/legal/de.jsx`, `en.jsx`); `npm run legal:check` compares their structure.
+- **The language picker** is hidden unless `VITE_LANGUAGE_FEATURE_VISIBLE=true` (see Getting Started) while the translation work is finished.
 
 ---
 

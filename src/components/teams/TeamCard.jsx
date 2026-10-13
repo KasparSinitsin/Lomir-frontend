@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -40,17 +41,24 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import Alert from "../common/Alert";
 import ConfirmModal from "../common/ConfirmModal";
+import TeamDeleteDialog from "./TeamDeleteDialog";
+import { getTeamMemberCount } from "../../utils/teamCapacity";
 import NotificationBadge from "../common/NotificationBadge";
 import SearchResultTypeOverlay from "../common/SearchResultTypeOverlay";
 import ListViewRow from "../common/ListViewRow";
 import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import TeamApplicationsModal from "./TeamApplicationsModal";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import LocationDistanceTagsRow from "../common/LocationDistanceTagsRow";
-import { getMatchTier, getMatchTooltipText } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
 import { extractNames, summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
+import { getBadgeName } from "../../utils/badgeLabels";
 import {
   calculateDistanceKm,
   formatListLocation,
@@ -62,12 +70,7 @@ import {
   computeRoleUserMatch,
   extractCandidateMatchData,
 } from "../../utils/matchHelpers";
-import {
-  DEMO_ROLE_TOOLTIP,
-  DEMO_TEAM_TOOLTIP,
-  isSyntheticRole,
-  isSyntheticTeam,
-} from "../../utils/userHelpers";
+import { isSyntheticRole, isSyntheticTeam } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import TeamCardSubtitle from "./TeamCardSubtitle";
 import TeamCardListSubtitle from "./TeamCardListSubtitle";
@@ -350,6 +353,9 @@ const TeamCard = ({
   // parent is loading, array = use directly (skip per-card fetch).
   teamMemberBadges,
 }) => {
+  const { t } = useTranslation("teams");
+  const { tagLabel } = useTagLabels();
+
   const isInternalRoleApplication =
     application?.isInternalRoleApplication ??
     application?.is_internal_role_application ??
@@ -394,7 +400,10 @@ const TeamCard = ({
       const appTeam = application.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Vacant Role",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("common:roleStatus.vacantRoleFallback"),
           description: role.bio ?? role.roleBio ?? appTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? appTeam.is_remote ?? appTeam.isRemote,
           city: role.city ?? appTeam.city,
@@ -420,7 +429,10 @@ const TeamCard = ({
       const invTeam = invitation.team ?? {};
       return {
         team: {
-          name: role.roleName ?? role.role_name ?? "Role Invitation",
+          name:
+            role.roleName ??
+            role.role_name ??
+            t("common:roleStatus.roleInvitationFallback"),
           description: role.bio ?? role.roleBio ?? invTeam.description ?? null,
           is_remote: role.isRemote ?? role.is_remote ?? invTeam.is_remote ?? invTeam.isRemote,
           city: role.city ?? invTeam.city,
@@ -1397,7 +1409,7 @@ const TeamCard = ({
 
     return Number.isFinite(numeric) ? numeric : null;
   })();
-  const roleTitle = teamData.name || "Unknown Team";
+  const roleTitle = teamData.name || t("common:team.unknownName");
   const cardTitle = isRoleInvitationVariant ? (
     <button
       type="button"
@@ -1407,7 +1419,7 @@ const TeamCard = ({
         event.stopPropagation();
         setIsRoleDetailsModalOpen(true);
       }}
-      title="Click to view role details"
+      title={t("teamCard.tooltips.clickRoleDetails")}
     >
       {roleTitle}
     </button>
@@ -1415,10 +1427,10 @@ const TeamCard = ({
     roleTitle
   );
   const cardClickTooltip = isRoleApplicationVariant
-    ? "Click to view role details"
+    ? t("teamCard.tooltips.clickRoleDetails")
     : isRoleInvitationVariant
-      ? "Click to view invitation details"
-      : "Click to view Team details";
+      ? t("teamCard.tooltips.clickInvitationDetails")
+      : t("teamCard.tooltips.clickTeamDetails");
 
   // ============ Helper Functions ============
 
@@ -1484,7 +1496,7 @@ const TeamCard = ({
     const date = normalizedData.date;
     if (!date) return null;
     try {
-      return format(new Date(date), "MM/dd/yy");
+      return formatDateNumeric(new Date(date));
     } catch {
       return null;
     }
@@ -1492,16 +1504,15 @@ const TeamCard = ({
 
   const getInternalRoleInvitationTooltip = () => {
     if (!normalizedData.date) {
-      return "You are invited to fill a role in this team";
+      return t("teamCard.status.invitedToFillRole");
     }
 
     try {
-      return `You were invited to fill a role in this team on ${format(
-        new Date(normalizedData.date),
-        "MMM d, yyyy",
-      )}`;
+      return t("teamCard.status.invitedToFillRoleOn", {
+        date: formatDateMedium(new Date(normalizedData.date)),
+      });
     } catch {
-      return "You are invited to fill a role in this team";
+      return t("teamCard.status.invitedToFillRole");
     }
   };
 
@@ -1511,13 +1522,14 @@ const TeamCard = ({
     }
 
     const formattedDate = getFormattedDate();
-    const actionText = "You applied for this role";
 
     if (!formattedDate || !normalizedData.date) {
-      return actionText;
+      return t("teamCard.status.appliedForThisRole");
     }
 
-    return `${actionText}\non ${format(new Date(normalizedData.date), "MMM d, yyyy")}`;
+    return t("teamCard.status.appliedForThisRoleOn", {
+      date: formatDateMedium(new Date(normalizedData.date)),
+    });
   };
 
   const getAssociatedRoleName = (item) => {
@@ -1538,7 +1550,7 @@ const TeamCard = ({
       item?.role_id
     );
 
-    return hasRoleReference ? "Vacant Role" : null;
+    return hasRoleReference ? t("common:roleStatus.vacantRoleFallback") : null;
   };
 
   const teamInvitationRoleName =
@@ -1836,15 +1848,15 @@ const TeamCard = ({
     setIsDeleteDialogOpen(false);
   };
 
-  const confirmDeleteTeam = async () => {
+  const confirmDeleteTeam = async (message = "") => {
     try {
       setIsDeleting(true);
-      await teamService.deleteTeam(teamData.id);
+      await teamService.deleteTeam(teamData.id, { message });
       setIsDeleteDialogOpen(false);
       if (onDelete) onDelete(teamData.id);
     } catch (err) {
       console.error("Error deleting team:", err);
-      setError("Failed to delete team. Please try again.");
+      setError(t("teamCard.errors.deleteFailed"));
     } finally {
       setIsDeleting(false);
     }
@@ -1870,7 +1882,7 @@ const TeamCard = ({
       setIsCancelApplicationDialogOpen(false);
     } catch (err) {
       console.error("Error canceling application:", err);
-      setError("Failed to cancel application. Please try again.");
+      setError(t("teamCard.errors.cancelApplicationFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -1903,7 +1915,7 @@ const TeamCard = ({
               setIsInvitationDetailsModalOpen(true);
             }}
           >
-            Open Invite to Respond
+            {t("teamCard.actions.openInviteToRespond")}
           </Button>
         </div>
       );
@@ -1923,7 +1935,9 @@ const TeamCard = ({
               setIsApplicationModalOpen(true);
             }}
           >
-            {effectiveVariant === "role_application" ? "View Role Application Details" : "View Application Details"}
+            {effectiveVariant === "role_application"
+              ? t("teamCard.actions.viewRoleApplicationDetails")
+              : t("teamCard.actions.viewApplicationDetails")}
           </Button>
         </div>
       );
@@ -1941,7 +1955,7 @@ const TeamCard = ({
           }}
           className="flex-grow"
         >
-          View Details
+          {t("teamCard.actions.viewDetails")}
         </Button>
         {/* Team Management Actions (owner and admin) */}
         {isAuthenticated && !isSearchResult && (
@@ -2010,9 +2024,21 @@ const TeamCard = ({
       normalizedData.team?.sharedTagCount ??
       normalizedData.team?.shared_tag_count ??
       0;
-    matchTooltipText = getMatchTooltipText(matchTier, matchDetails, {
+    // Keys are written out per variant rather than built from the returned
+    // name: a key assembled from a variable is invisible to `i18n:check`.
+    const matchTooltipParts = getMatchTooltipParts(matchTier, matchDetails, {
       sharedFocusCount: sharedTagCount,
     });
+    matchTooltipText =
+      matchTooltipParts.variant === "breakdown"
+        ? t("common:matchScore.breakdown", matchTooltipParts.values)
+        : matchTooltipParts.variant === "shared"
+          ? t("common:matchScore.shared", matchTooltipParts.values)
+          : matchTooltipParts.variant === "sharedFocus"
+            ? t("common:matchScore.sharedFocus", matchTooltipParts.values)
+            : matchTooltipParts.variant === "plain"
+              ? t("common:matchScore.plain", matchTooltipParts.values)
+              : "";
 
     const iconSizeSubtitle =
       viewMode === "list" ? 9 : viewMode === "mini" ? 10 : 13;
@@ -2071,7 +2097,7 @@ const TeamCard = ({
     <SearchResultTypeOverlay
       icon={Users}
       bgClassName={matchTier?.bg ?? "bg-[var(--color-role-owner-bg)]"}
-      tooltip="Team"
+      tooltip={t("teamCard.tooltips.searchResultTeam")}
       viewMode={viewMode}
     />
   ) : (
@@ -2084,8 +2110,8 @@ const TeamCard = ({
     !showDemoRoleIndicator && isSyntheticTeam(demoTeamData);
   const showDemoIndicator = showDemoRoleIndicator || showDemoTeamIndicator;
   const demoTooltip = showDemoRoleIndicator
-    ? DEMO_ROLE_TOOLTIP
-    : DEMO_TEAM_TOOLTIP;
+    ? t("common:demo.roleTooltip")
+    : t("common:demo.teamTooltip");
   const demoAvatarOverlay = showDemoIndicator ? (
     <DemoAvatarOverlay viewMode={viewMode} />
   ) : null;
@@ -2098,17 +2124,23 @@ const TeamCard = ({
         isRemote: teamData.is_remote || teamData.isRemote,
       });
     const distance = teamData.distance_km ?? teamData.distanceKm;
+    // A team with no location data has no meaningful distance: the value
+    // arrives as 0 and "0 km" would state something false. `locationTextShort`
+    // is empty in exactly that case, and ListViewRow then draws MapPinX.
     const showDistance =
       !hideDistanceInfo &&
       distance != null &&
       distance < 999999 &&
+      Boolean(locationTextShort) &&
       !(teamData.is_remote || teamData.isRemote);
 
-    const tagNames = extractNames(teamData.tags);
+    const tagNames = extractNames(teamData.tags, tagLabel);
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames);
 
-    const badgeNames = extractNames(getDisplayBadges());
+    const badgeNames = extractNames(getDisplayBadges()).map((name) =>
+      getBadgeName(name, t),
+    );
     const { summary: badgesSummary, tooltip: badgesTooltip } =
       summarizeList(badgeNames);
 
@@ -2169,7 +2201,7 @@ const TeamCard = ({
           image={getTeamImage()}
           imageFallback={getTeamInitials()}
           imageReplacement={scoreAvatarReplacement}
-          imageAlt={`${teamData.name} team`}
+          imageAlt={t("teamCard.imageAlt", { teamName: teamData.name })}
           onClick={handleCardClick}
           viewMode="list"
           className={listClassName}
@@ -2197,7 +2229,7 @@ const TeamCard = ({
           {shouldReserveMyTeamsActionSlot && (
             <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
               {(effectiveVariant === "invitation" || isRoleInvitationVariant) && (
-                <Tooltip content="Open Invite to Respond">
+                <Tooltip content={t("teamCard.actions.openInviteToRespond")}>
                   <Button
                     variant="primary"
                     size="sm"
@@ -2212,7 +2244,13 @@ const TeamCard = ({
                 </Tooltip>
               )}
               {(effectiveVariant === "application" || isRoleApplicationVariant) && (
-                <Tooltip content={isRoleApplicationVariant ? "View Role Application Details" : "View Application Details"}>
+                <Tooltip
+                  content={
+                    isRoleApplicationVariant
+                      ? t("teamCard.actions.viewRoleApplicationDetails")
+                      : t("teamCard.actions.viewApplicationDetails")
+                  }
+                >
                   <Button
                     variant="primary"
                     size="sm"
@@ -2439,7 +2477,7 @@ const TeamCard = ({
         image={getTeamImage()}
         imageFallback={getTeamInitials()}
         imageReplacement={scoreAvatarReplacement}
-        imageAlt={`${teamData.name} team`}
+        imageAlt={t("teamCard.imageAlt", { teamName: teamData.name })}
         imageSize="medium"
         imageShape="circle"
         onClick={handleCardClick}
@@ -2482,7 +2520,7 @@ const TeamCard = ({
         {/* Team description */}
         {viewMode !== "mini" && (
           <p className="text-base-content/80 mb-4">
-            {teamData.description || "No description"}
+            {teamData.description || t("teamCard.noDescription")}
           </p>
         )}
 
@@ -2517,7 +2555,7 @@ const TeamCard = ({
           </div>
         )}
         {viewMode === "card" && isRoleVariant && teamData._teamName && (
-          <Tooltip content="Click to view team details">
+          <Tooltip content={t("teamCard.tooltips.clickTeamDetails")}>
             <div
               className="mt-2 flex items-start text-sm text-base-content/70 cursor-pointer"
               onClick={(e) => {
@@ -2538,40 +2576,38 @@ const TeamCard = ({
         {renderActionButtons()}
       </Card>
 
-      <ConfirmModal
+      <TeamDeleteDialog
         isOpen={isDeleteDialogOpen}
         onClose={closeDeleteTeamDialog}
         onConfirm={confirmDeleteTeam}
-        title="Delete Team"
         loading={isDeleting}
-        confirmLabel="Delete Team"
-        loadingLabel="Deleting..."
-        confirmVariant="error"
-        confirmIcon={<Trash2 size={16} />}
-      >
-        <p className="text-sm text-base-content/80">
-          Delete this team? If you are the only member, the team and chat are
-          deleted immediately. If other members remain, the team is archived
-          first and permanently deleted after they leave or after the archive
-          grace period, currently 14 days by default.
-        </p>
-      </ConfirmModal>
+        teamId={teamData?.id}
+        teamName={teamData?.name}
+        willBeDeletedAtOnce={(getTeamMemberCount(teamData) ?? 0) <= 1}
+        title={t("teamCard.deleteDialog.title")}
+        confirmLabel={t("teamCard.deleteDialog.confirmLabel")}
+        loadingLabel={t("teamCard.deleteDialog.loadingLabel")}
+        deleteBody={t("teamDetails.deleteBody")}
+      />
 
       <ConfirmModal
         isOpen={isCancelApplicationDialogOpen}
         onClose={closeCancelApplicationDialog}
         onConfirm={confirmCancelApplication}
-        title="Cancel Application"
+        title={t("teamCard.cancelApplicationDialog.title")}
         loading={actionLoading === "cancel"}
-        confirmLabel="Cancel Application"
-        loadingLabel="Canceling..."
+        confirmLabel={t("teamCard.cancelApplicationDialog.confirmLabel")}
+        loadingLabel={t("teamCard.cancelApplicationDialog.loadingLabel")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
-        cancelLabel="Keep"
+        cancelLabel={t("teamCard.cancelApplicationDialog.cancelLabel")}
       >
         <p className="text-sm text-base-content/80">
-          Cancel your application to {teamData.name || "this team"}? The team
-          will no longer be able to review it.
+          {teamData.name
+            ? t("teamCard.cancelApplicationDialog.bodyNamed", {
+                teamName: teamData.name,
+              })
+            : t("teamCard.cancelApplicationDialog.bodyUnnamed")}
         </p>
       </ConfirmModal>
 

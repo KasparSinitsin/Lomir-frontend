@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
@@ -9,7 +10,12 @@ import TagInput from "../tags/TagInput";
 import BadgeInput from "../badges/BadgeInput";
 import Tooltip from "../common/Tooltip";
 import { vacantRoleService } from "../../services/vacantRoleService";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import { formatDistanceKm } from "../../utils/locationUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import {
   UserSearch,
   SquarePen,
@@ -21,6 +27,17 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+
+/**
+ * ⚠️ `DEFAULT_ROLE_NAME` is what this form prefills the name field with, and
+ * therefore what gets SAVED as `role_name` when the user does not overwrite it.
+ * It is stored data, not display text — the full reasoning, and the warning
+ * about the older spelling in stored chats, is in
+ * `constants/roleDefaults.js`. The focus handler below compares against it to
+ * select the field while it still holds the untouched default, so never
+ * compare against translated text here.
+ */
 
 /**
  * CreateVacantRoleModal Component
@@ -43,12 +60,13 @@ const CreateVacantRoleModal = ({
   onSuccess,
   onDelete,
 }) => {
+  const { t } = useTranslation("teams");
   const SUCCESS_CLOSE_DELAY_MS = 3000;
   const isEditMode = !!existingRole;
 
   // Form state
   const [formData, setFormData] = useState({
-    roleName: "Vacant Role",
+    roleName: DEFAULT_ROLE_NAME,
     bio: "",
     isRemote: false,
     postalCode: "",
@@ -67,7 +85,11 @@ const CreateVacantRoleModal = ({
 
 
   // Location auto-fill
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -89,7 +111,8 @@ const CreateVacantRoleModal = ({
 
     if (isEditMode && existingRole) {
       setFormData({
-        roleName: existingRole.roleName ?? existingRole.role_name ?? "Vacant Role",
+        roleName:
+          existingRole.roleName ?? existingRole.role_name ?? DEFAULT_ROLE_NAME,
         bio: existingRole.bio || "",
         isRemote: existingRole.isRemote ?? existingRole.is_remote ?? false,
         postalCode: existingRole.postalCode ?? existingRole.postal_code ?? "",
@@ -106,7 +129,7 @@ const CreateVacantRoleModal = ({
       });
     } else {
       setFormData({
-        roleName: "Vacant Role",
+        roleName: DEFAULT_ROLE_NAME,
         bio: "",
         isRemote: false,
         postalCode: "",
@@ -202,7 +225,7 @@ const CreateVacantRoleModal = ({
   const validateForm = () => {
     const errors = {};
     if (!formData.roleName || !formData.roleName.trim()) {
-      errors.roleName = "Role name is required";
+      errors.roleName = t("vacantRoleForm.validation.nameRequired");
     }
     return errors;
   };
@@ -215,6 +238,20 @@ const CreateVacantRoleModal = ({
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
+      return;
+    }
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      setSubmitError(message);
       return;
     }
 
@@ -252,9 +289,7 @@ const CreateVacantRoleModal = ({
       }, SUCCESS_CLOSE_DELAY_MS);
     } catch (err) {
       console.error("Error saving vacant role:", err);
-      setSubmitError(
-        err.response?.data?.message || "Failed to save vacant role"
-      );
+      setSubmitError(getTeamErrorText(err, t, t("vacantRoleForm.saveFailed")));
     } finally {
       setLoading(false);
     }
@@ -263,9 +298,9 @@ const CreateVacantRoleModal = ({
   // Custom header
   const editModalTitle = (() => {
     const status = String(existingRole?.status ?? "").toLowerCase();
-    if (status === "filled") return "Edit Filled Role";
-    if (status === "closed") return "Edit Closed Role";
-    return "Edit Vacant Role";
+    if (status === "filled") return t("vacantRoleForm.editTitleFilled");
+    if (status === "closed") return t("vacantRoleForm.editTitleClosed");
+    return t("vacantRoleForm.editTitleVacant");
   })();
 
   const customHeader = (
@@ -273,7 +308,7 @@ const CreateVacantRoleModal = ({
       {isEditMode
         ? <SquarePen className="flex-shrink-0" size={20} />
         : <UserSearch className="flex-shrink-0" size={20} />}
-      {isEditMode ? editModalTitle : "Add Vacant Role"}
+      {isEditMode ? editModalTitle : t("vacantRoleForm.createTitle")}
     </h2>
   );
 
@@ -281,7 +316,10 @@ const CreateVacantRoleModal = ({
   const footer = !submitSuccess ? (
     <div className="flex items-center justify-between">
       {isEditMode && onDelete ? (
-        <Tooltip content="Permanently delete this role. You will be asked to confirm." position="top">
+        <Tooltip
+          content={t("vacantRoleForm.deleteTooltip")}
+          position="top"
+        >
           <Button
             variant="ghost"
             onClick={onDelete}
@@ -289,17 +327,17 @@ const CreateVacantRoleModal = ({
             icon={<Trash2 size={16} />}
             className="hover:bg-red-600 hover:text-white"
           >
-            Delete
+            {t("teamForm.delete")}
           </Button>
         </Tooltip>
       ) : <div />}
       <div className="flex items-center gap-3">
         <Button variant="ghost" onClick={onClose} disabled={loading} icon={<X size={16} />}>
-          Cancel
+          {t("teamForm.cancel")}
         </Button>
-        <Tooltip content="Save Role Changes" position="top">
+        <Tooltip content={t("vacantRoleForm.saveTooltip")} position="top">
           <Button variant="primary" onClick={handleSubmit} disabled={loading} icon={<Save size={16} />}>
-            {loading ? "Saving..." : "Save"}
+            {loading ? t("teamForm.saving") : t("teamForm.save")}
           </Button>
         </Tooltip>
       </div>
@@ -324,8 +362,8 @@ const CreateVacantRoleModal = ({
             type="success"
             message={
               isEditMode
-                ? "Vacant role updated successfully!"
-                : "Vacant role created. Start building your team by looking for a good match now."
+                ? t("vacantRoleForm.updated")
+                : t("vacantRoleForm.created")
             }
           />
         )}
@@ -341,12 +379,16 @@ const CreateVacantRoleModal = ({
           <form onSubmit={handleSubmit} className="space-y-1">
             {/* Role Name */}
             <section className="space-y-4">
-              <FormSectionDivider text="Role Details" icon={UserSearch} />
+              <FormSectionDivider
+                text={t("vacantRoleForm.sectionDetails")}
+                icon={UserSearch}
+              />
 
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">
-                    Role Name <span className="text-error">*</span>
+                    {t("vacantRoleForm.nameLabel")}{" "}
+                    <span className="text-error">*</span>
                   </span>
                 </label>
                 <input
@@ -355,11 +397,11 @@ const CreateVacantRoleModal = ({
                   value={formData.roleName}
                   onChange={handleChange}
                   onFocus={(e) => {
-                    if (e.target.value === "Vacant Role") {
+                    if (e.target.value === DEFAULT_ROLE_NAME) {
                       e.target.select();
                     }
                   }}
-                  placeholder="e.g. Drummer, Frontend Dev, Designer"
+                  placeholder={t("vacantRoleForm.namePlaceholder")}
                   className={`input input-bordered w-full ${
                     formErrors.roleName ? "input-error" : ""
                   }`}
@@ -377,13 +419,15 @@ const CreateVacantRoleModal = ({
               {/* Bio */}
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Description (Optional)</span>
+                  <span className="label-text">
+                    {t("vacantRoleForm.descriptionLabel")}
+                  </span>
                 </label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
-                  placeholder="Describe what you're looking for in this role..."
+                  placeholder={t("vacantRoleForm.descriptionPlaceholder")}
                   className="textarea textarea-bordered w-full h-24"
                   disabled={loading}
                 />
@@ -392,16 +436,19 @@ const CreateVacantRoleModal = ({
 
             {/* Location */}
             <section className="mt-8 space-y-4">
-              <FormSectionDivider text="Location Preference" icon={MapPin} />
+              <FormSectionDivider
+                text={t("vacantRoleForm.sectionLocation")}
+                icon={MapPin}
+              />
 
               <LocationModeToggle
                 name="has_location"
                 checked={!formData.isRemote}
-                label="Location Preference"
-                locationLabel="Has Location Preference"
-                remoteLabel="Open to Remote / Anywhere"
-                locationHelper="Specify a preferred location and search radius."
-                remoteHelper="No geographic preference for this role."
+                label={t("vacantRoleForm.sectionLocation")}
+                locationLabel={t("vacantRoleForm.locationHasLabel")}
+                remoteLabel={t("vacantRoleForm.locationRemoteLabel")}
+                locationHelper={t("vacantRoleForm.locationHelper")}
+                remoteHelper={t("vacantRoleForm.remoteHelper")}
                 onChange={(e) => {
                   const hasLocation = e.target.checked;
                   setFormData((prev) => {
@@ -419,6 +466,8 @@ const CreateVacantRoleModal = ({
               {!formData.isRemote && (
                 <>
                   <LocationInput
+                    onFieldEdited={markFieldAsEdited}
+                    mismatch={locationMismatch}
                     formData={{
                       is_remote: false,
                       postal_code: formData.postalCode ?? "",
@@ -442,7 +491,7 @@ const CreateVacantRoleModal = ({
                     <label className="label">
                       <span className="label-text flex items-center gap-1">
                         <Ruler size={14} />
-                        Maximum Distance (km)
+                        {t("vacantRoleForm.maxDistanceLabel")}
                       </span>
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -463,7 +512,7 @@ const CreateVacantRoleModal = ({
                           }`}
                           disabled={loading}
                         >
-                          {dist} km
+                          {formatDistanceKm(dist)}
                         </button>
                       ))}
                       <input
@@ -476,7 +525,7 @@ const CreateVacantRoleModal = ({
                           }))
                         }
                         className="input input-bordered input-sm w-24"
-                        placeholder="Custom"
+                        placeholder={t("teamForm.custom")}
                         min={1}
                         disabled={loading}
                       />
@@ -488,19 +537,20 @@ const CreateVacantRoleModal = ({
 
             {/* Focus Areas (Tags) */}
             <section className="mt-8 space-y-4">
-              <FormSectionDivider text="Desired Focus Areas" icon={Tag} />
+              <FormSectionDivider
+                text={t("vacantRoleForm.sectionFocusAreas")}
+                icon={Tag}
+              />
 
               <div className="form-control">
                 <label className="label whitespace-normal">
                   <span className="label-text">
-                    What skills or focus areas should this person have?
-                    (Optional)
+                    {t("vacantRoleForm.focusAreasPrompt")}
                   </span>
                 </label>
                 <TagInput
                   selectedTags={formData.selectedTags}
                   onTagsChange={handleTagSelection}
-                  placeholder="Search for focus areas..."
                   showPopularTags={true}
                   maxSuggestions={8}
                 />
@@ -509,18 +559,20 @@ const CreateVacantRoleModal = ({
 
             {/* Desired Badges */}
             <section className="mt-8 space-y-4">
-              <FormSectionDivider text="Desired Badges" icon={Award} />
+              <FormSectionDivider
+                text={t("vacantRoleForm.sectionBadges")}
+                icon={Award}
+              />
 
               <div className="form-control">
                 <label className="label whitespace-normal">
                   <span className="label-text">
-                    What qualities or badges should this person have? (Optional)
+                    {t("vacantRoleForm.badgesPrompt")}
                   </span>
                 </label>
                 <BadgeInput
                   selectedBadgeIds={formData.selectedBadgeIds}
                   onBadgeIdsChange={handleBadgeIdsChange}
-                  placeholder="Search for badges..."
                 />
               </div>
             </section>

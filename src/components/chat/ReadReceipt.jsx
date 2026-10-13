@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Check, CheckCheck } from "lucide-react";
 import Tooltip from "../common/Tooltip";
 
@@ -13,6 +14,7 @@ const ReadReceipt = ({
   currentUserId,
   getReadByTooltip,
 }) => {
+  const { t } = useTranslation();
   if (!isCurrentUser) return null;
 
   const parsedReadCount = Number(message.readCount ?? message.read_count);
@@ -41,14 +43,20 @@ const ReadReceipt = ({
 
     return (
       <Tooltip
-        content={isReadByAll ? "Read by all" : getReadByTooltip(message)}
+        content={
+          isReadByAll ? t("readReceipt.readByAll") : getReadByTooltip(message)
+        }
         position="top"
       >
         <span className="ml-2 inline-flex shrink-0">
           <ReceiptIcon
             size={14}
             strokeWidth={2.25}
-            aria-label={isReadByAll ? "Read by all" : "Read by someone"}
+            aria-label={
+              isReadByAll
+                ? t("readReceipt.readByAll")
+                : t("readReceipt.readBySomeone")
+            }
           />
         </span>
       </Tooltip>
@@ -60,7 +68,7 @@ const ReadReceipt = ({
   return (
     <Tooltip content={getReadByTooltip(message)} position="top">
       <span className="ml-2 inline-flex shrink-0">
-        <CheckCheck size={14} strokeWidth={2.25} aria-label="Read" />
+        <CheckCheck size={14} strokeWidth={2.25} aria-label={t("readReceipt.read")} />
       </span>
     </Tooltip>
   );

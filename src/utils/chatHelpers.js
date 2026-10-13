@@ -1,4 +1,5 @@
 import { normalizeTimestampToDate } from "./dateHelpers";
+import { joinNameParts } from "./nameFormatters";
 
 // Entity / payload / team-member helpers for the chat page. These are pure
 // functions with no component state, extracted verbatim from Chat.jsx so the
@@ -24,7 +25,7 @@ export const resolveTypingUserId = (payload) =>
 export const resolveTypingDisplayName = (payload) => {
   const first = payload?.firstName || payload?.first_name || "";
   const last = payload?.lastName || payload?.last_name || "";
-  const fullName = `${first} ${last}`.trim();
+  const fullName = joinNameParts(first, last);
   return fullName || payload?.username || payload?.userName || payload?.name || null;
 };
 

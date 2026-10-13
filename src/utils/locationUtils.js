@@ -1,8 +1,49 @@
+import i18n from "../i18n";
+
 /**
  * Location Utilities
  * Shared utilities for location handling across users and teams
  * Single source of truth for country mappings and location data normalization
  */
+
+import { getActiveLocale } from "./languageUtils";
+
+/**
+ * A distance with its unit, in the active language: "12 km" / "0.5 km" in
+ * English, "12 km" / "0,5 km" in German.
+ *
+ * The decimal separator is the point here - toFixed(1) always produces a dot,
+ * which is wrong in German and in most of Europe. Intl also carries the unit,
+ * so "km" never has to be concatenated in JSX.
+ *
+ * Sub-kilometre distances keep one decimal, everything else is rounded to a
+ * whole kilometre - the behaviour the search results already had.
+ *
+ * ⚠️ This returns the measurement only, never a sentence. The surrounding
+ * text ("… away") is still English in JSX and belongs to Phase 1: assembling
+ * it here would produce exactly the fragment-in-a-sentence shape that breaks
+ * on the first language with a different word order.
+ */
+export const formatDistanceKm = (distanceKm) => {
+  // Number(null) is 0 and Number("") is 0, both finite - so the empty cases
+  // have to be rejected before the conversion, or a missing distance renders
+  // as "0 km". Today both call sites gate on hasDistance and never pass one;
+  // that is their choice to change, not a guarantee this helper may rely on.
+  if (distanceKm === null || distanceKm === undefined || distanceKm === "") {
+    return "";
+  }
+  const value = Number(distanceKm);
+  if (!Number.isFinite(value)) return "";
+
+  const decimals = value > 0 && value < 1 ? 1 : 0;
+  return new Intl.NumberFormat(getActiveLocale(), {
+    style: "unit",
+    unit: "kilometer",
+    unitDisplay: "short",
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  }).format(value);
+};
 
 // Country code to English name mapping
 export const COUNTRY_NAMES = {
@@ -170,14 +211,172 @@ export const COUNTRY_NAME_TO_CODE = {
  * @param {string} countryCode - ISO country code (e.g., "DE") or full name
  * @returns {string|null} - Country name in English or null
  */
-export const getCountryDisplayName = (countryCode) => {
+/**
+ * IANA time zones mapped to the country they sit in.
+ *
+ * Deliberately not exhaustive: it covers Europe, where Lomir's users are, plus
+ * the handful of zones most likely to show up elsewhere. An unknown zone falls
+ * through to the locale region and then to null - a missing default is fine,
+ * a wrong one is not.
+ */
+const TIME_ZONE_COUNTRIES = {
+  "Europe/Berlin": "DE",
+  "Europe/Busingen": "DE",
+  "Europe/Vienna": "AT",
+  "Europe/Zurich": "CH",
+  "Europe/Vaduz": "LI",
+  "Europe/Amsterdam": "NL",
+  "Europe/Brussels": "BE",
+  "Europe/Luxembourg": "LU",
+  "Europe/Paris": "FR",
+  "Europe/Madrid": "ES",
+  "Europe/Lisbon": "PT",
+  "Europe/Rome": "IT",
+  "Europe/London": "GB",
+  "Europe/Dublin": "IE",
+  "Europe/Copenhagen": "DK",
+  "Europe/Oslo": "NO",
+  "Europe/Stockholm": "SE",
+  "Europe/Helsinki": "FI",
+  "Europe/Warsaw": "PL",
+  "Europe/Prague": "CZ",
+  "Europe/Bratislava": "SK",
+  "Europe/Budapest": "HU",
+  "Europe/Ljubljana": "SI",
+  "Europe/Zagreb": "HR",
+  "Europe/Bucharest": "RO",
+  "Europe/Sofia": "BG",
+  "Europe/Athens": "GR",
+  "Europe/Tallinn": "EE",
+  "Europe/Riga": "LV",
+  "Europe/Vilnius": "LT",
+  "America/New_York": "US",
+  "America/Chicago": "US",
+  "America/Denver": "US",
+  "America/Los_Angeles": "US",
+  "America/Toronto": "CA",
+  "America/Vancouver": "CA",
+  "America/Bogota": "CO",
+  "Africa/Johannesburg": "ZA",
+};
+
+/**
+ * Best guess at the visitor's country, used to prefill the country field.
+ *
+ * A postal code alone cannot identify a country (20099 is Hamburg in Germany
+ * and Sesto San Giovanni in Italy), so the lookup no longer guesses. This gives
+ * the majority of visitors a correct, visible and correctable default instead.
+ *
+ * **The time zone is asked first, and the browser language only after it.** The
+ * language says which locale someone reads in, not where they are: a German
+ * user on an English system reports `en-US`, and prefilling the US would send
+ * postal code 10115 from Berlin-Mitte to New York, where it is also a valid
+ * ZIP. The time zone describes the machine's location and gets that case right.
+ *
+ * From a locale only the region subtag counts: "de-AT" yields AT, a bare "de"
+ * yields nothing, because German is spoken in four countries and picking one
+ * would be the guess this replaces.
+ *
+ * @returns {string|null} ISO country code known to COUNTRY_NAMES, else null
+ */
+export const getBrowserDefaultCountryCode = () => {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fromZone = TIME_ZONE_COUNTRIES[timeZone];
+    if (fromZone && COUNTRY_NAMES[fromZone]) return fromZone;
+  } catch {
+    // Intl is unavailable or the zone is unresolvable - fall through.
+  }
+
+  if (typeof navigator === "undefined") return null;
+
+  const locales = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ].filter(Boolean);
+
+  for (const locale of locales) {
+    const region = String(locale).split(/[-_]/)[1];
+    if (!region) continue;
+
+    const code = region.toUpperCase();
+    if (COUNTRY_NAMES[code]) return code;
+  }
+
+  return null;
+};
+
+/**
+ * German names the project spells differently from the CLDR default.
+ *
+ * `Intl.DisplayNames` gives "Tschechien"; the project keeps the long form so
+ * it matches the English "Czech Republic" it sits beside (Julia, 2026-09-08).
+ * Only deviations belong here - everything else comes from the browser and
+ * stays correct without maintenance.
+ */
+const COUNTRY_NAME_OVERRIDES = {
+  de: {
+    CZ: "Tschechische Republik",
+  },
+};
+
+const displayNamesCache = new Map();
+
+const getRegionDisplayNames = (language) => {
+  if (displayNamesCache.has(language)) return displayNamesCache.get(language);
+
+  let instance = null;
+  try {
+    instance = new Intl.DisplayNames([language], { type: "region" });
+  } catch {
+    // Intl.DisplayNames unavailable or the language is unusable - the caller
+    // falls back to the stored English name.
+  }
+  displayNamesCache.set(language, instance);
+  return instance;
+};
+
+/**
+ * Display name for a country code, in the language currently active.
+ *
+ * English comes from `COUNTRY_NAMES` so the wording the app already shipped
+ * stays byte-identical; every other language is resolved by the browser, with
+ * `COUNTRY_NAME_OVERRIDES` for the few the project spells its own way.
+ *
+ * ⚠️ `COUNTRY_NAMES` remains the validity check elsewhere in this file
+ * (`getBrowserDefaultCountryCode`, `getCountryCode`): those ask "is this a
+ * code we know", which must not depend on the interface language.
+ *
+ * @param {string} countryCode - ISO code, or an already-resolved full name
+ * @param {string} [language] - defaults to the active i18n language
+ */
+export const getCountryDisplayName = (countryCode, language) => {
   if (!countryCode) return null;
 
   // If it's already a full name (longer than 3 chars), return as-is
   if (countryCode.length > 3) return countryCode;
 
-  // Look up the code
-  return COUNTRY_NAMES[countryCode.toUpperCase()] || countryCode;
+  const code = countryCode.toUpperCase();
+  const storedName = COUNTRY_NAMES[code];
+
+  // A plain module cannot call useTranslation; reading the instance is the
+  // documented alternative. Components re-render on `languageChanged`, which
+  // is why every surface showing a location holds a useTranslation.
+  const lang = (language ?? i18n.language ?? "en").split("-")[0];
+
+  // English keeps the stored wording wherever there is one, so the names the
+  // app already shipped stay byte-identical (Julia, 2026-09-09: "Turkey" and
+  // "Czech Republic", not Intl's "Türkiye" / "Czechia").
+  if (lang === "en" && storedName) return storedName;
+
+  const override = COUNTRY_NAME_OVERRIDES[lang]?.[code];
+  if (override) return override;
+
+  const localized = getRegionDisplayNames(lang)?.of(code);
+  // `of()` echoes the code back when it knows nothing about it.
+  if (localized && localized !== code) return localized;
+
+  return storedName || countryCode;
 };
 
 /**
@@ -679,6 +878,79 @@ export const locationsHaveDifferentKnownParts = (source, target) => {
  * @param {boolean} options.showCountryCode - Include ISO country code in output
  * @returns {string} Formatted location string
  */
+/**
+ * Fold a place name into a comparable form: lowercase, accents removed,
+ * punctuation and separators collapsed. "Frankfurt am Main" and
+ * "frankfurt-am-main" become the same string.
+ */
+const foldPlaceName = (value) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * Does the city someone typed agree with what the postal code resolved to?
+ *
+ * Deliberately tolerant, because a strict comparison produces false alarms on
+ * perfectly correct input:
+ * - a postal code area can cover several municipalities, and the lookup names
+ *   only one of them
+ * - people write the district they live in ("Hartenberg-Münchfeld" for Mainz)
+ * - names get shortened ("Frankfurt" for "Frankfurt am Main")
+ *
+ * So a match against any part the lookup returned counts, and containment in
+ * either direction counts. Only a name with nothing in common is reported.
+ *
+ * The bias is deliberate: it errs toward staying silent. A missed warning
+ * costs nothing - the value is the user's own and merely unverified - while a
+ * false one tells someone their correct address is wrong.
+ *
+ * @param {string} enteredCity - what the user typed
+ * @param {Object} location - the geocoding result
+ * @returns {boolean} true when the two are compatible (or undecidable)
+ */
+export const cityAgreesWithLookup = (enteredCity, location) => {
+  const entered = foldPlaceName(enteredCity);
+  if (!entered || !location) return true;
+
+  const candidates = [
+    location.city,
+    location.district,
+    location.suburb,
+    location.borough,
+    location.cityDistrict,
+    location.state,
+  ]
+    .map(foldPlaceName)
+    .filter(Boolean);
+
+  if (!candidates.length) return true;
+
+  // Single letters are abbreviation debris ("Frankfurt a. M."), not name parts.
+  const significantWords = (value) =>
+    new Set(value.split(" ").filter((word) => word.length > 1));
+
+  const enteredWords = significantWords(entered);
+
+  return candidates.some((candidate) => {
+    if (candidate === entered) return true;
+    if (candidate.includes(entered) || entered.includes(candidate)) return true;
+
+    // Word-level containment, so "Frankfurt/Main" agrees with "Frankfurt am
+    // Main" - the same name with a filler word dropped is not a contradiction.
+    const candidateWords = significantWords(candidate);
+    const [smaller, larger] =
+      enteredWords.size <= candidateWords.size
+        ? [enteredWords, candidateWords]
+        : [candidateWords, enteredWords];
+
+    return [...smaller].every((word) => larger.has(word));
+  });
+};
+
 export const formatLocation = (locationData, options = {}) => {
   const {
     displayType = "short",
@@ -863,6 +1135,8 @@ export default {
   COUNTRY_NAME_TO_CODE,
   getCountryDisplayName,
   getCountryCode,
+  getBrowserDefaultCountryCode,
+  cityAgreesWithLookup,
   deriveLocationFromPostalCode,
   normalizeLocationData,
   formatLocation,

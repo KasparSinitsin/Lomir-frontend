@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { fetchTeamById } from "./useTeamQueries";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
@@ -40,6 +41,8 @@ const useChatTeamAccess = ({
   setIsTeamArchived,
   setLoadingMessages,
 }) => {
+  const { t } = useTranslation();
+
   const fetchTeamDetails = useCallback(
     (teamId, { force = false } = {}) => {
       if (!teamId) return Promise.resolve(null);
@@ -50,12 +53,17 @@ const useChatTeamAccess = ({
     [queryClient],
   );
 
+  // The default is worded here rather than left to the caller: every call site
+  // that omits `message` means the same thing, and the English literal that used
+  // to sit in this signature reached a German screen.
   const revokeTeamChatAccess = useCallback(
-    (teamId, message = "You no longer have access to this team chat.") => {
+    (teamId, message) => {
       if (!teamId) return;
 
+      const text = message ?? t("chatPage.errors.noTeamChatAccess");
+
       socketService.leaveConversation(teamId, "team");
-      setError(message);
+      setError(text);
       setConversations((prev) =>
         prev.filter(
           (conversation) =>
@@ -98,6 +106,7 @@ const useChatTeamAccess = ({
       setMessages,
       setReplyingTo,
       setShowChatView,
+      t,
     ],
   );
 

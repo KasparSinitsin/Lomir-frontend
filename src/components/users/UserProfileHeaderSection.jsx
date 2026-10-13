@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Tooltip from "../common/Tooltip";
 import {
   Eye,
@@ -7,13 +8,15 @@ import {
   FlaskConical,
 } from "lucide-react";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getUserInitials,
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
-import { getMatchTier } from "../../utils/matchScoreUtils";
-import { format } from "date-fns";
+import { getMatchTier, matchTierSentence } from "../../utils/matchScoreUtils";
+import {
+  formatDateLong,
+  formatMonthYear,
+} from "../../utils/dateHelpers";
 
 /**
  * UserProfileHeaderSection Component
@@ -29,6 +32,7 @@ const UserProfileHeaderSection = ({
   matchScore = null,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const [imageError, setImageError] = useState(false);
   const [dateIsNarrow, setDateIsNarrow] = useState(false);
   const dateIsNarrowRef = useRef(false);
@@ -86,8 +90,8 @@ const UserProfileHeaderSection = ({
     if (!memberSince) return null;
     try {
       return {
-        short: format(new Date(memberSince), "MMM yyyy"),
-        full: format(new Date(memberSince), "MMMM d, yyyy"),
+        short: formatMonthYear(new Date(memberSince)),
+        full: formatDateLong(new Date(memberSince)),
       };
     } catch (error) {
       console.error("Error formatting member since date:", error);
@@ -137,7 +141,7 @@ const UserProfileHeaderSection = ({
           {getProfileImage() && !imageError ? (
             <img
               src={getProfileImage()}
-              alt="Profile"
+              alt={t("user.profileImageAltGeneric")}
               className="object-cover w-full h-full rounded-full"
               onError={() => setImageError(true)}
             />
@@ -155,7 +159,9 @@ const UserProfileHeaderSection = ({
         </div>
         {matchTier && (
           <Tooltip
-            content={`${matchTier.pct}% ${matchTier.label.toLowerCase()}`}
+            content={
+              matchTierSentence(t, matchTier)
+            }
             position="bottom"
             wrapperClassName={`absolute -top-1 -left-1 w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center cursor-help ${matchTier.bg}`}
           >
@@ -189,12 +195,12 @@ const UserProfileHeaderSection = ({
               {isUserProfilePublic() ? (
                 <>
                   <Eye size={14} className={`text-green-600${dateIsNarrow ? "" : " mr-1"}`} />
-                  {!dateIsNarrow && <span>Public</span>}
+                  {!dateIsNarrow && <span>{t("user.visibilityPublic")}</span>}
                 </>
               ) : (
                 <>
                   <EyeClosed size={14} className={`text-gray-500${dateIsNarrow ? "" : " mr-1"}`} />
-                  {!dateIsNarrow && <span>Private</span>}
+                  {!dateIsNarrow && <span>{t("user.visibilityPrivate")}</span>}
                 </>
               )}
             </div>
@@ -203,7 +209,7 @@ const UserProfileHeaderSection = ({
             <span className="flex items-center gap-1.5 flex-shrink-0">
               {getMemberSinceDate() && (
                 <Tooltip
-                  content={`Joined Lomir on ${getMemberSinceDate().full}`}
+                  content={t("user.joinedOn", { date: getMemberSinceDate().full })}
                   position="bottom"
                   wrapperClassName={`items-center text-base-content/70 flex-shrink-0 cursor-help ${dateIsNarrow ? "flex" : "flex sm:hidden"}`}
                 >
@@ -213,11 +219,11 @@ const UserProfileHeaderSection = ({
               )}
               {isSyntheticUser(user) && (
                 <Tooltip
-                  content={DEMO_PROFILE_TOOLTIP}
+                  content={t("demo.profileTooltip")}
                   wrapperClassName="flex items-start text-base-content/50"
                 >
                   <FlaskConical size={14} className={`flex-shrink-0 mt-px${dateIsNarrow ? "" : " sm:mr-0.5"}`} />
-                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">Demo Profile</span>}
+                  {!dateIsNarrow && <span className="hidden sm:inline leading-[1.15]">{t("demo.profileLabel")}</span>}
                 </Tooltip>
               )}
             </span>
@@ -232,7 +238,7 @@ const UserProfileHeaderSection = ({
           className={`flex-shrink-0${dateIsNarrow ? " absolute opacity-0 pointer-events-none" : " hidden sm:block"}`}
         >
           <Tooltip
-            content={`Joined Lomir on ${getMemberSinceDate().full}`}
+            content={t("user.joinedOn", { date: getMemberSinceDate().full })}
             position="bottom"
             wrapperClassName="flex items-center text-base-content/70 cursor-help"
           >

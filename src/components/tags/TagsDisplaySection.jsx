@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Tag, Layers, Check, ChevronRight, ChevronUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Tag, Layers, Check, ChevronRight, ChevronUp, EyeClosed } from "lucide-react";
 import {
   CATEGORY_COLORS,
   SUPERCATEGORY_ORDER,
@@ -7,13 +8,14 @@ import {
   FOCUS_GREEN,
   FOCUS_GREEN_DARK,
   TAG_SECTION_BG,
+  DEFAULT_COLOR,
 } from "../../constants/badgeConstants";
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
 import Tooltip from "../common/Tooltip";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import TagInput from "./TagInput";
-import { UI_TEXT } from "../../constants/uiText";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 /**
  * Unified TagsDisplaySection Component
@@ -31,11 +33,22 @@ import { UI_TEXT } from "../../constants/uiText";
  * @param {Function} onSave - Optional: callback when tags are saved (required if canEdit is true)
  * @param {Function} onTagClick - Optional: callback when a credited tag is clicked (tag object)
  * @param {string} emptyMessage - Message to show when no tags
+ * @param {boolean} [showPending] - Whether to reveal what is not visible to
+ *   others: the muted pills and the closed-eye marker. True on a surface the
+ *   owner works on, false where the point is to show what everybody else sees —
+ *   the details modal is that second kind, so an award still awaiting visibility
+ *   is left out there entirely, exactly as a stranger would get it.
+ * @param {boolean} [hideWhenEmpty] - Render nothing at all when there are no
+ *   focus areas, instead of a heading above a placeholder. Opt-in: on your own
+ *   profile the placeholder is the invitation to add some, so it stays there.
+ *   Never hides a section that offers an edit button.
  * @param {string} placeholder - Placeholder for edit input
  * @param {string} className - Additional CSS classes
  */
 const TagsDisplaySection = ({
-  title = UI_TEXT.focusAreas.title,
+  // title, emptyMessage and placeholder are resolved with t() in the body, not
+  // as defaults here: a module-scope default freezes the language.
+  title,
   tags = [],
   allTags = [],
   canEdit = false,
@@ -45,12 +58,18 @@ const TagsDisplaySection = ({
   highlightTagName = null,
   highlightTagColor = null,
   matchingTagIds = null,
-  emptyMessage = UI_TEXT.focusAreas.empty,
-  placeholder = UI_TEXT.focusAreas.placeholder,
+  emptyMessage,
+  hideWhenEmpty = false,
+  showPending = true,
+  placeholder,
   entityType,
   className = "",
   headerRight = null,
 }) => {
+  const { t } = useTranslation();
+  // What is SHOWN is translated; `name` and `supercategory` stay the stored English text
+  // (they are the keys: highlight, awards lookup, icons, grouping).
+  const { tagLabel, supercategoryLabel, language } = useTagLabels();
   const [isEditing, setIsEditing] = useState(false);
   const [localSelectedTags, setLocalSelectedTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -103,9 +122,20 @@ const TagsDisplaySection = ({
   }, [measureOverflow, tags]);
 
   // Normalize tags to a consistent format for editing (array of IDs)
+  // 🔴 **The editor's list is not the display list, and this is where the two
+  // part company.** What lands here is what `handleSave` submits, and the save
+  // replaces the user's focus areas with exactly it. An award-created focus
+  // area must therefore never arrive in it uninvited: it would be adopted as
+  // chosen on the next save, which is how the distinction was destroyed before
+  // `user_tags.source` existed. The user can still add such a tag themselves —
+  // then it is a deliberate claim, and the backend promotes it.
+  // ⚠️ Filtering here rather than at the caller covers every surface that edits
+  // focus areas, including ones added later. Anything without a `source` — a
+  // team's focus areas, a plain id — is kept, as everywhere else.
   useEffect(() => {
     if (Array.isArray(tags)) {
       const ids = tags
+        .filter((tag) => !(typeof tag === "object" && tag?.source === "award"))
         .map((tag) => {
           if (typeof tag === "object") {
             return Number(tag.id ?? tag.tag_id ?? tag.tagId);
@@ -143,6 +173,7 @@ const TagsDisplaySection = ({
         key: index,
         name: tag.trim(),
         badgeCredits: 0,
+        hiddenBadgeCredits: 0,
         dominantBadgeCategory: null,
         supercategory: null,
         category: null,
@@ -167,8 +198,11 @@ const TagsDisplaySection = ({
 
             return {
               key: tag.id || tag.tag_id || tag.tagId || name,
+              id: tag.id ?? tag.tag_id ?? tag.tagId ?? null,
               name,
               badgeCredits: tag.badge_credits || tag.badgeCredits || 0,
+              hiddenBadgeCredits:
+                tag.hidden_badge_credits || tag.hiddenBadgeCredits || 0,
               dominantBadgeCategory:
                 tag.dominant_badge_category || tag.dominantBadgeCategory || null,
               supercategory: tag.supercategory || tag.supercategoryName || tag.supercategory_name || null,
@@ -176,6 +210,14 @@ const TagsDisplaySection = ({
               linkedBadgeCount: tag.linked_badge_count || tag.linkedBadgeCount || 0,
               awarderCount: tag.awarder_count || tag.awarderCount || 0,
               awardeeCount: tag.awardee_count || tag.awardeeCount || 0,
+              // Where this focus area came from. Anything that does not say is
+              // treated as the user's own, which is the safe direction: it is
+              // shown rather than withheld, and a team's focus areas — which
+              // have no such column and never will — keep behaving as before.
+              source:
+                tag.source === "award" || tag.tagSource === "award"
+                  ? "award"
+                  : "user",
             };
           })
           .filter(Boolean);
@@ -194,8 +236,10 @@ const TagsDisplaySection = ({
           return name
             ? {
                 key: id,
+                id,
                 name,
                 badgeCredits: 0,
+                hiddenBadgeCredits: 0,
                 dominantBadgeCategory: null,
                 supercategory: null,
                 category: null,
@@ -228,7 +272,7 @@ const TagsDisplaySection = ({
       groups[key].sort((a, b) => {
         if (b.badgeCredits !== a.badgeCredits)
           return b.badgeCredits - a.badgeCredits;
-        return a.name.localeCompare(b.name);
+        return tagLabel(a).localeCompare(tagLabel(b), language);
       });
     }
 
@@ -255,13 +299,13 @@ const TagsDisplaySection = ({
 
       await onSave(localSelectedTags);
 
-      setSuccess("Updated successfully!");
+      setSuccess(t("focusAreas.updated"));
       setIsEditing(false);
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Error saving tags:", err);
-      setError(err.message || "Failed to update");
+      setError(err.message || t("focusAreas.updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -269,7 +313,11 @@ const TagsDisplaySection = ({
 
   const handleCancel = () => {
     if (Array.isArray(tags)) {
+      // Cancel restores the same list the editor was opened with, so it filters
+      // the same way — otherwise cancelling would quietly put the award-created
+      // focus areas back into the selection the next save submits.
       const ids = tags
+        .filter((tag) => !(typeof tag === "object" && tag?.source === "award"))
         .map((tag) => {
           if (typeof tag === "object") {
             return Number(tag.id ?? tag.tag_id ?? tag.tagId);
@@ -283,7 +331,26 @@ const TagsDisplaySection = ({
     setError(null);
   };
 
-  const displayTags = getDisplayTags();
+  const allDisplayTags = getDisplayTags();
+  // Where pending state is not revealed, an **award-created** focus area whose
+  // credits are all still waiting is dropped: it does not exist for anyone but
+  // its owner yet, so the list, the pill count and the credit total match what
+  // a stranger is served. A **self-chosen** one stays — the user put it there,
+  // and the hidden award only withholds its credits (Julia, 2026-09-28). One
+  // with no awards at all stays either way.
+  // 🔴 This used to drop both, which is why the owner's own details modal was
+  // missing `AI/ML` while the search list, served by the backend rule, showed
+  // it. Found by walking it on 2026-09-29.
+  const displayTags = showPending
+    ? allDisplayTags
+    : allDisplayTags.filter(
+        (tag) =>
+          !(
+            tag.source === "award" &&
+            Number(tag.hiddenBadgeCredits || 0) > 0 &&
+            !(tag.badgeCredits > 0)
+          ),
+      );
   const groupedTags = getGroupedTags(displayTags);
 
   const totalCredits = displayTags.reduce((sum, t) => sum + (t.badgeCredits || 0), 0);
@@ -296,7 +363,37 @@ const TagsDisplaySection = ({
     //   : null;
 
     const hasBadgeCredits = tag.badgeCredits > 0;
-    const isClickable = hasBadgeCredits && onTagClick;
+
+    // Credits count only once the award behind them is visible to others
+    // (Julia, 2026-09-28). `hiddenBadgeCredits` is what is waiting, and the
+    // backend sends it to the owner only — a stranger gets 0 and sees none of
+    // this. Muted when nothing here counts yet, so the pill still shows that
+    // something arrived; the closed eye stays even beside counted credits, so
+    // the signal does not disappear once one award is made visible.
+    const hiddenCredits = Number(tag.hiddenBadgeCredits || 0);
+    const hasPending = showPending && hiddenCredits > 0;
+    const isPendingOnly = hasPending && !hasBadgeCredits;
+
+    // ✅ Julia, 2026-09-28/29: only an **award-created** focus area announces
+    // that it is waiting. One the user chose is simply theirs — shown in
+    // `#036b0c` with no credits, exactly like `Home Gardening & Plants`, which
+    // has no award at all. The two look alike on purpose: neither counts
+    // anything yet, and light green stays reserved for credits that do.
+    // The pill reads the same to everyone, its owner included.
+    // ⚠️ A pill with counted credits AND something still waiting keeps the
+    // trailing closed eye whatever its source — that case says "and there is
+    // more", which is true and useful, and it is not what this changes.
+
+    // A pill whose credits are all still awaiting visibility is clickable too.
+    // It opens the awards behind it, which is where the eye button that makes
+    // them visible lives — otherwise confirming an award would only be possible
+    // through the badges section, and the focus-area pill that told you about it
+    // would be a dead end.
+    const showsPendingState = isPendingOnly && tag.source === "award";
+    // A self-chosen pill that announces nothing must not lead anywhere either:
+    // it would be a route to an award the pill does not mention. The badges
+    // section still shows that award grey, with the eye that makes it visible.
+    const isClickable = (hasBadgeCredits || showsPendingState) && onTagClick;
 
     // Uncredited: base-content (dark green, matches section headers like "Location", "Badges")
     // Credited: primary (light green, matches "User Details" title)
@@ -305,19 +402,30 @@ const TagsDisplaySection = ({
       entityType === "team"
         ? Number(tag.awardeeCount || 0)
         : Number(tag.awarderCount || 0);
-    const personLabel =
-      entityType === "team"
-        ? personCount === 1
-          ? "member"
-          : "members"
-        : personCount === 1
-          ? "person"
-          : "people";
-
     const tooltipText =
       tag.badgeCredits > 0
-        ? `${tag.name}: ${tag.badgeCredits}ct. awarded with ${Number(tag.linkedBadgeCount)} badge${Number(tag.linkedBadgeCount) === 1 ? "" : "s"} by ${personCount} ${personLabel}`
-        : tag.name;
+        ? entityType === "team"
+          ? t("focusAreas.tagTooltipMembers", {
+              name: tagLabel(tag),
+              credits: tag.badgeCredits,
+              badges: Number(tag.linkedBadgeCount),
+              people: personCount,
+            })
+          : t("focusAreas.tagTooltip", {
+              name: tagLabel(tag),
+              credits: tag.badgeCredits,
+              badges: Number(tag.linkedBadgeCount),
+              people: personCount,
+            })
+        : // Same reasoning as the pill itself: a self-chosen focus area does not
+          // mention what is waiting, so its tooltip must not either — it would
+          // put back in words exactly what the pill leaves out.
+          showsPendingState
+          ? t("focusAreas.pendingTooltip", {
+              name: tagLabel(tag),
+              credits: hiddenCredits,
+            })
+          : tagLabel(tag);
 
     const isHighlighted =
       highlightTagName &&
@@ -343,9 +451,11 @@ const TagsDisplaySection = ({
             isHighlighted ? "animate-badge-highlight" : ""
           }`}
           style={{
-            ...(hasBadgeCredits
-              ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
-              : { borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }),
+            ...(showsPendingState
+              ? { borderColor: DEFAULT_COLOR, color: DEFAULT_COLOR }
+              : hasBadgeCredits
+                ? { borderColor: FOCUS_GREEN, color: FOCUS_GREEN }
+                : { borderColor: FOCUS_GREEN_DARK, color: FOCUS_GREEN_DARK }),
             ...(isHighlighted
               ? {
                   borderWidth: "2px",
@@ -368,10 +478,29 @@ const TagsDisplaySection = ({
               style={{ color: FOCUS_GREEN }}
             />
           )}
-          {tag.name}
-          {hasBadgeCredits && (
-            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start">
-              {tag.badgeCredits}ct.
+          {tagLabel(tag)}
+          {(hasBadgeCredits || showsPendingState) && (
+            <span className="opacity-70 self-stretch border-l border-current pl-1 flex items-start gap-1">
+              {/* Before a `+n` figure, which the eye qualifies; after a counted
+                  one, which it does not — there the eye means "and something
+                  else here is still waiting". */}
+              {hasPending && isPendingOnly && (
+                <EyeClosed
+                  size={11}
+                  className="flex-shrink-0 mt-[3px]"
+                  aria-hidden="true"
+                />
+              )}
+              {t("badges.creditsBare", {
+                credits: isPendingOnly ? hiddenCredits : tag.badgeCredits,
+              })}
+              {hasPending && !isPendingOnly && (
+                <EyeClosed
+                  size={11}
+                  className="flex-shrink-0 mt-[3px]"
+                  aria-hidden="true"
+                />
+              )}
             </span>
           )}
         </span>
@@ -392,19 +521,23 @@ const TagsDisplaySection = ({
       entityType === "team"
         ? groupTags.reduce((sum, t) => sum + Number(t.awardeeCount || 0), 0)
         : groupTags.reduce((sum, t) => sum + Number(t.awarderCount || 0), 0);
-    const personsLabel =
-      entityType === "team"
-        ? totalPersons === 1
-          ? "member"
-          : "members"
-        : totalPersons === 1
-          ? "person"
-          : "people";
 
     const tooltip =
       totalCredits > 0
-        ? `${supercategory}: ${totalCredits}ct. awarded with ${totalBadges} badge${totalBadges === 1 ? "" : "s"} by ${totalPersons} ${personsLabel}`
-        : supercategory;
+        ? entityType === "team"
+          ? t("focusAreas.groupTooltipMembers", {
+              group: supercategoryLabel(supercategory),
+              credits: totalCredits,
+              badges: totalBadges,
+              people: totalPersons,
+            })
+          : t("focusAreas.groupTooltip", {
+              group: supercategoryLabel(supercategory),
+              credits: totalCredits,
+              badges: totalBadges,
+              people: totalPersons,
+            })
+        : supercategoryLabel(supercategory);
 
     const isClickable = !!onSupercategoryClick;
 
@@ -441,7 +574,7 @@ const TagsDisplaySection = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Tag size={18} />
-            <h3 className="font-medium">{title}</h3>
+            <h3 className="font-medium">{title ?? t("focusAreas.title")}</h3>
           </div>
           <div className="flex space-x-2">
             <Button
@@ -450,7 +583,7 @@ const TagsDisplaySection = ({
               onClick={handleCancel}
               disabled={loading}
             >
-              Cancel
+              {t("focusAreas.cancel")}
             </Button>
             <Button
               variant="primary"
@@ -480,12 +613,20 @@ const TagsDisplaySection = ({
         <TagInput
           selectedTags={localSelectedTags}
           onTagsChange={(newTags) => setLocalSelectedTags(newTags)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("focusAreas.placeholder")}
           showPopularTags={true}
           maxSuggestions={10}
         />
       </div>
     );
+  }
+
+  // Nothing to show and nothing to do here: render no section rather than a
+  // heading above a placeholder. `canEdit && onSave` is what draws the edit
+  // button in the header below, so a section someone can still act on is never
+  // hidden, whatever the caller passes.
+  if (hideWhenEmpty && displayTags.length === 0 && !(canEdit && onSave)) {
+    return null;
   }
 
   // DISPLAY MODE
@@ -498,10 +639,15 @@ const TagsDisplaySection = ({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-x-3 gap-y-0.5">
               <div className="min-w-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">{title}</h3>
+                <h3 className="font-medium leading-[1.1] break-words sm:whitespace-nowrap">
+                  {title ?? t("focusAreas.title")}
+                </h3>
                 {totalCredits > 0 && (
                   <span className="min-w-0 text-sm font-normal text-base-content/60 whitespace-normal sm:whitespace-nowrap">
-                    ({totalCredits} ct. in {pillCount} {pillCount === 1 ? 'area' : 'areas'})
+                    {t("focusAreas.summary", {
+                      credits: totalCredits,
+                      count: pillCount,
+                    })}
                   </span>
                 )}
               </div>
@@ -518,7 +664,7 @@ const TagsDisplaySection = ({
                 className="hover:bg-violet-200 hover:text-violet-700"
                 onClick={() => setIsEditing(true)}
               >
-                Edit
+                {t("focusAreas.editAria")}
               </Button>
             )}
           </div>
@@ -549,7 +695,7 @@ const TagsDisplaySection = ({
                   <div
                     key={supercategory}
                     className="flex items-start gap-0"
-                    title={supercategory}
+                    title={supercategoryLabel(supercategory)}
                   >
                     {/* Supercategory initials avatar */}
                     {renderSupercategoryIcon(supercategory, groupTags)}
@@ -575,12 +721,14 @@ const TagsDisplaySection = ({
               onClick={() => setIsExpanded((v) => !v)}
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
-              {isExpanded ? "Show less" : "Show all"}
+              {isExpanded ? t("collapse.showLess") : t("collapse.showAll")}
             </button>
           )}
         </>
       ) : (
-        <p className="text-sm text-base-content/60">{emptyMessage}</p>
+        <p className="text-sm text-base-content/60">
+          {emptyMessage ?? t("focusAreas.empty")}
+        </p>
       )}
     </div>
   );

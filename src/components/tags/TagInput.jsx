@@ -6,16 +6,17 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useCombobox } from "downshift";
 import { X, Tag as TagIcon, TrendingUp, Sparkles, Layers, Check } from "lucide-react";
 import { tagService } from "../../services/tagService";
 import { SUPERCATEGORY_ICONS } from "../../utils/badgeIconUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import {
   flattenStructuredTags,
   usePopularTags,
   useStructuredTags,
 } from "../../hooks/useTagQueries";
-import { UI_TEXT } from "../../constants/uiText";
 import { debounce } from "lodash";
 
 const MIN_QUERY_LEN = 2;
@@ -26,16 +27,42 @@ const MIN_MENU_HEIGHT = 140;
 const MAX_MENU_HEIGHT = 360;
 const EMPTY_QUERY_ARRAY = [];
 
+// The menu shows tags grouped by supercategory and category, which can differ
+// from the order they arrive in. Downshift picks `items[index]`, so it has to be
+// given the SHOWN order, or a click lands on the wrong tag.
+const groupSuggestions = (tags) => {
+  const superGroups = new Map();
+  tags.forEach((tag) => {
+    const superKey = tag.supercategory || "Other";
+    const catKey = tag.category || "Other";
+    if (!superGroups.has(superKey)) superGroups.set(superKey, new Map());
+    const catMap = superGroups.get(superKey);
+    if (!catMap.has(catKey)) catMap.set(catKey, []);
+    catMap.get(catKey).push(tag);
+  });
+  return superGroups;
+};
+
 const TagInput = ({
   selectedTags = [],
   onTagsChange,
   onChange,
-  placeholder = UI_TEXT.focusAreas.searchPlaceholder,
+  // Resolved with t() below rather than as a default here, so it follows the
+  // active language instead of the one loaded when this module first ran.
+  placeholder,
   showPopularTags = true,
   maxSuggestions = 8,
   className = "",
   disabled = false,
+  // Single-pick mode (badge award modal): a picked tag goes to onPickTag as the
+  // whole tag object instead of into the id list, and the caller shows the
+  // choice itself. selectedTags then only marks tags that are not offered.
+  onPickTag,
+  hideSelectedTags = false,
 }) => {
+  const { t } = useTranslation();
+  // What is SHOWN is translated; ids and stored names stay the data.
+  const { tagLabel, categoryLabel } = useTagLabels();
   const handleTags = onTagsChange ?? onChange;
 
   const [inputValue, setInputValue] = useState("");
@@ -73,15 +100,18 @@ const TagInput = ({
     enabled: showPopularTags,
   });
 
-  const getTagId = (t) => {
-    if (t == null) return null;
-    if (typeof t === "number") return Number.isFinite(t) ? t : null;
-    if (typeof t === "string") {
-      const n = Number(t);
+  const getTagId = (candidate) => {
+    if (candidate == null) return null;
+    if (typeof candidate === "number")
+      return Number.isFinite(candidate) ? candidate : null;
+    if (typeof candidate === "string") {
+      const n = Number(candidate);
       return Number.isFinite(n) ? n : null;
     }
-    if (typeof t === "object") {
-      const n = Number(t.id ?? t.tag_id ?? t.tagId ?? t.value);
+    if (typeof candidate === "object") {
+      const n = Number(
+        candidate.id ?? candidate.tag_id ?? candidate.tagId ?? candidate.value,
+      );
       return Number.isFinite(n) ? n : null;
     }
     return null;
@@ -104,14 +134,16 @@ const TagInput = ({
 
     setTagMap((prev) => {
       const next = new Map(prev);
-      (tags || []).forEach((t) => {
-        const id = getTagId(t);
+      (tags || []).forEach((tag) => {
+        const id = getTagId(tag);
         if (id != null) {
-          // store with normalized id, but keep original object + ensure `name` exists
+          // Store with a normalized id, keeping the original object. `name`
+          // stays null when the source has none - the display fallback is a
+          // translated string and belongs where it is rendered, not in state.
           next.set(id, {
-            ...t,
+            ...tag,
             id,
-            name: t?.name ?? t?.label ?? t?.value ?? `Focus Area ${id}`,
+            name: tag?.name ?? tag?.label ?? tag?.value ?? null,
           });
         }
       });
@@ -153,8 +185,8 @@ const TagInput = ({
       setLoading(true);
       try {
         const results = await tagService.searchTags(q);
-        const filtered = (results || []).filter((t) => {
-          const id = getTagId(t);
+        const filtered = (results || []).filter((tag) => {
+          const id = getTagId(tag);
           return id != null && !selectedTagIdSet.has(id);
         });
 
@@ -200,17 +232,24 @@ const TagInput = ({
   }, [inputValue, suggestions, relatedTags, popularTags]);
 
   const currentSuggestions = getCurrentSuggestions();
+  const shownOrderTags = React.useMemo(
+    () =>
+      Array.from(groupSuggestions(currentSuggestions.tags).values()).flatMap(
+        (catMap) => Array.from(catMap.values()).flat(),
+      ),
+    [currentSuggestions.tags],
+  );
   const shouldShowDropdown =
     !disabled && showSuggestions && currentSuggestions.tags.length > 0;
 
   const getSuggestionTitle = () => {
     switch (currentSuggestions.type) {
       case "popular":
-        return UI_TEXT.focusAreas.popularTitle;
+        return t("focusAreas.popularTitle");
       case "related":
-        return UI_TEXT.focusAreas.relatedTitle;
+        return t("focusAreas.relatedTitle");
       case "search":
-        return UI_TEXT.focusAreas.searchResultsTitle;
+        return t("focusAreas.searchResultsTitle");
       default:
         return "";
     }
@@ -237,10 +276,14 @@ const TagInput = ({
     (tag) => {
       const id = getTagId(tag);
       if (id != null && !selectedTagIdSet.has(id)) {
-        const next = [...selectedTagIds, id];
-        handleTags?.(next);
-        updateTagMap([tag]);
-        fetchRelatedTags(id);
+        if (onPickTag) {
+          onPickTag(tag);
+        } else {
+          const next = [...selectedTagIds, id];
+          handleTags?.(next);
+          updateTagMap([tag]);
+          fetchRelatedTags(id);
+        }
       }
       setInputValue("");
       setSuggestions([]);
@@ -250,6 +293,7 @@ const TagInput = ({
       selectedTagIds,
       selectedTagIdSet,
       handleTags,
+      onPickTag,
       updateTagMap,
       fetchRelatedTags,
     ],
@@ -282,7 +326,9 @@ const TagInput = ({
     // If we have selected tags rendered under the input, treat them as “reserved space”
     // so the dropdown doesn’t choose bottom placement and cover them.
     const reservedBelow =
-      selectedTags.length > 0 ? selectedTagsHeight + GAP : 0;
+      !hideSelectedTags && selectedTags.length > 0
+        ? selectedTagsHeight + GAP
+        : 0;
 
     const spaceBelow =
       viewportH - (rect.bottom + GAP) - EDGE_MARGIN - reservedBelow;
@@ -424,7 +470,7 @@ const TagInput = ({
     getItemProps,
     closeMenu,
   } = useCombobox({
-    items: currentSuggestions.tags,
+    items: shownOrderTags,
     inputValue,
     onInputValueChange: ({ inputValue }) => handleInputChange(inputValue ?? ""),
     onSelectedItemChange: ({ selectedItem }) => {
@@ -472,11 +518,11 @@ const TagInput = ({
           else if (dsRef && typeof dsRef === "object") dsRef.current = node;
         }}
         type="text"
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("focusAreas.searchPlaceholder")}
         className="input input-bordered w-full pr-10 focus:input-primary"
       />
 
-      {selectedTags.length > 0 && (
+      {!hideSelectedTags && selectedTags.length > 0 && (
         <div ref={selectedTagsRef} className="mt-2 p-3 bg-base-100 rounded-lg">
           <div className="flex flex-wrap gap-2">
             {selectedTagIds.map((tagId) => {
@@ -487,12 +533,19 @@ const TagInput = ({
                   className="badge badge-primary badge-lg gap-2 leading-none items-start h-auto py-1.5"
                 >
                   <TagIcon size={14} className="shrink-0 mt-px" />
-                  {tag?.name ?? `Focus Area ${tagId}`}
+                  {tagLabel(tagId, tag?.name) ??
+                    t("focusAreas.fallbackName", { id: String(tagId) })}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tagId)}
                     className="hover:text-error transition-colors"
-                    aria-label={`Remove ${tag?.name ?? "focus area"}`}
+                    aria-label={
+                      tagLabel(tagId, tag?.name)
+                        ? t("focusAreas.remove", {
+                            name: tagLabel(tagId, tag?.name),
+                          })
+                        : t("focusAreas.removeGeneric")
+                    }
                     disabled={disabled}
                   >
                     <X size={14} />
@@ -560,22 +613,14 @@ const TagInput = ({
                     {loading && (
                       <span className="text-xs opacity-70 flex items-center gap-1">
                         <span className="loading loading-spinner loading-xs"></span>
-                        Loading…
+                        {t("focusAreas.loading")}
                       </span>
                     )}
                   </span>
                 </li>
 
                 {(() => {
-                  const superGroups = new Map();
-                  currentSuggestions.tags.forEach((tag) => {
-                    const superKey = tag.supercategory || "Other";
-                    const catKey = tag.category || "Other";
-                    if (!superGroups.has(superKey)) superGroups.set(superKey, new Map());
-                    const catMap = superGroups.get(superKey);
-                    if (!catMap.has(catKey)) catMap.set(catKey, []);
-                    catMap.get(catKey).push(tag);
-                  });
+                  const superGroups = groupSuggestions(currentSuggestions.tags);
 
                   let globalIndex = 0;
                   return Array.from(superGroups.entries()).flatMap(([supercategory, catMap], superIdx) => {
@@ -601,7 +646,11 @@ const TagInput = ({
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
                               disabled={alreadyAdded}
-                              title={alreadyAdded ? UI_TEXT.focusAreas.alreadyAdded : undefined}
+                              title={
+                                alreadyAdded
+                                  ? t("focusAreas.alreadyAdded")
+                                  : undefined
+                              }
                               className={`flex flex-row-reverse flex-wrap items-start w-full leading-none gap-x-2 gap-y-2 ${paddingClass} ${
                                 alreadyAdded
                                   ? "opacity-40 cursor-not-allowed"
@@ -619,12 +668,12 @@ const TagInput = ({
                                 {isFirstInCategory && (
                                   <span className="flex items-center gap-1 text-xs leading-none text-primary-focus whitespace-nowrap">
                                     <CategoryIcon size={10} className="shrink-0" />
-                                    <span>{category}</span>
+                                    <span>{categoryLabel(category)}</span>
                                   </span>
                                 )}
                               </div>
                               <div className="[flex:1_0_auto] max-w-full flex items-start gap-2 min-w-0">
-                                <span className="font-medium">{tag.name}</span>
+                                <span className="font-medium">{tagLabel(tag)}</span>
                                 {alreadyAdded && <Check size={12} className="opacity-60 shrink-0 mt-px" />}
                               </div>
                             </button>

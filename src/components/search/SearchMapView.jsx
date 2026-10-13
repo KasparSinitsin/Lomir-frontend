@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueries } from "@tanstack/react-query";
 import { useToast } from "../../contexts/ToastContext";
 import { createPortal } from "react-dom";
@@ -30,7 +31,10 @@ import {
   UserSearch,
   X,
 } from "lucide-react";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import VacantRoleDetailsModal from "../teams/VacantRoleDetailsModalLazy";
 import TeamApplicationDetailsModal from "../teams/TeamApplicationDetailsModal";
 import TeamInvitationDetailsModal from "../teams/TeamInvitationDetailsModal";
@@ -46,7 +50,7 @@ import {
   userProfileQueryKey,
 } from "../../hooks/useUserQueries";
 import { getResultMatchScore } from "../../utils/teamMatchUtils";
-import { getMatchTier } from "../../utils/matchScoreUtils";
+import { getMatchTier, getMatchTooltipParts } from "../../utils/matchScoreUtils";
 import {
   getTeamInitials,
   getUserInitials,
@@ -56,28 +60,31 @@ import {
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
+  formatDistanceKm,
   formatLocation,
   getCountryCode,
   normalizeLocationData,
 } from "../../utils/locationUtils";
 import DemoAvatarOverlay from "../users/DemoAvatarOverlay";
 import Tooltip from "../common/Tooltip";
+import { DEFAULT_ROLE_NAME } from "../../constants/roleDefaults";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const TYPE_META = {
   team: {
-    label: "Team",
+    labelKey: "mapPopup.typeTeam",
     color: "#e86a86",
     background: "#fce8ec",
     Icon: Users,
   },
   user: {
-    label: "Person",
+    labelKey: "mapPopup.typeUser",
     color: "#009213",
     background: "#dcfce7",
     Icon: User,
   },
   role: {
-    label: "Open Role",
+    labelKey: "mapPopup.typeRole",
     color: "#f59e0b",
     background: "#fef3c7",
     Icon: UserSearch,
@@ -92,7 +99,12 @@ const getMapEntityColor = (point, searchType = "all") =>
     : DEFAULT_MAP_ENTITY_COLOR;
 
 const DEFAULT_CENTER = [51.1657, 10.4515];
-const LOCATION_NOT_AVAILABLE = "Location not available";
+/**
+ * ⚠️ Not a display string. `getLocationLabel` returns `null` when a point has
+ * no usable location, and every check below tests for that null - so the
+ * wording can be translated at the point of rendering without moving a single
+ * branch. Do not reintroduce a string sentinel here.
+ */
 const POPUP_SUBLINE_ICON_SIZE = 10;
 const POPUP_SUBLINE_ICON_CLASS = "inline-flex h-3 w-3 items-center justify-center";
 const MAP_POPUP_MAX_WIDTH = 340;
@@ -243,15 +255,17 @@ const getLatLng = (item) => {
   return isValidCoordinate(lat, lng) ? { lat, lng } : null;
 };
 
+// The stored name, or null. It is also compared against request role names,
+// so the display fallback is added at render by `getPointName`, never here.
 const getDisplayName = (item, type) => {
-  if (type === "team") return item.name || "Team";
+  if (type === "team") return item.name || null;
   if (type === "role") {
-    return item.roleName ?? item.role_name ?? item.title ?? "Open role";
+    return item.roleName ?? item.role_name ?? item.title ?? null;
   }
 
   const firstName = item.first_name || item.firstName || "";
   const lastName = item.last_name || item.lastName || "";
-  return [firstName, lastName].filter(Boolean).join(" ") || item.username || "Person";
+  return joinNameParts(firstName, lastName) || item.username || null;
 };
 
 const getMapPointType = (item) =>
@@ -513,7 +527,7 @@ const getLocationLabel = (item) => {
     },
   );
 
-  return locationLabel || LOCATION_NOT_AVAILABLE;
+  return locationLabel || null;
 };
 
 const getItemCountryCode = (item) => {
@@ -750,9 +764,9 @@ const getDistanceLabel = (item) => {
   );
 
   if (distance === null || distance >= 999999) return null;
-  if (distance === 0) return "0 km away";
-  if (distance < 1) return `${distance.toFixed(1)} km away`;
-  return `${Math.round(distance)} km away`;
+  // The three cases collapsed: formatDistanceKm keeps one decimal below a
+  // kilometre and rounds above it, which is what these branches did.
+  return formatDistanceKm(distance);
 };
 
 const getDistanceValue = (item) => {
@@ -867,7 +881,7 @@ const getRolePostedAt = (item) =>
   firstPresent(item.postedAt, item.posted_at, item.createdAt, item.created_at);
 
 const getRoleInitials = (item) => {
-  const name = item.roleName ?? item.role_name ?? item.title ?? "Vacant Role";
+  const name = item.roleName ?? item.role_name ?? item.title ?? DEFAULT_ROLE_NAME;
   const words = String(name).trim().split(/\s+/).filter(Boolean);
 
   if (words.length >= 2) {
@@ -909,20 +923,29 @@ const isDemoPoint = (item, type) => {
   return isSyntheticRole(item);
 };
 
-const getDemoLabel = (type) => {
-  if (type === "team") return "Demo Team";
-  if (type === "role") return "Demo Role";
-  return "Demo Profile";
+const getDemoLabel = (type, t) => {
+  if (type === "team") return t("mapPopup.demoTeam");
+  if (type === "role") return t("mapPopup.demoRole");
+  return t("mapPopup.demoProfile");
 };
 
-const getTypeTooltipLabel = (type) => {
-  if (type === "team") return "Team";
-  if (type === "role") return "Open Role";
-  return "User Profile";
+const getTypeLabel = (type, t) => {
+  if (type === "team") return t("mapPopup.typeTeam");
+  if (type === "role") return t("mapPopup.typeRole");
+  return t("mapPopup.typeUser");
+};
+
+// The name shown for a point; a result without one is named by its type.
+const getPointName = (point, t) => point.name ?? getTypeLabel(point.type, t);
+
+const getTypeTooltipLabel = (type, t) => {
+  if (type === "team") return t("mapPopup.typeTeam");
+  if (type === "role") return t("mapPopup.typeRole");
+  return t("mapPopup.typeUserProfile");
 };
 
 const getMarkerMatchIconMarkup = (matchTier) => {
-  if (matchTier.label === "Great match") {
+  if (matchTier.tier === "great") {
     return `
       <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
       <path d="M20 3v4" />
@@ -932,7 +955,7 @@ const getMarkerMatchIconMarkup = (matchTier) => {
     `;
   }
 
-  if (matchTier.label === "Good match") {
+  if (matchTier.tier === "good") {
     return `
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
       <polyline points="16 7 22 7 22 13" />
@@ -1034,9 +1057,17 @@ const getRequestRoleName = (entry) => {
     return roleName.trim();
   }
 
-  const roleId = firstPresent(entry?.role?.id, entry?.roleId, entry?.role_id);
-  return roleId != null ? "Vacant Role" : null;
+  return null;
 };
+
+const getRequestRoleId = (entry) =>
+  firstPresent(entry?.role?.id, entry?.roleId, entry?.role_id);
+
+// A request for a role whose name did not come along is shown as the
+// translated vacant-role fallback; a request without a role has no name.
+const getRequestRoleLabel = (entry, t) =>
+  getRequestRoleName(entry) ??
+  (getRequestRoleId(entry) != null ? t("roleStatus.vacantRoleFallback") : null);
 
 const requestTargetsTeam = (entry, teamId) => {
   const entryTeamId = getRequestTeamId(entry);
@@ -1066,6 +1097,7 @@ const isActiveInvitationRequest = (entry) => {
 
 const isRoleScopedRequest = (entry) =>
   Boolean(getRequestRoleName(entry)) ||
+  getRequestRoleId(entry) != null ||
   isTruthyValue(firstPresent(
     entry?.isInternal,
     entry?.is_internal,
@@ -1119,13 +1151,13 @@ const normalizeMapPoint = (
   const countryCode = getItemCountryCode(item);
   const rawCoordinatesAreUsable =
     !isRemote &&
-    locationLabel !== LOCATION_NOT_AVAILABLE &&
+    locationLabel != null &&
     isValidCoordinate(lat, lng) &&
     coordinatesMatchCountry(lat, lng, countryCode);
   const cityCoordinateFallback = !isRemote ? getCityCoordinateFallback(item) : null;
   const shouldUseCityCoordinateFallback =
     !rawCoordinatesAreUsable &&
-    locationLabel !== LOCATION_NOT_AVAILABLE &&
+    locationLabel != null &&
     Boolean(cityCoordinateFallback);
   const mapLat = rawCoordinatesAreUsable ? lat : cityCoordinateFallback?.lat ?? lat;
   const mapLng = rawCoordinatesAreUsable ? lng : cityCoordinateFallback?.lng ?? lng;
@@ -1209,7 +1241,7 @@ const normalizeMapPoint = (
     String(rawId) === String(viewerUser.id);
 
   return {
-    id: `${type}-${rawId ?? getDisplayName(item, type)}`,
+    id: `${type}-${rawId ?? getDisplayName(item, type) ?? type}`,
     rawId,
     type,
     item,
@@ -1233,12 +1265,10 @@ const normalizeMapPoint = (
     hasTeamInvitation: Boolean(teamInvitation),
     teamRoleInvitation,
     hasTeamRoleInvitation: Boolean(teamRoleInvitation),
-    teamRoleInvitationName: getRequestRoleName(teamRoleInvitation),
     teamApplication,
     hasTeamApplication: Boolean(teamApplication),
     teamRoleApplication,
     hasTeamRoleApplication: Boolean(teamRoleApplication),
-    teamRoleApplicationName: getRequestRoleName(teamRoleApplication),
     isCombinedTeamApplication: Boolean(teamRoleApplication) && !(
       teamRoleApplication?.isInternalRoleApplication ||
       teamRoleApplication?.is_internal_role_application
@@ -1317,6 +1347,7 @@ const MapInstanceCapture = ({ onReady }) => {
 };
 
 const MarkerTooltipContent = ({ point, showMatchScore = false }) => {
+  const { t } = useTranslation();
   const meta = TYPE_META[point.type] ?? TYPE_META.team;
   const Icon = meta.Icon;
   const matchTier = showMatchScore
@@ -1328,7 +1359,7 @@ const MarkerTooltipContent = ({ point, showMatchScore = false }) => {
     <div className="flex flex-col items-center gap-1 text-center">
       <div className="flex items-center justify-center gap-1.5">
         <Icon size={13} className="block shrink-0" aria-hidden="true" />
-        <span className="font-medium leading-none">{point.name}</span>
+        <span className="font-medium leading-none">{getPointName(point, t)}</span>
         {point.isDemo && (
           <FlaskConical
             size={11}
@@ -1402,6 +1433,7 @@ const PopupAvatar = ({
 };
 
 const PopupTypeIcon = ({ point }) => {
+  const { t } = useTranslation();
   const meta = TYPE_META[point.type] ?? TYPE_META.team;
   const Icon = meta.Icon;
   const icon = (
@@ -1414,7 +1446,7 @@ const PopupTypeIcon = ({ point }) => {
 
   return (
     <Tooltip
-      content={getTypeTooltipLabel(point.type)}
+      content={getTypeTooltipLabel(point.type, t)}
       wrapperClassName={POPUP_SUBLINE_ICON_CLASS}
     >
       {icon}
@@ -1423,6 +1455,7 @@ const PopupTypeIcon = ({ point }) => {
 };
 
 const PopupDemoIcon = ({ point }) => {
+  const { t } = useTranslation();
   const icon = (
     <FlaskConical
       size={POPUP_SUBLINE_ICON_SIZE}
@@ -1433,7 +1466,7 @@ const PopupDemoIcon = ({ point }) => {
 
   return (
     <Tooltip
-      content={getDemoLabel(point.type)}
+      content={getDemoLabel(point.type, t)}
       wrapperClassName={POPUP_SUBLINE_ICON_CLASS}
     >
       {icon}
@@ -1443,22 +1476,23 @@ const PopupDemoIcon = ({ point }) => {
 
 
 const EntityMetaLine = ({ point }) => {
+  const { t } = useTranslation();
   const meta = TYPE_META[point.type] ?? TYPE_META.team;
   const Icon = meta.Icon;
 
   return (
     <div className="flex items-center gap-0.5 text-[11px] font-medium text-base-content/70">
       <Tooltip
-        content={getTypeTooltipLabel(point.type)}
+        content={getTypeTooltipLabel(point.type, t)}
         wrapperClassName={POPUP_SUBLINE_ICON_CLASS}
       >
         <Icon size={POPUP_SUBLINE_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
       </Tooltip>
-      <span>{meta.label}</span>
+      <span>{getTypeLabel(point.type, t)}</span>
       {point.isDemo && (
         <>
           <Tooltip
-            content={getDemoLabel(point.type)}
+            content={getDemoLabel(point.type, t)}
             wrapperClassName={`ml-1.5 overflow-hidden ${POPUP_SUBLINE_ICON_CLASS}`}
           >
             <FlaskConical size={POPUP_SUBLINE_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
@@ -1471,36 +1505,41 @@ const EntityMetaLine = ({ point }) => {
 
 const LocationIcon = ({ point, size = 13, className = "" }) => {
   if (point.isRemote) return <Globe size={size} className={className} aria-hidden="true" />;
-  if (point.locationLabel === LOCATION_NOT_AVAILABLE) {
+  if (point.locationLabel == null) {
     return <MapPinX size={size} className={className} aria-hidden="true" />;
   }
   return <MapPin size={size} className={className} aria-hidden="true" />;
 };
 
-const getDetailsTooltipLabel = (type) => {
-  if (type === "team") return "Click to view team details";
-  if (type === "role") return "Click to view role details";
-  return "Click to view user details";
+const getDetailsTooltipLabel = (type, t) => {
+  if (type === "team") return t("mapPopup.clickTeamDetails");
+  if (type === "role") return t("mapPopup.clickRoleDetails");
+  return t("mapPopup.clickUserDetails");
 };
 
-const getLocationStatusTooltipLabel = (point) => {
-  const entityLabel = TYPE_META[point.type]?.label ?? TYPE_META.team.label;
-  if (point.isRemote) return `Remote ${entityLabel}`;
-  const radiusLabel =
-    point.type === "role" && point.maxDistanceKm
-      ? `\nwithin ${point.maxDistanceKm} km from Role Location`
-      : "";
-  if (point.countryCode) {
-    return `${entityLabel} in ${point.locationLabel}${radiusLabel}`;
+const getLocationStatusTooltipLabel = (point, t) => {
+  const entity = getTypeLabel(point.type, t);
+
+  if (point.isRemote) return t("mapPopup.entityRemote", { entity });
+  if (point.locationLabel == null) {
+    return t("mapPopup.entityNoLocation", { entity });
   }
-  if (point.locationLabel !== LOCATION_NOT_AVAILABLE) {
-    return `${entityLabel} in ${point.locationLabel}${radiusLabel}`;
-  }
-  return `${entityLabel} without Location info`;
+
+  const withRadius = point.type === "role" && point.maxDistanceKm;
+  return withRadius
+    ? t("mapPopup.entityInLocationWithRadius", {
+        entity,
+        location: point.locationLabel,
+        km: point.maxDistanceKm,
+      })
+    : t("mapPopup.entityInLocation", {
+        entity,
+        location: point.locationLabel,
+      });
 };
 
 const LocationStatusIndicator = ({ point }) => {
-  if (point.countryCode && point.locationLabel !== LOCATION_NOT_AVAILABLE && !point.isRemote) {
+  if (point.countryCode && point.locationLabel != null && !point.isRemote) {
     return (
       <span className="rounded-full border border-[var(--color-primary-focus)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[var(--color-primary-focus)]">
         {point.countryCode}
@@ -1520,52 +1559,23 @@ const LocationStatusIndicator = ({ point }) => {
 const getPointMatchDetails = (point) =>
   point?.item?.matchDetails ?? point?.item?.match_details ?? null;
 
-const getPointMatchTooltip = (point, matchTier) => {
-  const matchDetails = getPointMatchDetails(point);
-  const matchType = point?.item?.matchType ?? point?.item?.match_type ?? null;
-  const matchLabel = matchType === "role_match" ? "role match" : "match";
+// Same sentences as `UserCard` and `TeamCard`: keys are written out per
+// variant, because a key built from `variant` is invisible to `i18n:check`.
+const getPointMatchTooltip = (point, matchTier, t) => {
+  const { variant, values } = getMatchTooltipParts(
+    matchTier,
+    getPointMatchDetails(point),
+  );
 
-  if (
-    matchDetails &&
-    ((matchDetails.tagScore ?? matchDetails.tag_score) != null ||
-      (matchDetails.badgeScore ?? matchDetails.badge_score) != null ||
-      (matchDetails.distanceScore ?? matchDetails.distance_score) != null)
-  ) {
-    const tagPct = Math.round(
-      (matchDetails.tagScore ?? matchDetails.tag_score ?? 0) * 100,
-    );
-    const badgePct = Math.round(
-      (matchDetails.badgeScore ?? matchDetails.badge_score ?? 0) * 100,
-    );
-    const distPct = Math.round(
-      (matchDetails.distanceScore ?? matchDetails.distance_score ?? 0) * 100,
-    );
-
-    return `${matchTier.pct}% ${matchLabel} — Tags ${tagPct}% · Badges ${badgePct}% · Location ${distPct}%`;
-  }
-
-  if (matchDetails) {
-    const sharedTags =
-      matchDetails.sharedTagCount ?? matchDetails.shared_tag_count ?? 0;
-    const sharedBadges =
-      matchDetails.sharedBadgeCount ?? matchDetails.shared_badge_count ?? 0;
-
-    if (sharedTags > 0 || sharedBadges > 0) {
-      return `${matchTier.pct}% profile match — ${sharedTags} shared tags, ${sharedBadges} shared badges`;
-    }
-  }
-
-  const fallbackMatchLabel =
-    matchType === "role_match"
-      ? "role match"
-      : point?.type === "role"
-        ? "match"
-        : "profile match";
-
-  return `${matchTier.pct}% ${fallbackMatchLabel}`;
+  if (variant === "breakdown") return t("matchScore.breakdown", values);
+  if (variant === "shared") return t("matchScore.shared", values);
+  if (variant === "sharedFocus") return t("matchScore.sharedFocus", values);
+  if (variant === "plain") return t("matchScore.plain", values);
+  return "";
 };
 
 const MatchScoreSublineItem = ({ point, showMatchScore = false }) => {
+  const { t } = useTranslation();
   if (!showMatchScore) return null;
 
   const rawScore = getResultMatchScore(point?.item);
@@ -1575,7 +1585,7 @@ const MatchScoreSublineItem = ({ point, showMatchScore = false }) => {
   const MatchIcon = matchTier.Icon;
 
   return (
-    <Tooltip content={getPointMatchTooltip(point, matchTier)}>
+    <Tooltip content={getPointMatchTooltip(point, matchTier, t)}>
       <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-normal leading-none">
         <MatchIcon
           size={POPUP_SUBLINE_ICON_SIZE}
@@ -1595,10 +1605,11 @@ const TeamMetaItem = ({
   onClick = null,
   ariaLabel = null,
 }) => {
+  const { t } = useTranslation();
   const content = onClick ? (
     <button
       type="button"
-      aria-label={ariaLabel ?? tooltip ?? "Open details"}
+      aria-label={ariaLabel ?? tooltip ?? t("mapPopup.openDetails")}
       className="inline-flex items-center gap-0.5 rounded-sm bg-transparent p-0 text-inherit transition-colors hover:text-[var(--color-primary-focus)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
       onClick={(event) => {
         event.stopPropagation();
@@ -1638,10 +1649,10 @@ const TeamRoleIcon = ({ role, size = 13 }) => {
   return null;
 };
 
-const getTeamRoleTooltip = (role) => {
-  if (role === "owner") return "You are the owner of this team";
-  if (role === "admin") return "You are an admin of this team";
-  if (role === "member") return "You are a member of this team";
+const getTeamRoleTooltip = (role, t) => {
+  if (role === "owner") return t("teams:teamCard.status.youAreOwner");
+  if (role === "admin") return t("teams:teamCard.status.youAreAdmin");
+  if (role === "member") return t("teams:teamCard.status.youAreMember");
   return null;
 };
 
@@ -1653,6 +1664,13 @@ const TeamMetaLine = ({
   onOpenInvitation = null,
   onOpenApplication = null,
 }) => {
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
+
   if (point.type !== "team") return null;
 
   const memberLabel = `${point.memberCount}/${point.maxMembers}`;
@@ -1662,13 +1680,19 @@ const TeamMetaLine = ({
       showMatchScore={showMatchScore}
     />
   ) : null;
-  const roleTooltip = getTeamRoleTooltip(point.currentUserRole);
-  const roleInvitationTooltip = point.teamRoleInvitationName
-    ? `You were invited to fill ${point.teamRoleInvitationName} in this team`
-    : "You were invited to fill a role in this team";
-  const roleApplicationTooltip = point.teamRoleApplicationName
-    ? `You applied for ${point.teamRoleApplicationName} in this team`
-    : "You applied for a role within this team";
+  const roleTooltip = getTeamRoleTooltip(point.currentUserRole, t);
+  const teamRoleInvitationName = getRequestRoleLabel(point.teamRoleInvitation, t);
+  const teamRoleApplicationName = getRequestRoleLabel(point.teamRoleApplication, t);
+  const roleInvitationTooltip = teamRoleInvitationName
+    ? t("mapPopup.invitedToFillNamedRole", {
+        roleName: teamRoleInvitationName,
+      })
+    : t("teams:teamCard.status.invitedToFillRole");
+  const roleApplicationTooltip = teamRoleApplicationName
+    ? t("mapPopup.appliedForNamedRole", {
+        roleName: teamRoleApplicationName,
+      })
+    : t("teams:teamCard.status.appliedForRole");
   const roleNameItem = (roleName) => {
     if (!roleName || !withTooltips) return null;
 
@@ -1691,8 +1715,14 @@ const TeamMetaLine = ({
       <TeamMetaItem
         tooltip={
           point.currentUserRole
-            ? `You are a member of this team with ${point.memberCount} / ${point.maxMembers} members`
-            : `${point.memberCount} of ${point.maxMembers} members`
+            ? t("mapPopup.memberWithCount", {
+                count: point.memberCount,
+                max: point.maxMembers,
+              })
+            : t("mapPopup.memberCount", {
+                count: point.memberCount,
+                max: point.maxMembers,
+              })
         }
         withTooltip={withTooltips}
       >
@@ -1701,12 +1731,12 @@ const TeamMetaLine = ({
       </TeamMetaItem>
       {point.hasTeamInvitation && (
         <TeamMetaItem
-          tooltip="You were invited to this team"
+          tooltip={t("teams:teamCard.status.invitedToTeam")}
           withTooltip={withTooltips}
           onClick={point.teamInvitation && onOpenInvitation
             ? () => onOpenInvitation(point.teamInvitation)
             : null}
-          ariaLabel="Open team invitation details"
+          ariaLabel={t("mapPopup.openTeamInvitation")}
         >
           <Mail size={10} className="text-pink-500" aria-hidden="true" />
         </TeamMetaItem>
@@ -1718,40 +1748,44 @@ const TeamMetaLine = ({
           onClick={point.teamRoleInvitation && onOpenInvitation
             ? () => onOpenInvitation(point.teamRoleInvitation)
             : null}
-          ariaLabel="Open role invitation details"
+          ariaLabel={t("mapPopup.openRoleInvitation")}
         >
           <Mail size={10} className="text-orange-500" aria-hidden="true" />
         </TeamMetaItem>
       )}
-      {showRoleRequestNames && roleNameItem(point.teamRoleInvitationName)}
+      {showRoleRequestNames && roleNameItem(teamRoleInvitationName)}
       {point.hasTeamApplication && (
         <TeamMetaItem
-          tooltip="You applied to join this team"
+          tooltip={t("teams:teamCard.status.appliedToTeam")}
           withTooltip={withTooltips}
           onClick={point.teamApplication && onOpenApplication
             ? () => onOpenApplication(point.teamApplication)
             : null}
-          ariaLabel="Open team application details"
+          ariaLabel={t("mapPopup.openTeamApplication")}
         >
           <SendHorizontal size={10} className="text-info" aria-hidden="true" />
         </TeamMetaItem>
       )}
       {point.hasTeamRoleApplication && (
         <TeamMetaItem
-          tooltip={point.isCombinedTeamApplication ? "You applied to join this team and fill a role" : roleApplicationTooltip}
+          tooltip={
+            point.isCombinedTeamApplication
+              ? t("teams:teamCard.status.appliedCombined")
+              : roleApplicationTooltip
+          }
           withTooltip={withTooltips}
           onClick={point.teamRoleApplication && onOpenApplication
             ? () => onOpenApplication(point.teamRoleApplication)
             : null}
-          ariaLabel="Open role application details"
+          ariaLabel={t("mapPopup.openRoleApplication")}
         >
           <SendHorizontal size={10} className={point.isCombinedTeamApplication ? "text-violet-500" : "text-orange-500"} aria-hidden="true" />
         </TeamMetaItem>
       )}
-      {showRoleRequestNames && roleNameItem(point.teamRoleApplicationName)}
+      {showRoleRequestNames && roleNameItem(teamRoleApplicationName)}
       {point.openRoleCount > 0 && (
         <TeamMetaItem
-          tooltip={`${point.openRoleCount} open ${point.openRoleCount === 1 ? "role" : "roles"} posted in this team`}
+          tooltip={t("mapPopup.openRoles", { count: point.openRoleCount })}
           withTooltip={withTooltips}
         >
           <UserSearch size={10} className="text-orange-500" aria-hidden="true" />
@@ -1767,8 +1801,8 @@ const TeamMetaLine = ({
         <TeamMetaItem
           tooltip={
             point.isPublic
-              ? "Public Team - visible for everyone"
-              : "Private Team - only visible for Members"
+              ? t("teams:teamCard.indicators.publicTeam")
+              : t("teams:teamCard.indicators.privateTeam")
           }
           withTooltip={withTooltips}
         >
@@ -1784,6 +1818,9 @@ const TeamMetaLine = ({
 };
 
 const UserSubline = ({ point, showMatchScore = false }) => {
+  // Above the early return -- a hook placed below it is a conditional hook.
+  const { t } = useTranslation();
+
   if (point.type !== "user") return null;
 
   const scoreItem = showMatchScore ? (
@@ -1800,7 +1837,13 @@ const UserSubline = ({ point, showMatchScore = false }) => {
       {scoreItem}
       {point.username && <span>@{point.username}</span>}
       {point.isOwnProfile && (
-        <Tooltip content={point.isPublicProfile ? "Public Profile - visible for everyone" : "Private Profile - only visible for you"}>
+        <Tooltip
+          content={
+            point.isPublicProfile
+              ? t("user.profileVisibilityPublic")
+              : t("user.profileVisibilityPrivate")
+          }
+        >
           <span className="inline-flex">
             {point.isPublicProfile
               ? <EyeIcon size={10} className="text-green-600" aria-hidden="true" />
@@ -1820,6 +1863,13 @@ const RoleSubline = ({
   onOpenApplication = null,
   teamOnly = false,
 }) => {
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
+
   if (point.type !== "role") return null;
 
   const postedDate = point.postedAt ? new Date(point.postedAt) : null;
@@ -1857,16 +1907,18 @@ const RoleSubline = ({
       <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
         {scoreItem}
         {isValidDate && (
-          <Tooltip content={`Posted ${format(postedDate, "MMM d, yyyy")}`}>
+          <Tooltip content={t("mapPopup.posted", { date: formatDateMedium(postedDate) })}>
             <span className="inline-flex items-center gap-1">
               <Calendar size={10} aria-hidden="true" />
-              <span>{format(postedDate, "MM/dd/yy")}</span>
+              <span>{formatDateNumeric(postedDate)}</span>
             </span>
           </Tooltip>
         )}
         {point.teamName && point.isViewerTeamMember && (
           <Tooltip
-            content={`You are a member of this team: ${point.teamName}`}
+            content={t("mapPopup.memberOfTeamNamed", {
+              teamName: point.teamName,
+            })}
           >
             <span className="inline-flex items-center">
               <Users
@@ -1878,9 +1930,9 @@ const RoleSubline = ({
           </Tooltip>
         )}
         {point.hasInvitation && (
-          <Tooltip content="You were invited to fill this role">
+          <Tooltip content={t("teams:vacantRoleCard.invitedToFillRole")}>
             {statusIcon({
-              ariaLabel: "Open role invitation details",
+              ariaLabel: t("mapPopup.openRoleInvitation"),
               onClick: point.roleInvitation && onOpenInvitation
                 ? () => onOpenInvitation(point.roleInvitation)
                 : null,
@@ -1889,9 +1941,9 @@ const RoleSubline = ({
           </Tooltip>
         )}
         {point.hasApplied && (
-          <Tooltip content="You applied for this role">
+          <Tooltip content={t("teams:vacantRoleCard.appliedForRole")}>
             {statusIcon({
-              ariaLabel: "Open role application details",
+              ariaLabel: t("mapPopup.openRoleApplication"),
               onClick: point.roleApplication && onOpenApplication
                 ? () => onOpenApplication(point.roleApplication)
                 : null,
@@ -1909,17 +1961,17 @@ const RoleSubline = ({
     <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] font-normal text-base-content/60">
       {scoreItem}
       {isValidDate && (
-        <Tooltip content={`Posted ${format(postedDate, "MMM d, yyyy")}`}>
+        <Tooltip content={t("mapPopup.posted", { date: formatDateMedium(postedDate) })}>
           <span className="inline-flex items-center gap-1">
             <Calendar size={10} aria-hidden="true" />
-            <span>{format(postedDate, "MM/dd/yy")}</span>
+            <span>{formatDateNumeric(postedDate)}</span>
           </span>
         </Tooltip>
       )}
       {point.hasInvitation && (
-        <Tooltip content="You were invited to fill this role">
+        <Tooltip content={t("teams:vacantRoleCard.invitedToFillRole")}>
           {statusIcon({
-            ariaLabel: "Open role invitation details",
+            ariaLabel: t("mapPopup.openRoleInvitation"),
             onClick: point.roleInvitation && onOpenInvitation
               ? () => onOpenInvitation(point.roleInvitation)
               : null,
@@ -1928,9 +1980,9 @@ const RoleSubline = ({
         </Tooltip>
       )}
       {point.hasApplied && (
-        <Tooltip content="You applied for this role">
+        <Tooltip content={t("teams:vacantRoleCard.appliedForRole")}>
           {statusIcon({
-            ariaLabel: "Open role application details",
+            ariaLabel: t("mapPopup.openRoleApplication"),
             onClick: point.roleApplication && onOpenApplication
               ? () => onOpenApplication(point.roleApplication)
               : null,
@@ -1942,7 +1994,7 @@ const RoleSubline = ({
         <Tooltip
           content={
             point.isViewerTeamMember
-              ? `You are a member of this team: ${point.teamName}`
+              ? t("mapPopup.memberOfTeamNamed", { teamName: point.teamName })
               : point.teamName
           }
           wrapperClassName="inline-flex min-w-0 max-w-[9rem] overflow-hidden"
@@ -1989,6 +2041,8 @@ const MapPopupCard = ({
   onOpenApplication,
   onClose,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="max-w-full align-top">
       <div className="mb-2 flex items-center justify-between text-base-content/70">
@@ -1996,7 +2050,7 @@ const MapPopupCard = ({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("mapPopup.close")}
           className="ml-2 flex items-center justify-center text-base-content/40 hover:text-base-content/70"
         >
           <X size={10} />
@@ -2007,7 +2061,7 @@ const MapPopupCard = ({
         <PopupAvatar point={point} backgroundColor={DEFAULT_MAP_ENTITY_COLOR} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-[15px] font-medium leading-[1.1] text-[var(--color-primary-focus)]">
-            {point.name}
+            {getPointName(point, t)}
           </h3>
           <UserSubline point={point} showMatchScore={showMatchScore} />
           <TeamMetaLine
@@ -2043,12 +2097,18 @@ const MapPopupCard = ({
         <TeamOpenRoleNamesLine point={point} />
         <div className="flex min-w-0 items-center gap-1.5">
           <LocationIcon point={point} />
-          <span className="min-w-0 flex-1 truncate">{point.locationLabel}</span>
+          <span className="min-w-0 flex-1 truncate">
+            {point.locationLabel ?? t("location.section.unavailable")}
+          </span>
         </div>
         {point.distanceLabel && (
           <div className="flex min-w-0 items-center gap-1.5">
             <Ruler size={13} />
-            <span className="min-w-0 flex-1 truncate">{point.distanceLabel}</span>
+            <span className="min-w-0 flex-1 truncate">
+              {t("location.section.distanceAway", {
+                distance: point.distanceLabel,
+              })}
+            </span>
           </div>
         )}
       </div>
@@ -2058,7 +2118,7 @@ const MapPopupCard = ({
         onClick={() => onOpenPoint(point)}
         className="btn btn-xs mt-3 min-h-0 rounded-full border-[var(--color-primary)] bg-transparent px-3 text-[11px] font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white"
       >
-        View details
+        {t("mapPopup.viewDetails")}
       </button>
     </div>
   );
@@ -2080,6 +2140,15 @@ const SearchMapView = ({
   viewerLocation = null,
   proximityRadiusKm = null,
 }) => {
+  // Map popups show a location string resolved by `locationUtils`, which reads
+  // the active language from the i18n instance rather than from props. This
+  // hook is what makes the map re-render on `changeLanguage`.
+  // ["common", "teams"] declares the lazy `teams` namespace this component
+  // reaches into with `teams:` keys. i18next inits with `ns: ["common"]` only
+  // and runs with useSuspense:false, so an undeclared namespace renders the
+  // raw key instead of the text. `common` stays first, so unprefixed keys are
+  // unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const showToast = useToast();
   const teamModal = useTeamModalSafe();
   const userModal = useUserModalSafe();
@@ -2167,8 +2236,8 @@ const SearchMapView = ({
   }, [refreshUserStatusData]);
 
   const handleApplicationReminder = useCallback(async () => {
-    showToast("Reminder feature coming soon!", "violet");
-  }, [showToast]);
+    showToast(t("teams:myTeams.reminderComingSoon"), "violet");
+  }, [showToast, t]);
 
   const itemsWithUserLocationDetails = useMemo(
     () =>
@@ -2708,7 +2777,7 @@ const SearchMapView = ({
 
   const openPoint = (point) => {
     if (point.type === "team") {
-      teamModal?.openTeamModal(point.rawId, point.name, {
+      teamModal?.openTeamModal(point.rawId, getPointName(point, t), {
         initialTeamData: point.item,
         isFromSearch: true,
         showMatchHighlights,
@@ -2769,7 +2838,7 @@ const SearchMapView = ({
           <div className="relative min-h-[360px]">
             {markerPoints.length === 0 && (
               <div className="pointer-events-none absolute left-1/2 top-4 z-[500] w-[min(calc(100%-2rem),26rem)] -translate-x-1/2 rounded-lg border border-base-200 bg-white/90 px-4 py-2 text-center text-sm text-base-content/70 shadow-soft backdrop-blur-sm">
-                No visible results on this page include map coordinates yet.
+                {t("mapPopup.noMapCoordinates")}
               </div>
             )}
             <MapContainer
@@ -2842,7 +2911,9 @@ const SearchMapView = ({
 
           <aside ref={asideRef} className={`flex flex-col border-t border-base-200 bg-base-100/75 p-4 lg:absolute lg:right-0 lg:top-0 lg:z-[500] lg:max-h-[520px] lg:w-[260px] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:bg-white/70 lg:backdrop-blur-sm${!asideAtFullHeight ? " lg:rounded-bl-xl" : ""}`}>
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-base-content">Mapped results</h3>
+              <h3 className="text-sm font-bold text-base-content">
+                {t("mapPopup.mappedResults")}
+              </h3>
               <span className="text-xs text-base-content/60">
                 {markerPoints.length}/{normalizedPoints.length}
               </span>
@@ -2859,7 +2930,7 @@ const SearchMapView = ({
                     >
                       <meta.Icon size={10} strokeWidth={2.25} className="block text-white" />
                     </span>
-                    {meta.label}
+                    {getTypeLabel(type, t)}
                   </span>
                 ))}
               </div>
@@ -2869,7 +2940,7 @@ const SearchMapView = ({
               <div className="mt-5 flex min-h-0 flex-1 flex-col">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="text-sm font-bold text-base-content">
-                    Remote or unmapped
+                    {t("mapPopup.remoteOrUnmapped")}
                   </h4>
                   <span className="text-xs text-base-content/60">
                     {fallbackPoints.length}/{normalizedPoints.length}
@@ -2882,7 +2953,7 @@ const SearchMapView = ({
                       content={
                         activeStatusTooltipPointId === point.id
                           ? null
-                          : getDetailsTooltipLabel(point.type)
+                          : getDetailsTooltipLabel(point.type, t)
                       }
                       wrapperClassName="block h-full lg:h-auto"
                     >
@@ -2909,7 +2980,7 @@ const SearchMapView = ({
                             onBlur={() => setActiveStatusTooltipPointId(null)}
                           >
                             <Tooltip
-                              content={getLocationStatusTooltipLabel(point)}
+                              content={getLocationStatusTooltipLabel(point, t)}
                               wrapperClassName="inline-flex items-center"
                             >
                               <LocationStatusIndicator point={point} />
@@ -2924,7 +2995,7 @@ const SearchMapView = ({
                           />
                           <div className="min-w-0 flex-1">
                             <h5 className="truncate text-[15px] font-medium leading-[1.1] text-[var(--color-primary-focus)]">
-                              {point.name}
+                              {getPointName(point, t)}
                             </h5>
                             <div
                               onMouseEnter={() => setActiveStatusTooltipPointId(point.id)}
@@ -3016,7 +3087,7 @@ const SearchMapView = ({
           <div
             ref={popupRef}
             role="dialog"
-            aria-label={`${activePoint.name} map result`}
+            aria-label={t("mapPopup.resultAria", { name: getPointName(activePoint, t) })}
             data-placement={popupPlacement}
             className="fixed z-[9999] rounded-xl border border-base-200 bg-base-100 p-3 shadow-soft"
             style={{

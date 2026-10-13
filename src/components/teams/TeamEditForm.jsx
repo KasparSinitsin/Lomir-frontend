@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../contexts/ToastContext";
 import Button from "../common/Button";
 import Tooltip from "../common/Tooltip";
@@ -11,9 +12,10 @@ import { teamService } from "../../services/teamService";
 import ImageUploader from "../common/ImageUploader";
 import LocationInput from "../common/LocationInput";
 import TagInput from "../tags/TagInput";
-import { UI_TEXT } from "../../constants/uiText";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
-import { AVATAR_UPLOAD_NOTICE } from "../../constants/privacyText";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import { Camera, Users, Settings, Tag, Trash2, X, Save } from "lucide-react";
 
 const PRESET_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20];
@@ -48,7 +50,24 @@ const TeamEditForm = ({
   onDelete,
   loading = false,
   onAvatarDeleted,
+  // The team's current member count; the maximum may not go below it.
+  memberCount = null,
 }) => {
+  const minimumMaxMembers = Math.max(2, Number.isFinite(memberCount) ? memberCount : 0);
+  const firstAllowedPreset =
+    PRESET_OPTIONS.find((option) => option >= minimumMaxMembers) ?? null;
+  const maxMembersNumber = Number(formData.maxMembers);
+  const isMaxMembersBelowMinimum =
+    formData.maxMembersMode !== "unlimited" &&
+    formData.maxMembers !== "" &&
+    formData.maxMembers !== null &&
+    Number.isFinite(maxMembersNumber) &&
+    maxMembersNumber < minimumMaxMembers;
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const [uploadingImage] = useState(false);
   const [avatarDeleteLoading, setAvatarDeleteLoading] = useState(false);
   const [isAvatarDeleteDialogOpen, setIsAvatarDeleteDialogOpen] =
@@ -57,7 +76,11 @@ const TeamEditForm = ({
   const showToast = useToast();
 
   // Location auto-fill hook
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postalCode || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -159,7 +182,9 @@ const TeamEditForm = ({
   const handleTagSelection = useCallback(
     (selected) => {
       const ids = (selected ?? [])
-        .map((t) => (typeof t === "object" ? (t.id ?? t.value ?? t) : t))
+        .map((tag) =>
+          typeof tag === "object" ? (tag.id ?? tag.value ?? tag) : tag,
+        )
         .map((x) => (x === "" || x == null ? null : String(x)))
         .filter((x) => typeof x === "string" && x.length > 0);
 
@@ -176,6 +201,23 @@ const TeamEditForm = ({
   // Handle form submission
   const handleFormSubmit = (e) => {
     e.preventDefault();
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        setFormData((prev) => ({ ...prev, [clearField]: "" }));
+      }
+
+      // LocationInput reads its error keys in snake_case.
+      const errorKey = clearField === "postalCode" ? "postal_code" : "city";
+      setFormErrors((prev) => ({ ...prev, [errorKey]: message }));
+      return;
+    }
+
     onSubmit(e);
   };
 
@@ -209,9 +251,7 @@ const TeamEditForm = ({
     } catch (error) {
       console.error("Error deleting team avatar:", error);
       showToast(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to remove team picture. Please try again.",
+        t("teams:teamForm.avatarRemoveFailed"),
         "error",
       );
     } finally {
@@ -226,29 +266,33 @@ const TeamEditForm = ({
     // Build id -> name map from the team payload
     const nameById = new Map(
       teamTags
-        .map((t) => {
-          const id = Number(t?.id ?? t?.tag_id ?? t?.tagId ?? t?.tagID);
-          const name = t?.name ?? t?.label ?? t?.category;
+        .map((tag) => {
+          const id = Number(tag?.id ?? tag?.tag_id ?? tag?.tagId ?? tag?.tagID);
+          const name = tag?.name ?? tag?.label ?? tag?.category;
           return Number.isFinite(id) && id > 0 ? [id, name] : null;
         })
         .filter(Boolean),
     );
 
     return (formData.selectedTags ?? [])
-      .map((t) => {
+      .map((tag) => {
         // If we already have an object, keep it
-        if (t && typeof t === "object") {
-          const id = Number(t.id ?? t.tag_id ?? t.tagId ?? t.tagID ?? t.value);
-          const name = t.name ?? t.label ?? t.category;
+        if (tag && typeof tag === "object") {
+          const id = Number(
+            tag.id ?? tag.tag_id ?? tag.tagId ?? tag.tagID ?? tag.value,
+          );
+          const name = tag.name ?? tag.label ?? tag.category;
           return Number.isFinite(id) && id > 0 ? { id, name } : null;
         }
 
         // Otherwise treat it as an ID
-        const id = Number(t);
+        const id = Number(tag);
         if (!Number.isFinite(id) || id <= 0) return null;
 
+        // A missing name stays null - TagInput renders the translated
+        // "Focus Area {id}" fallback, so it must not be baked in here.
         const name = nameById.get(id);
-        return { id, name: name || `Focus Area ${id}` };
+        return { id, name: name || null };
       })
       .filter(Boolean);
   }, [formData.selectedTags, team?.tags]);
@@ -258,7 +302,7 @@ const TeamEditForm = ({
       <form onSubmit={handleFormSubmit} className="space-y-4">
       {/* Team Avatar Section */}
       <section className="space-y-4">
-        <FormSectionDivider text="Team Avatar" icon={Camera} />
+        <FormSectionDivider text={t("teams:teamForm.sections.avatar")} icon={Camera} />
 
         <div className="flex justify-center">
           <div className="w-full max-w-md">
@@ -281,7 +325,7 @@ const TeamEditForm = ({
               size="mdPlus"
               disabled={loading || uploadingImage}
               loading={avatarDeleteLoading}
-              helpText={AVATAR_UPLOAD_NOTICE}
+              helpText={t("privacy.avatarUpload")}
               showRemoveButton={
                 !!(
                   formData.teamavatarUrl ||
@@ -289,26 +333,26 @@ const TeamEditForm = ({
                   team?.teamavatarUrl
                 ) && !formData.teamavatarFile
               }
-              removeButtonText="Remove Team Picture"
+              removeButtonText={t("teams:teamForm.removeTeamPicture")}
             />
           </div>
         </div>
       </section>
 
       {/* Team Details Section */}
-      <FormSectionDivider text="Team Details" icon={Users} />
+      <FormSectionDivider text={t("teams:teamForm.sections.details")} icon={Users} />
 
       {/* Team Name */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text">Team Name *</span>
+          <span className="label-text">{t("teams:teamForm.nameLabel")}</span>
         </label>
         <input
           type="text"
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Enter team name"
+          placeholder={t("teams:teamForm.namePlaceholder")}
           className={`input input-bordered w-full ${
             formErrors.name ? "input-error" : ""
           }`}
@@ -325,13 +369,13 @@ const TeamEditForm = ({
       {/* Team Description */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text">Description *</span>
+          <span className="label-text">{t("teams:teamForm.descriptionLabel")}</span>
         </label>
         <textarea
           name="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Describe your team's goals and what you're working on"
+          placeholder={t("teams:teamForm.descriptionPlaceholder")}
           className={`textarea textarea-bordered w-full h-24 ${
             formErrors.description ? "textarea-error" : ""
           }`}
@@ -349,7 +393,7 @@ const TeamEditForm = ({
 
       {/* Team Settings Section */}
       <section className="space-y-4 mt-12">
-        <FormSectionDivider text="Team Settings" icon={Settings} />
+        <FormSectionDivider text={t("teams:teamForm.sections.settings")} icon={Settings} />
 
         {/* Team Visibility Toggle */}
         <div className="form-control">
@@ -357,17 +401,17 @@ const TeamEditForm = ({
             name="isPublic"
             checked={formData.isPublic}
             onChange={handleChange}
-            label="Team Visibility"
+            label={t("teams:teamForm.visibilityLabel")}
             entityType="team"
-            visibleLabel="Public Team"
-            hiddenLabel="Private Team"
+            visibleLabel={t("teams:teamForm.publicTeam")}
+            hiddenLabel={t("teams:teamForm.privateTeam")}
           />
         </div>
 
         {/* Maximum Members */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Maximum Members *</span>
+            <span className="label-text">{t("teams:teamForm.maxMembersLabel")}</span>
           </label>
 
           {/* One row: buttons (left) + value input (right) */}
@@ -384,9 +428,10 @@ const TeamEditForm = ({
                 onClick={() => {
                   setFormData((prev) => {
                     const current = Number(prev.maxMembers);
-                    const nextMax = PRESET_OPTIONS.includes(current)
-                      ? current
-                      : PRESET_OPTIONS[0];
+                    const nextMax =
+                      PRESET_OPTIONS.includes(current) && current >= minimumMaxMembers
+                        ? current
+                        : firstAllowedPreset;
                     return {
                       ...prev,
                       maxMembersMode: "preset",
@@ -394,9 +439,10 @@ const TeamEditForm = ({
                     };
                   });
                 }}
-                disabled={loading}
+                // No preset fits a team this large; "custom" and "unlimited" still do.
+                disabled={loading || firstAllowedPreset === null}
               >
-                Preset
+                {t("teams:teamForm.preset")}
               </button>
 
               <button
@@ -410,7 +456,9 @@ const TeamEditForm = ({
                   setFormData((prev) => {
                     const current = Number(prev.maxMembers);
                     const nextMax =
-                      !Number.isNaN(current) && current >= 2 ? current : 25;
+                      !Number.isNaN(current) && current >= minimumMaxMembers
+                        ? current
+                        : Math.max(25, minimumMaxMembers);
                     return {
                       ...prev,
                       maxMembersMode: "custom",
@@ -420,7 +468,7 @@ const TeamEditForm = ({
                 }}
                 disabled={loading}
               >
-                Custom
+                {t("teams:teamForm.custom")}
               </button>
 
               <button
@@ -440,7 +488,7 @@ const TeamEditForm = ({
                 disabled={loading}
               >
                 <InfinityIcon className="h-4 w-4 mr-1" />
-                Unlimited
+                {t("teams:teamForm.unlimited")}
               </button>
             </div>
 
@@ -453,14 +501,14 @@ const TeamEditForm = ({
                   value={
                     PRESET_OPTIONS.includes(Number(formData.maxMembers))
                       ? Number(formData.maxMembers)
-                      : PRESET_OPTIONS[0]
+                      : (firstAllowedPreset ?? PRESET_OPTIONS[0])
                   }
                   onChange={handleChange}
                   disabled={loading}
                 >
                   {PRESET_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
-                      {n} members
+                    <option key={n} value={n} disabled={n < minimumMaxMembers}>
+                      {t("teams:teamForm.memberOption", { count: n })}
                     </option>
                   ))}
                 </select>
@@ -470,39 +518,66 @@ const TeamEditForm = ({
                 <input
                   name="maxMembers"
                   type="number"
-                  min={2}
-                  className="input input-bordered w-full"
+                  min={minimumMaxMembers}
+                  step={1}
+                  className={`input input-bordered w-full ${
+                    isMaxMembersBelowMinimum || formErrors.maxMembers ? "input-error" : ""
+                  }`}
                   value={formData.maxMembers ?? ""}
                   onChange={handleChange}
-                  placeholder="min. 2"
+                  // Typing is free (to type 12 you pass through 1); leaving the
+                  // field raises a value below the minimum to the minimum. The
+                  // arrows already stop there through `min`.
+                  onBlur={() => {
+                    if (!Number.isFinite(maxMembersNumber) || maxMembersNumber < minimumMaxMembers) {
+                      setFormData((prev) => ({ ...prev, maxMembers: minimumMaxMembers }));
+                    }
+                  }}
+                  placeholder={t("teams:teamForm.minPlaceholder", { count: minimumMaxMembers })}
                   disabled={loading}
                 />
               )}
 
               {formData.maxMembersMode === "unlimited" && (
-                <div className="input input-bordered w-full flex items-center gap-2 opacity-70">
-                  <InfinityIcon className="h-4 w-4" />
-                  <span>No member limit</span>
+                // `h-auto whitespace-normal` mirrors VisibilityToggle: `.input`
+                // sets white-space:nowrap and a fixed height because it is meant
+                // to wrap a single-line field, and this borrows it as a container
+                // for an icon plus a label. German is markedly longer here
+                // (`Keine Mitgliederbegrenzung`), so without these the label
+                // cannot break and is clipped by the box instead.
+                <div className="input input-bordered w-full h-auto whitespace-normal flex items-center gap-2 opacity-70">
+                  <InfinityIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>{t("teams:teamForm.noMemberLimit")}</span>
                 </div>
               )}
 
-              {formErrors.maxMembers && (
-                <label className="label">
-                  <span className="label-text-alt text-error">
-                    {formErrors.maxMembers}
-                  </span>
-                </label>
-              )}
             </div>
           </div>
+
+          {/* Below the whole row, not inside the input column: that column is
+              narrow on wide screens and cut the sentence off. The hint turns
+              red while the value is below the minimum. */}
+          {formErrors.maxMembers ? (
+            <p className="text-xs text-error mt-2 px-1">{formErrors.maxMembers}</p>
+          ) : (
+            minimumMaxMembers > 2 &&
+            formData.maxMembersMode !== "unlimited" && (
+              <p
+                className={`text-xs mt-2 px-1 ${
+                  isMaxMembersBelowMinimum ? "text-error" : "text-base-content/60"
+                }`}
+              >
+                {t("teams:teamForm.maxMembersMinimumHint", { count: minimumMaxMembers })}
+              </p>
+            )
+          )}
         </div>
       </section>
 
       {/* Location Section (Create-Team consistent) */}
       <section className="mt-12 space-y-4">
-        <FormSectionDivider text="Location" icon={Settings} />
+        <FormSectionDivider text={t("teams:teamForm.sections.location")} icon={Settings} />
 
-        {/* Location Mode Toggle */}
         {/* Location Mode Toggle */}
         <div className="form-control">
           <LocationModeToggle
@@ -524,16 +599,13 @@ const TeamEditForm = ({
                 },
               });
             }}
-            label="Team Location"
-            locationLabel="This is a team with a location"
-            remoteLabel="This is a remote team"
-            locationDescription="Provide location information for your team. This information is optional."
-            remoteDescription="Remote teams don't have a physical meeting location."
           />
         </div>
 
         {!formData.isRemote && (
           <LocationInput
+            onFieldEdited={markFieldAsEdited}
+            mismatch={locationMismatch}
             formData={{
               is_remote: !!formData.isRemote,
               postal_code: formData.postalCode ?? "",
@@ -555,19 +627,18 @@ const TeamEditForm = ({
 
       {/* Focus Areas Section */}
       <section className="mt-12 space-y-4">
-        <FormSectionDivider text="Focus Areas" icon={Tag} />
+        <FormSectionDivider text={t("focusAreas.title")} icon={Tag} />
 
         <div className="form-control">
           <label className="label">
             <span className="label-text">
-              What does this team focus on? (Optional)
+              {t("teams:teamForm.focusAreasPrompt")}
             </span>
           </label>
           <TagInput
             // Pass objects so TagInput can render names for preselected tags
             selectedTags={selectedFocusAreaTags}
             onTagsChange={handleTagSelection}
-            placeholder={UI_TEXT.focusAreas.searchPlaceholder}
             showPopularTags={true}
             maxSuggestions={8}
           />
@@ -578,7 +649,7 @@ const TeamEditForm = ({
       <div className="-mx-6 -mb-6 mt-6 px-6 py-6 border-t border-base-200 bg-base-100/80">
         <div className="flex items-center justify-between">
           {onDelete ? (
-            <Tooltip content="Permanently delete this team and all its data. You will be asked to confirm." position="top">
+            <Tooltip content={t("teams:teamForm.deleteTooltip")} position="top">
               <Button
                 type="button"
                 variant="ghost"
@@ -587,7 +658,7 @@ const TeamEditForm = ({
                 icon={<Trash2 size={16} />}
                 className="hover:bg-red-600 hover:text-white"
               >
-                Delete
+                {t("teams:teamForm.delete")}
               </Button>
             </Tooltip>
           ) : <div />}
@@ -599,11 +670,11 @@ const TeamEditForm = ({
               disabled={loading}
               icon={<X size={16} />}
             >
-              Cancel
+              {t("teams:teamForm.cancel")}
             </Button>
-            <Tooltip content="Save Team Changes" position="top">
+            <Tooltip content={t("teams:teamForm.saveTooltip")} position="top">
               <Button type="submit" variant="primary" disabled={loading} icon={<Save size={16} />}>
-                {loading ? "Saving..." : "Save"}
+                {loading ? t("teams:teamForm.saving") : t("teams:teamForm.save")}
               </Button>
             </Tooltip>
           </div>
@@ -615,15 +686,15 @@ const TeamEditForm = ({
         isOpen={isAvatarDeleteDialogOpen}
         onClose={closeAvatarDeleteDialog}
         onConfirm={confirmAvatarDelete}
-        title="Remove Team Picture"
+        title={t("teams:teamForm.removeTeamPicture")}
         loading={avatarDeleteLoading}
-        confirmLabel="Remove"
-        loadingLabel="Removing..."
+        confirmLabel={t("imageUploader.remove")}
+        loadingLabel={t("teams:teamForm.removing")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
       >
         <p className="text-sm text-base-content/80">
-          Remove the team picture? The team will show its initials instead.
+          {t("teams:teamForm.avatarRemoveBody")}
         </p>
       </ConfirmModal>
     </>

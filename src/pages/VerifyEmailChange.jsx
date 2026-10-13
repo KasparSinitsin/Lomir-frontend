@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { getAuthErrorText } from "../utils/authErrorText";
 import { BadgeCheck, Info, Loader2, MailCheck, XCircle } from "lucide-react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -7,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import userService from "../services/userService";
 
 const VerifyEmailChange = () => {
+  const { t } = useTranslation("auth");
   const [searchParams] = useSearchParams();
   const { user, updateUser } = useAuth();
   const [status, setStatus] = useState("verifying");
@@ -19,7 +22,7 @@ const VerifyEmailChange = () => {
 
     if (!token) {
       setStatus("error");
-      setMessage("No verification token found. Please check your email link.");
+      setMessage(t("auth:verifyEmailChange.missingToken"));
       return;
     }
 
@@ -38,29 +41,31 @@ const VerifyEmailChange = () => {
         }
 
         setStatus("success");
-        setMessage("Your email address has been changed successfully.");
+        setMessage(t("auth:verifyEmailChange.successMessage"));
       } catch (error) {
         console.error("Email change verification error:", error);
 
         if (error.response?.status === 409) {
           setStatus("info");
           setMessage(
-            error.response?.data?.message ||
-              "This email address is already in use.",
+            getAuthErrorText(
+              error,
+              t,
+              t("auth:verifyEmailChange.conflictFallback"),
+            ),
           );
           return;
         }
 
         setStatus("error");
         setMessage(
-          error.response?.data?.message ||
-            "Verification failed. The link may be invalid or expired.",
+          getAuthErrorText(error, t, t("auth:verifyEmailChange.fallbackError")),
         );
       }
     };
 
     verifyEmailChange();
-  }, [searchParams, updateUser, user]);
+  }, [searchParams, t, updateUser, user]);
 
   const renderIcon = () => {
     const base = "mx-auto mb-4";
@@ -78,21 +83,27 @@ const VerifyEmailChange = () => {
   };
 
   const renderTitle = () => {
-    if (status === "verifying") return "Verifying your new email…";
-    if (status === "success") return "Email changed";
-    if (status === "info") return "Email not changed";
-    return "Verification failed";
+    if (status === "verifying") {
+      return t("auth:verifyEmailChange.title.verifying");
+    }
+    if (status === "success") return t("auth:verifyEmailChange.title.success");
+    if (status === "info") return t("auth:verifyEmailChange.title.info");
+    return t("auth:verifyEmailChange.title.error");
   };
 
   const renderBodyText = () => {
-    if (status === "verifying") return "Please wait a moment.";
+    if (status === "verifying") {
+      return t("auth:verifyEmailChange.body.verifying");
+    }
     if (status === "success")
-      return "Your Lomir account now uses the confirmed email address.";
+      return t("auth:verifyEmailChange.body.success");
     return message;
   };
 
   const primaryLink = user ? "/settings" : "/login";
-  const primaryLabel = user ? "Back to Settings" : "Log in";
+  const primaryLabel = user
+    ? t("auth:verifyEmailChange.backToSettings")
+    : t("auth:common.login");
 
   return (
     <div className="max-w-md mx-auto mt-12">
@@ -117,7 +128,7 @@ const VerifyEmailChange = () => {
           {status === "verifying" && (
             <div className="mt-2 text-sm text-base-content/60 flex items-center justify-center gap-2">
               <MailCheck size={16} className="text-primary" />
-              <span>Checking your verification link…</span>
+              <span>{t("auth:verifyEmailChange.checking")}</span>
             </div>
           )}
         </div>

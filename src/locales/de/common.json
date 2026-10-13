@@ -1,0 +1,1237 @@
+{
+  "badgeOverview": {
+    "intro": "Badges würdigen die Fähigkeiten, Eigenschaften und Beiträge von Teammitgliedern in Lomir. Sie werden von anderen Mitgliedern verliehen und zeigen Stärken in verschiedenen Kategorien.",
+    "loadError": "Badges konnten nicht geladen werden",
+    "title": "Badge-Übersicht"
+  },
+  "badges": {
+    "award": {
+      "generic": "Beitrag",
+      "personal": "Persönlicher Beitrag",
+      "project": "Projekt-Beitrag",
+      "team": "Team-Beitrag",
+      "unknownAwarder": "einem anderen Nutzer",
+      "modal": {
+        "title": "Badge an {name} vergeben",
+        "cancel": "Abbrechen",
+        "submit": "Badge vergeben",
+        "submitting": "Wird vergeben …",
+        "selectBadge": "Wähle einen Badge:",
+        "noBadges": "Keine Badges verfügbar.",
+        "creditsLabel": "Credit-Punkte für diese Auszeichnung:",
+        "contextLabel": "Wofür ist das?",
+        "contextPersonal": "Persönlich",
+        "contextTeam": "Teamarbeit",
+        "contextProject": "Projekt",
+        "loadingTeams": "Teams werden geladen …",
+        "lomirTeam": "Lomir-Team",
+        "selectTeam": "Lomir-Team wählen …",
+        "noSharedTeams": "Keine gemeinsamen Teams mit dieser Person",
+        "otherTeamName": "Anderer Teamname",
+        "otherTeamPlaceholder": "Teamnamen eingeben …",
+        "projectName": "Projektname (optional)",
+        "projectPlaceholder": "Projektnamen eingeben …",
+        "focusAreasLabel": "Verknüpfe deine Auszeichnung mit einem der Fokusbereiche von {name} (optional):",
+        "loadingTags": "Fokusbereiche werden geladen …",
+        "noFocusAreas": "{name} hat noch keine Fokusbereiche hinzugefügt.",
+        "searchFocusArea": "Nach einem Fokusbereich suchen …",
+        "searchAnotherFocusArea": "Nach einem anderen Fokusbereich suchen …",
+        "tagSearchPlaceholder": "Zum Suchen tippen …",
+        "commentLabel": "Kommentar hinzufügen (optional):",
+        "commentPlaceholder": "Warum zeichnest du {name} mit „{badge}“ aus?",
+        "charCount": "{count}/{max} Zeichen",
+        "unknownPerson": "diese Person",
+        "success": "„{badge}“ an {name} vergeben, +{credits, plural, one {# Credit-Punkt} other {# Credit-Punkte}}. Die Auszeichnung bleibt privat, bis {name} sie sichtbar macht.",
+        "errorSelectBadge": "Bitte wähle einen Badge aus.",
+        "errorSelectCredits": "Bitte wähle die Credit-Punkte aus.",
+        "errorSelectContext": "Bitte wähle aus, wofür die Auszeichnung ist.",
+        "errorSelectTeam": "Bitte wähle ein Lomir-Team aus oder gib einen Teamnamen ein.",
+        "errorLoadFailed": "Die Badges konnten nicht geladen werden. Bitte versuche es erneut.",
+        "errorAwardFailed": "Der Badge konnte nicht vergeben werden. Bitte versuche es erneut.",
+        "orSeparator": "oder"
+      }
+    },
+    "card": {
+      "awardedBy": "Verliehen von",
+      "awardedTo": "Verliehen an",
+      "byShort": "von",
+      "delete": "Badge-Auszeichnung löschen",
+      "hide": "Badge vor anderen verbergen",
+      "noDescription": "Keine Beschreibung",
+      "personal": "Persönlich",
+      "privateProfile": "Privater Lomir-Nutzer",
+      "project": "Projekt",
+      "projectLabel": "Projekt:",
+      "team": "Team",
+      "teamLabel": "Team:",
+      "toShort": "an",
+      "unhide": "Badge für andere sichtbar machen",
+      "unknown": "Unbekannt",
+      "viewProfile": "Profil ansehen",
+      "viewTeam": "Team ansehen"
+    },
+    "category": {
+      "collaboration": "Zusammenarbeit",
+      "creative": "Kreatives Denken",
+      "leadership": "Führungsqualitäten",
+      "other": "Sonstige",
+      "personal": "Persönliche Eigenschaften",
+      "technical": "Technische Expertise"
+    },
+    "pendingTooltip": "{name}: +{credits} ct., für andere noch nicht sichtbar. Die Credits zählen erst, wenn du das Badge sichtbar machst.",
+    "creditsBare": "{credits} ct.",
+    "creditsInline": "| {credits} ct.",
+    "creditsInlinePlus": "| +{credits} ct.",
+    "descriptions": {
+      "adaptable": "Reagiert flexibel auf sich ändernde Umstände und Anforderungen",
+      "artisan": "Schafft schöne und hochwertige Werke in jedem Medium",
+      "coder": "Virtuos in Programmiersprachen und Softwareentwicklung",
+      "communicator": "Drückt Ideen klar und wirkungsvoll aus und kann sehr gut zuhören",
+      "dataWhiz": "Analysiert, interpretiert und visualisiert Daten hervorragend",
+      "decisionMaker": "Trifft rasche, durchdachte Entscheidungen, die Projekte voranbringen",
+      "delegator": "Kann persönliche Stärken erkennen und Aufgaben effektiv verteilen",
+      "designer": "Gestaltet ansprechende und benutzerfreundliche Medien, Produkte und Erlebnisse",
+      "detailOriented": "Bemerkt und behebt kleine Details, die andere übersehen",
+      "documentationMaster": "Erstellt klare, gründliche und hilfreiche Dokumentation",
+      "empathetic": "Versteht die Sichtweisen und emotionalen Bedürfnisse anderer",
+      "feedbackProvider": "Gibt konstruktive Kritik, die anderen in ihrer Weiterentwicklung hilft",
+      "initiativeTaker": "Erkennt Chancen und Dringlichkeiten frühzeitig und wird von sich aus tätig",
+      "innovator": "Bringt beständig frische Ideen und neue Ansätze ein",
+      "knowledgeSharer": "Teilt Wissen großzügig und hilft anderen beim Lernen",
+      "mediator": "Hilft, Konflikte zu lösen und zwischen verschiedenen Positionen zu vermitteln",
+      "mentor": "Hilft anderen, ihre Fähigkeiten durch Anleitung und Unterstützung zu entwickeln",
+      "motivator": "Begeistert andere und hält die positive Energie im Team aufrecht",
+      "organizer": "Hält Projekte strukturiert, steuert Zeitpläne und koordiniert die Arbeit",
+      "outsideTheBox": "Geht Herausforderungen mit unkonventionellem Denken an",
+      "persistent": "Überwindet Hindernisse mit Entschlossenheit und Ausdauer",
+      "problemSolver": "Findet kreative Lösungen für schwierige Situationen",
+      "quickLearner": "Passt sich schnell an neue Informationen und Technologien an",
+      "reliable": "Löst Zusagen beständig ein und hält Fristen",
+      "storyteller": "Vermittelt Ideen und Konzepte wirkungsvoll durch mitreißende Geschichten",
+      "strategicPlanner": "Entwickelt umfassende, durchdachte Wege zu Zielen und Ergebnissen",
+      "systemsThinker": "Versteht komplexe Systeme als Ganzes und im Zusammenspiel ihrer Einzelteile",
+      "teamPlayer": "Trägt beständig zu den Teamzielen bei und unterstützt die anderen Mitglieder",
+      "techSupport": "Hilft bei der Fehlersuche und löst technische Probleme",
+      "visionary": "Sieht das große Ganze und erkennt künftige Möglichkeiten"
+    },
+    "modal": {
+      "awards": "{count, plural, one {Auszeichnung} other {Auszeichnungen}}",
+      "badgeHeading": "Badge „{name}“",
+      "categories": "{count, plural, one {Kategorie} other {Kategorien}}",
+      "categoryFallback": "Badge-Kategorie",
+      "categoryTitle": "Erworbene Badges für",
+      "emptyCategory": "Keine detaillierten Angaben zu dieser Auszeichnung verfügbar.",
+      "emptySupercategory": "In dieser Kategorie sind noch keine Badge-Auszeichnungen mit Fokusbereichen verknüpft.",
+      "emptyTag": "Zu diesem Fokusbereich gibt es noch keine Badge-Auszeichnungen.",
+      "focusAreas": "Fokusbereiche mit Auszeichnungen",
+      "focusAreasCount": "{count, plural, one {Fokusbereich} other {Fokusbereiche}}",
+      "peoplePersonal": "{count, plural, one {Person} other {Personen}}",
+      "peopleTeam": "{count, plural, one {Teammitglied mit Badges} other {Teammitglieder mit Badges}}",
+      "supercategoryTitleLong": "Erworbene Badges im Fokusbereich",
+      "supercategoryTitleShort": "Erworbene Badges in",
+      "teams": "{count, plural, one {Team} other {Teams}}",
+      "thisCategory": "dieser Kategorie"
+    },
+    "names": {
+      "adaptable": "Anpassungsfähig",
+      "artisan": "Künstler",
+      "coder": "Programmierer",
+      "communicator": "Kommunikator",
+      "dataWhiz": "Datenprofi",
+      "decisionMaker": "Entscheider",
+      "delegator": "Delegierer",
+      "designer": "Designer",
+      "detailOriented": "Detailorientiert",
+      "documentationMaster": "Dokumentationsprofi",
+      "empathetic": "Empathisch",
+      "feedbackProvider": "Feedback-Geber",
+      "initiativeTaker": "Initiativkraft",
+      "innovator": "Innovator",
+      "knowledgeSharer": "Wissensvermittler",
+      "mediator": "Vermittler",
+      "mentor": "Mentor",
+      "motivator": "Motivator",
+      "organizer": "Organisator",
+      "outsideTheBox": "Unkonventionell",
+      "persistent": "Beharrlich",
+      "problemSolver": "Problemlöser",
+      "quickLearner": "Schnelllerner",
+      "reliable": "Verlässlich",
+      "storyteller": "Storyteller",
+      "strategicPlanner": "Stratege",
+      "systemsThinker": "Systemdenker",
+      "teamPlayer": "Teamplayer",
+      "techSupport": "Technischer Support",
+      "visionary": "Visionär"
+    },
+    "section": {
+      "desired": "Gewünschte Badges",
+      "empty": "Noch keine Badges erhalten",
+      "hidden": "Die Badges dieses Nutzers sind ausgeblendet.",
+      "showAll": "Alle anzeigen",
+      "showLess": "Weniger anzeigen",
+      "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
+      "title": "Badges"
+    },
+    "tooltip": {
+      "badge": "{name}: {credits} ct., {count, plural, one {einmal} other {#-mal}} vergeben von {personCount, plural, one {# Person} other {# Personen}}",
+      "category": "{category}: {credits} ct., vergeben mit {badgeCount, plural, one {# Badge} other {# Badges}} von {personCount, plural, one {# Person} other {# Personen}}"
+    },
+    "input": {
+      "searchPlaceholder": "Badges suchen …",
+      "loading": "Badges werden geladen …",
+      "allBadges": "Alle Badges"
+    }
+  },
+  "chatEvents": {
+    "applicationApproved": {
+      "full": "{applicant, select, you {{approver, select, named {<approver/> hat deine Bewerbung angenommen. Willkommen im Team!} deleted {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung angenommen. Willkommen im Team!} other {Deine Bewerbung wurde angenommen. Willkommen im Team!}}} named {{approver, select, you {Du hast die Bewerbung von <applicant/> angenommen. Sag Hallo!} named {<applicant/> hat sich erfolgreich beworben und wurde von <approver/> ins Team aufgenommen. Sag Hallo!} deleted {<applicant/> hat sich erfolgreich beworben und wurde von einem ehemaligen Lomir-Nutzer ins Team aufgenommen. Sag Hallo!} other {<applicant/> hat sich erfolgreich beworben und ist dem Team beigetreten. Sag Hallo!}}} deleted {{approver, select, you {Du hast die Bewerbung von einem ehemaligen Lomir-Nutzer angenommen.} named {Ein ehemaliger Lomir-Nutzer hat sich erfolgreich beworben und wurde von <approver/> ins Team aufgenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat sich erfolgreich beworben und wurde von einem ehemaligen Lomir-Nutzer ins Team aufgenommen.} other {Ein ehemaliger Lomir-Nutzer hat sich erfolgreich beworben und ist dem Team beigetreten.}}} other {{approver, select, you {Du hast eine Bewerbung angenommen. Sag Hallo!} named {Ein neues Mitglied hat sich erfolgreich beworben und wurde von <approver/> ins Team aufgenommen. Sag Hallo!} deleted {Ein neues Mitglied hat sich erfolgreich beworben und wurde von einem ehemaligen Lomir-Nutzer ins Team aufgenommen. Sag Hallo!} other {Ein neues Mitglied hat sich erfolgreich beworben und ist dem Team beigetreten. Sag Hallo!}}}}",
+      "short": "{applicant, select, you {{team, select, named {Deine Bewerbung bei „<team/>“ wurde angenommen} other {Deine Bewerbung wurde angenommen}}} named {{team, select, named {Die Bewerbung von <applicant/> bei „<team/>“ wurde angenommen} other {Die Bewerbung von <applicant/> wurde angenommen}}} deleted {{team, select, named {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde angenommen} other {Die Bewerbung von einem ehemaligen Lomir-Nutzer wurde angenommen}}} other {{team, select, named {Eine Bewerbung bei „<team/>“ wurde angenommen} other {Eine Bewerbung wurde angenommen}}}}"
+    },
+    "applicationApprovedDm": {
+      "full": "{applicant, select, you {{approver, select, named {{personal, select, yes {<approver/> hat deine Bewerbung bei „<team/>“ angenommen und dazu geschrieben:} other {<approver/> hat deine Bewerbung bei „<team/>“ angenommen. Willkommen im Team!}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung bei „<team/>“ angenommen und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung bei „<team/>“ angenommen. Willkommen im Team!}}} other {{personal, select, yes {Deine Bewerbung bei „<team/>“ wurde angenommen – mit dieser Nachricht:} other {Deine Bewerbung bei „<team/>“ wurde angenommen. Willkommen im Team!}}}}} named {{approver, select, you {{personal, select, yes {Du hast die Bewerbung von <applicant/> bei „<team/>“ angenommen und dazu geschrieben:} other {Du hast die Bewerbung von <applicant/> bei „<team/>“ angenommen.}}} named {{personal, select, yes {<approver/> hat die Bewerbung von <applicant/> bei „<team/>“ angenommen und dazu geschrieben:} other {<approver/> hat die Bewerbung von <applicant/> bei „<team/>“ angenommen.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von <applicant/> bei „<team/>“ angenommen und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von <applicant/> bei „<team/>“ angenommen.}}} other {{personal, select, yes {Die Bewerbung von <applicant/> bei „<team/>“ wurde angenommen – mit dieser Nachricht:} other {Die Bewerbung von <applicant/> bei „<team/>“ wurde angenommen.}}}}} deleted {{approver, select, you {{personal, select, yes {Du hast die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen und dazu geschrieben:} other {Du hast die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen.}}} named {{personal, select, yes {<approver/> hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen und dazu geschrieben:} other {<approver/> hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ angenommen.}}} other {{personal, select, yes {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde angenommen – mit dieser Nachricht:} other {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde angenommen.}}}}} other {{approver, select, you {{personal, select, yes {Du hast eine Bewerbung bei „<team/>“ angenommen und dazu geschrieben:} other {Du hast eine Bewerbung bei „<team/>“ angenommen.}}} named {{personal, select, yes {<approver/> hat eine Bewerbung bei „<team/>“ angenommen und dazu geschrieben:} other {<approver/> hat eine Bewerbung bei „<team/>“ angenommen.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat eine Bewerbung bei „<team/>“ angenommen und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat eine Bewerbung bei „<team/>“ angenommen.}}} other {{personal, select, yes {Eine Bewerbung bei „<team/>“ wurde angenommen – mit dieser Nachricht:} other {Eine Bewerbung bei „<team/>“ wurde angenommen.}}}}}}"
+    },
+    "applicationCancelled": {
+      "full": "{applicant, select, you {Du hast deine Bewerbung bei „<team/>“ zurückgezogen. Möchtest du hier im Chat erklären, warum?} named {<applicant/> hat die Bewerbung bei „<team/>“ zurückgezogen. Möchtest du hier im Chat nachfragen?} deleted {Ein ehemaliger Lomir-Nutzer hat die Bewerbung bei „<team/>“ zurückgezogen.} other {Eine Bewerbung bei „<team/>“ wurde zurückgezogen.}}",
+      "short": "{applicant, select, you {Du hast deine Bewerbung bei „<team/>“ zurückgezogen} named {<applicant/> hat die Bewerbung bei „<team/>“ zurückgezogen} deleted {Ein ehemaliger Lomir-Nutzer hat die Bewerbung bei „<team/>“ zurückgezogen} other {Eine Bewerbung bei „<team/>“ wurde zurückgezogen}}"
+    },
+    "applicationDeclined": {
+      "full": "{applicant, select, you {{approver, select, named {{personal, select, yes {<approver/> hat deine Bewerbung bei „<team/>“ abgelehnt und dazu geschrieben:} other {<approver/> hat deine Bewerbung bei „<team/>“ abgelehnt. Möchtest du hier im Chat nachfragen?}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung bei „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung bei „<team/>“ abgelehnt.}}} other {{personal, select, yes {Deine Bewerbung bei „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Deine Bewerbung bei „<team/>“ wurde abgelehnt.}}}}} named {{approver, select, you {{personal, select, yes {Du hast die Bewerbung von <applicant/> bei „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast die Bewerbung von <applicant/> bei „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}} named {{personal, select, yes {<approver/> hat die Bewerbung von <applicant/> bei „<team/>“ abgelehnt und dazu geschrieben:} other {<approver/> hat die Bewerbung von <applicant/> bei „<team/>“ abgelehnt.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von <applicant/> bei „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von <applicant/> bei „<team/>“ abgelehnt.}}} other {{personal, select, yes {Die Bewerbung von <applicant/> bei „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Die Bewerbung von <applicant/> bei „<team/>“ wurde abgelehnt.}}}}} deleted {{approver, select, you {{personal, select, yes {Du hast die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}} named {{personal, select, yes {<approver/> hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt und dazu geschrieben:} other {<approver/> hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ abgelehnt.}}} other {{personal, select, yes {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde abgelehnt.}}}}} other {{approver, select, you {{personal, select, yes {Du hast eine Bewerbung bei „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast eine Bewerbung bei „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}} named {{personal, select, yes {<approver/> hat eine Bewerbung bei „<team/>“ abgelehnt und dazu geschrieben:} other {<approver/> hat eine Bewerbung bei „<team/>“ abgelehnt.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat eine Bewerbung bei „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat eine Bewerbung bei „<team/>“ abgelehnt.}}} other {{personal, select, yes {Eine Bewerbung bei „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Eine Bewerbung bei „<team/>“ wurde abgelehnt.}}}}}}",
+      "short": "{applicant, select, you {Deine Bewerbung bei „<team/>“ wurde abgelehnt} named {Die Bewerbung von <applicant/> bei „<team/>“ wurde abgelehnt} deleted {Die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“ wurde abgelehnt} other {Eine Bewerbung bei „<team/>“ wurde abgelehnt}}"
+    },
+    "applicationResponse": {
+      "full": "{applicant, select, you {Antwort auf deine Bewerbung bei „<team/>“} named {{responder, select, you {Deine Absage zur Bewerbung von <applicant/> bei „<team/>“} other {Antwort auf die Bewerbung von <applicant/> bei „<team/>“}}} deleted {{responder, select, you {Deine Absage zur Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“} other {Antwort auf die Bewerbung von einem ehemaligen Lomir-Nutzer bei „<team/>“}}} other {{responder, select, you {Deine Absage zu einer Bewerbung bei „<team/>“} other {Antwort auf eine Bewerbung bei „<team/>“}}}}",
+      "short": "{applicant, select, you {Antwort auf deine Bewerbung bei „<team/>“} other {Antwort auf eine Bewerbung bei „<team/>“}}"
+    },
+    "invitationCancelled": {
+      "full": "{invitee, select, you {{canceller, select, named {<canceller/> hat die Einladung an dich zu „<team/>“ zurückgezogen. Möchtest du hier im Chat nachfragen?} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung an dich zu „<team/>“ zurückgezogen.} other {Die Einladung an dich zu „<team/>“ wurde zurückgezogen.}}} named {{canceller, select, you {Du hast die Einladung an <invitee/> zu „<team/>“ zurückgezogen. Möchtest du hier im Chat erklären, warum?} named {<canceller/> hat die Einladung an <invitee/> zu „<team/>“ zurückgezogen.} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung an <invitee/> zu „<team/>“ zurückgezogen.} other {Die Einladung an <invitee/> zu „<team/>“ wurde zurückgezogen.}}} deleted {{canceller, select, you {Du hast die Einladung an einen ehemaligen Lomir-Nutzer zu „<team/>“ zurückgezogen.} named {<canceller/> hat die Einladung an einen ehemaligen Lomir-Nutzer zu „<team/>“ zurückgezogen.} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung an einen ehemaligen Lomir-Nutzer zu „<team/>“ zurückgezogen.} other {Die Einladung an einen ehemaligen Lomir-Nutzer zu „<team/>“ wurde zurückgezogen.}}} other {{canceller, select, you {Du hast eine Einladung zu „<team/>“ zurückgezogen.} named {<canceller/> hat eine Einladung zu „<team/>“ zurückgezogen.} deleted {Ein ehemaliger Lomir-Nutzer hat eine Einladung zu „<team/>“ zurückgezogen.} other {Eine Einladung zu „<team/>“ wurde zurückgezogen.}}}}",
+      "short": "{invitee, select, you {Die Einladung an dich zu „<team/>“ wurde zurückgezogen} named {Die Einladung an <invitee/> zu „<team/>“ wurde zurückgezogen} deleted {Die Einladung an einen ehemaligen Lomir-Nutzer zu „<team/>“ wurde zurückgezogen} other {Eine Einladung zu „<team/>“ wurde zurückgezogen}}"
+    },
+    "invitationDeclined": {
+      "full": "{invitee, select, you {{inviter, select, named {{personal, select, yes {Du hast die Einladung von <inviter/> zu „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast die Einladung von <inviter/> zu „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}} deleted {{personal, select, yes {Du hast die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}} other {{personal, select, yes {Du hast eine Einladung zu „<team/>“ abgelehnt und dazu geschrieben:} other {Du hast eine Einladung zu „<team/>“ abgelehnt. Du kannst deine Entscheidung in einer persönlichen Nachricht erklären.}}}}} named {{inviter, select, you {{personal, select, yes {<invitee/> hat deine Einladung zu „<team/>“ abgelehnt und dazu geschrieben:} other {<invitee/> hat deine Einladung zu „<team/>“ abgelehnt. Möchtest du hier im Chat nachfragen?}}} named {{personal, select, yes {<invitee/> hat die Einladung von <inviter/> zu „<team/>“ abgelehnt und dazu geschrieben:} other {<invitee/> hat die Einladung von <inviter/> zu „<team/>“ abgelehnt.}}} deleted {{personal, select, yes {<invitee/> hat die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt und dazu geschrieben:} other {<invitee/> hat die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt.}}} other {{personal, select, yes {<invitee/> hat eine Einladung zu „<team/>“ abgelehnt und dazu geschrieben:} other {<invitee/> hat eine Einladung zu „<team/>“ abgelehnt.}}}}} deleted {{inviter, select, you {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat deine Einladung zu „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat deine Einladung zu „<team/>“ abgelehnt.}}} named {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Einladung von <inviter/> zu „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Einladung von <inviter/> zu „<team/>“ abgelehnt.}}} deleted {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ abgelehnt.}}} other {{personal, select, yes {Ein ehemaliger Lomir-Nutzer hat eine Einladung zu „<team/>“ abgelehnt und dazu geschrieben:} other {Ein ehemaliger Lomir-Nutzer hat eine Einladung zu „<team/>“ abgelehnt.}}}}} other {{inviter, select, you {{personal, select, yes {Deine Einladung zu „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Deine Einladung zu „<team/>“ wurde abgelehnt.}}} named {{personal, select, yes {Die Einladung von <inviter/> zu „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Die Einladung von <inviter/> zu „<team/>“ wurde abgelehnt.}}} deleted {{personal, select, yes {Die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Die Einladung von einem ehemaligen Lomir-Nutzer zu „<team/>“ wurde abgelehnt.}}} other {{personal, select, yes {Eine Einladung zu „<team/>“ wurde abgelehnt – mit dieser Nachricht:} other {Eine Einladung zu „<team/>“ wurde abgelehnt.}}}}}}",
+      "short": "{invitee, select, you {Du hast die Einladung zu „<team/>“ abgelehnt} named {<invitee/> hat die Einladung zu „<team/>“ abgelehnt} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung zu „<team/>“ abgelehnt} other {Eine Einladung zu „<team/>“ wurde abgelehnt}}"
+    },
+    "invitationResponse": {
+      "full": "Antwort auf die Einladung zu „<team/>“"
+    },
+    "memberRemoved": {
+      "full": "{member, select, you {{remover, select, named {<remover/> hat dich aus „<team/>“ entfernt. Möchtest du hier im Chat nachfragen?} deleted {Ein ehemaliger Lomir-Nutzer hat dich aus „<team/>“ entfernt.} other {Du wurdest aus „<team/>“ entfernt.}}} named {{remover, select, you {Du hast <member/> aus „<team/>“ entfernt.} named {<remover/> hat <member/> aus „<team/>“ entfernt.} deleted {Ein ehemaliger Lomir-Nutzer hat <member/> aus „<team/>“ entfernt.} other {<member/> wurde aus „<team/>“ entfernt.}}} deleted {{remover, select, you {Du hast einen ehemaligen Lomir-Nutzer aus „<team/>“ entfernt.} named {<remover/> hat einen ehemaligen Lomir-Nutzer aus „<team/>“ entfernt.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer aus „<team/>“ entfernt.} other {Ein ehemaliger Lomir-Nutzer wurde aus „<team/>“ entfernt.}}} other {{remover, select, you {Du hast ein Mitglied aus „<team/>“ entfernt.} named {<remover/> hat ein Mitglied aus „<team/>“ entfernt.} deleted {Ein ehemaliger Lomir-Nutzer hat ein Mitglied aus „<team/>“ entfernt.} other {Ein Mitglied wurde aus „<team/>“ entfernt.}}}}",
+      "short": "{member, select, you {{team, select, named {Du wurdest aus „<team/>“ entfernt} other {Du wurdest aus dem Team entfernt}}} named {{team, select, named {<member/> wurde aus „<team/>“ entfernt} other {<member/> wurde aus dem Team entfernt}}} deleted {{team, select, named {Ein ehemaliger Lomir-Nutzer wurde aus „<team/>“ entfernt} other {Ein ehemaliger Lomir-Nutzer wurde aus dem Team entfernt}}} other {{team, select, named {Ein Mitglied wurde aus „<team/>“ entfernt} other {Ein Mitglied wurde aus dem Team entfernt}}}}"
+    },
+    "memberRemovedPublic": {
+      "full": "{member, select, you {Du wurdest aus dem Team entfernt.} named {{remover, select, you {Du hast <member/> aus dem Team entfernt.} other {<member/> wurde aus dem Team entfernt.}}} deleted {{remover, select, you {Du hast einen ehemaligen Lomir-Nutzer aus dem Team entfernt.} other {Ein ehemaliger Lomir-Nutzer wurde aus dem Team entfernt.}}} other {{remover, select, you {Du hast ein Mitglied aus dem Team entfernt.} other {Ein Mitglied wurde aus dem Team entfernt.}}}}"
+    },
+    "ownershipTeam": {
+      "full": "{prevOwner, select, you {{newOwner, select, you {Das Team-Eigentum wurde an dich übertragen.} named {Du hast das Team-Eigentum an <newOwner/> übertragen.} deleted {Du hast das Team-Eigentum an einen ehemaligen Lomir-Nutzer übertragen.} other {Du hast das Team-Eigentum übertragen.}}} named {{newOwner, select, you {<prevOwner/> hat das Team-Eigentum an dich übertragen.} named {<prevOwner/> hat das Team-Eigentum an <newOwner/> übertragen.} deleted {<prevOwner/> hat das Team-Eigentum an einen ehemaligen Lomir-Nutzer übertragen.} other {<prevOwner/> hat das Team-Eigentum übertragen.}}} deleted {{newOwner, select, you {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum an dich übertragen.} named {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum an <newOwner/> übertragen.} deleted {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum an einen ehemaligen Lomir-Nutzer übertragen.} other {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum übertragen.}}} other {{newOwner, select, you {Das Team-Eigentum wurde an dich übertragen.} named {Das Team-Eigentum wurde an <newOwner/> übertragen.} deleted {Das Team-Eigentum wurde an einen ehemaligen Lomir-Nutzer übertragen.} other {Das Team-Eigentum wurde übertragen.}}}}",
+      "short": "{newOwner, select, you {Das Team-Eigentum wurde an dich übertragen} named {Das Team-Eigentum wurde an <newOwner/> übertragen} deleted {Das Team-Eigentum wurde an einen ehemaligen Lomir-Nutzer übertragen} other {Das Team-Eigentum wurde übertragen}}"
+    },
+    "ownershipTransferred": {
+      "full": "{prevOwner, select, you {{newOwner, select, you {Das Team-Eigentum von „<team/>“ wurde an dich übertragen. Glückwunsch!} named {Du hast das Team-Eigentum von „<team/>“ an <newOwner/> übertragen.} deleted {Du hast das Team-Eigentum von „<team/>“ an einen ehemaligen Lomir-Nutzer übertragen.} other {Du hast das Team-Eigentum von „<team/>“ übertragen.}}} named {{newOwner, select, you {<prevOwner/> hat das Team-Eigentum von „<team/>“ an dich übertragen. Glückwunsch!} named {<prevOwner/> hat das Team-Eigentum von „<team/>“ an <newOwner/> übertragen.} deleted {<prevOwner/> hat das Team-Eigentum von „<team/>“ an einen ehemaligen Lomir-Nutzer übertragen.} other {<prevOwner/> hat das Team-Eigentum von „<team/>“ übertragen.}}} deleted {{newOwner, select, you {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum von „<team/>“ an dich übertragen. Glückwunsch!} named {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum von „<team/>“ an <newOwner/> übertragen.} deleted {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum von „<team/>“ an einen ehemaligen Lomir-Nutzer übertragen.} other {Ein ehemaliger Lomir-Nutzer hat das Team-Eigentum von „<team/>“ übertragen.}}} other {{newOwner, select, you {Das Team-Eigentum von „<team/>“ wurde an dich übertragen. Glückwunsch!} named {Das Team-Eigentum von „<team/>“ wurde an <newOwner/> übertragen.} deleted {Das Team-Eigentum von „<team/>“ wurde an einen ehemaligen Lomir-Nutzer übertragen.} other {Das Team-Eigentum von „<team/>“ wurde übertragen.}}}}",
+      "short": "{newOwner, select, you {Das Team-Eigentum von „<team/>“ wurde an dich übertragen} named {Das Team-Eigentum von „<team/>“ wurde an <newOwner/> übertragen} deleted {Das Team-Eigentum von „<team/>“ wurde an einen ehemaligen Lomir-Nutzer übertragen} other {Das Team-Eigentum von „<team/>“ wurde übertragen}}"
+    },
+    "requestVoid": {
+      "full": "{owner, select, you {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {Du hast das Team „<team/>“ gelöscht. Diese Einladung kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ gelöscht. Diese Einladung kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Du hast das Team „<team/>“ archiviert. Diese Einladung kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ archiviert. Diese Einladung kann deshalb nicht mehr berücksichtigt werden.}}}}} role_application {{mode, select, deleted {{personal, select, yes {Du hast das Team „<team/>“ gelöscht. Diese Bewerbung auf eine Rolle kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ gelöscht. Diese Bewerbung auf eine Rolle kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Du hast das Team „<team/>“ archiviert. Diese Bewerbung auf eine Rolle kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ archiviert. Diese Bewerbung auf eine Rolle kann deshalb nicht mehr berücksichtigt werden.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {Du hast das Team „<team/>“ gelöscht. Diese Einladung zu einer Rolle kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ gelöscht. Diese Einladung zu einer Rolle kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Du hast das Team „<team/>“ archiviert. Diese Einladung zu einer Rolle kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ archiviert. Diese Einladung zu einer Rolle kann deshalb nicht mehr berücksichtigt werden.}}}}} other {{mode, select, deleted {{personal, select, yes {Du hast das Team „<team/>“ gelöscht. Diese Bewerbung kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ gelöscht. Diese Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Du hast das Team „<team/>“ archiviert. Diese Bewerbung kann deshalb nicht mehr berücksichtigt werden. Dazu hast du geschrieben:} other {Du hast das Team „<team/>“ archiviert. Diese Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}}}}}} named {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}}}} role_application {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}}}} other {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen. <owner/> hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von <owner/> archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Du kannst in diesem Chat dennoch Kontakt zu <owner/> aufnehmen.}}}}}}} deleted {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} role_application {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} other {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Ein ehemaliger Lomir-Nutzer hat dir dazu folgende Nachricht hinterlassen:} other {Das Team „<team/>“ wurde von einem ehemaligen Lomir-Nutzer archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}}}}}} other {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde gelöscht. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} role_application {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde gelöscht. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung auf eine Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde gelöscht. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Einladung zu einer Rolle in diesem Team kann deshalb nicht mehr berücksichtigt werden.}}}}} other {{mode, select, deleted {{personal, select, yes {Das Team „<team/>“ wurde gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde gelöscht. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}} other {{personal, select, yes {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden. Dazu wurde diese Nachricht hinterlassen:} other {Das Team „<team/>“ wurde archiviert und ist damit zur Löschung vorgemerkt. Deine Bewerbung kann deshalb nicht mehr berücksichtigt werden.}}}}}}}}",
+      "short": "{owner, select, you {{mode, select, deleted {Du hast „<team/>“ gelöscht} other {Du hast „<team/>“ archiviert}}} other {{kind, select, invitation {Deine Einladung zu „<team/>“ kann nicht mehr berücksichtigt werden} role_application {Deine Bewerbung auf eine Rolle in „<team/>“ kann nicht mehr berücksichtigt werden} role_invitation {Deine Einladung zu einer Rolle in „<team/>“ kann nicht mehr berücksichtigt werden} other {Deine Bewerbung bei „<team/>“ kann nicht mehr berücksichtigt werden}}}}"
+    },
+    "roleApplicationApproved": {
+      "full": "{applicant, select, you {Deine Bewerbung für die Rolle <role/> wurde angenommen.} named {<applicant/> wurde für die Rolle <role/> angenommen.} deleted {Ein ehemaliger Lomir-Nutzer wurde für die Rolle <role/> angenommen.} other {Eine Bewerbung für die Rolle <role/> wurde angenommen.}}"
+    },
+    "roleApplicationDeferredInvite": {
+      "full": "{applicant, select, you {{approver, select, named {<approver/> hat deine Bewerbung für die Rolle <role/> angenommen. Da du schon die Rolle <currentRole/> hast, ist daraus ein Rollenangebot geworden. Du kannst es annehmen, sobald du deine aktuelle Rolle verlässt.} deleted {Ein ehemaliger Lomir-Nutzer hat deine Bewerbung für die Rolle <role/> angenommen. Da du schon die Rolle <currentRole/> hast, ist daraus ein Rollenangebot geworden. Du kannst es annehmen, sobald du deine aktuelle Rolle verlässt.} other {Deine Bewerbung für die Rolle <role/> wurde angenommen. Da du schon die Rolle <currentRole/> hast, ist daraus ein Rollenangebot geworden. Du kannst es annehmen, sobald du deine aktuelle Rolle verlässt.}}} named {{approver, select, you {Du hast <applicant/> für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} named {<approver/> hat <applicant/> für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} deleted {Ein ehemaliger Lomir-Nutzer hat <applicant/> für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} other {<applicant/> wurde für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.}}} deleted {{approver, select, you {Du hast einen ehemaligen Lomir-Nutzer für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} named {<approver/> hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} other {Ein ehemaliger Lomir-Nutzer wurde für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.}}} other {{approver, select, you {Du hast eine Bewerbung für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} named {<approver/> hat eine Bewerbung für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} deleted {Ein ehemaliger Lomir-Nutzer hat eine Bewerbung für die Rolle <role/> angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.} other {Eine Bewerbung für die Rolle <role/> wurde angenommen. Wegen der bestehenden Rolle <currentRole/> ist daraus ein Rollenangebot geworden, das nach deren Verlassen angenommen werden kann.}}}}",
+      "short": "{applicant, select, you {Deine Bewerbung für <role/> wurde als Rollenangebot angenommen} named {<applicant/> wurde für <role/> als Rollenangebot angenommen} deleted {Ein ehemaliger Lomir-Nutzer wurde für <role/> als Rollenangebot angenommen} other {Eine Bewerbung für <role/> wurde als Rollenangebot angenommen}}"
+    },
+    "roleChanged": {
+      "full": "{change, select, promote {{member, select, you {{changer, select, named {<changer/> hat dich in „<team/>“ zum Admin ernannt.} deleted {Ein ehemaliger Lomir-Nutzer hat dich in „<team/>“ zum Admin ernannt.} other {Du wurdest in „<team/>“ zum Admin ernannt.}}} named {{changer, select, you {Du hast <member/> in „<team/>“ zum Admin ernannt.} named {<changer/> hat <member/> in „<team/>“ zum Admin ernannt.} deleted {Ein ehemaliger Lomir-Nutzer hat <member/> in „<team/>“ zum Admin ernannt.} other {<member/> wurde in „<team/>“ zum Admin ernannt.}}} deleted {{changer, select, you {Du hast einen ehemaligen Lomir-Nutzer in „<team/>“ zum Admin ernannt.} named {<changer/> hat einen ehemaligen Lomir-Nutzer in „<team/>“ zum Admin ernannt.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer in „<team/>“ zum Admin ernannt.} other {Ein ehemaliger Lomir-Nutzer wurde in „<team/>“ zum Admin ernannt.}}} other {{changer, select, you {Du hast ein Mitglied in „<team/>“ zum Admin ernannt.} named {<changer/> hat ein Mitglied in „<team/>“ zum Admin ernannt.} deleted {Ein ehemaliger Lomir-Nutzer hat ein Mitglied in „<team/>“ zum Admin ernannt.} other {Ein Mitglied wurde in „<team/>“ zum Admin ernannt.}}}}} other {{member, select, you {{changer, select, named {<changer/> hat dich in „<team/>“ zum Mitglied zurückgestuft.} deleted {Ein ehemaliger Lomir-Nutzer hat dich in „<team/>“ zum Mitglied zurückgestuft.} other {Du wurdest in „<team/>“ zum Mitglied zurückgestuft.}}} named {{changer, select, you {Du hast <member/> in „<team/>“ zum Mitglied zurückgestuft.} named {<changer/> hat <member/> in „<team/>“ zum Mitglied zurückgestuft.} deleted {Ein ehemaliger Lomir-Nutzer hat <member/> in „<team/>“ zum Mitglied zurückgestuft.} other {<member/> wurde in „<team/>“ zum Mitglied zurückgestuft.}}} deleted {{changer, select, you {Du hast einen ehemaligen Lomir-Nutzer in „<team/>“ zum Mitglied zurückgestuft.} named {<changer/> hat einen ehemaligen Lomir-Nutzer in „<team/>“ zum Mitglied zurückgestuft.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer in „<team/>“ zum Mitglied zurückgestuft.} other {Ein ehemaliger Lomir-Nutzer wurde in „<team/>“ zum Mitglied zurückgestuft.}}} other {{changer, select, you {Du hast ein Mitglied in „<team/>“ zum Mitglied zurückgestuft.} named {<changer/> hat ein Mitglied in „<team/>“ zum Mitglied zurückgestuft.} deleted {Ein ehemaliger Lomir-Nutzer hat ein Mitglied in „<team/>“ zum Mitglied zurückgestuft.} other {Ein Mitglied wurde in „<team/>“ zum Mitglied zurückgestuft.}}}}}}",
+      "short": "{change, select, promote {{member, select, you {Du wurdest in „<team/>“ zum Admin ernannt} named {<member/> wurde in „<team/>“ zum Admin ernannt} deleted {Ein ehemaliger Lomir-Nutzer wurde in „<team/>“ zum Admin ernannt} other {Ein Mitglied wurde in „<team/>“ zum Admin ernannt}}} other {{member, select, you {Du wurdest in „<team/>“ zum Mitglied zurückgestuft} named {<member/> wurde in „<team/>“ zum Mitglied zurückgestuft} deleted {Ein ehemaliger Lomir-Nutzer wurde in „<team/>“ zum Mitglied zurückgestuft} other {Ein Mitglied wurde in „<team/>“ zum Mitglied zurückgestuft}}}}"
+    },
+    "roleClosed": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> geschlossen.} named {<actor/> hat die Rolle <role/> geschlossen.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> geschlossen.} other {Die Rolle <role/> wurde geschlossen.}}",
+      "short": "Rolle geschlossen: <role/>"
+    },
+    "roleCreated": {
+      "full": "{actor, select, you {Du hast die neue Rolle <role/> in diesem Team erstellt. Sie ist offen und kann besetzt werden.} named {<actor/> hat die neue Rolle <role/> in diesem Team erstellt. Sie ist offen und kann besetzt werden.} deleted {Ein ehemaliger Lomir-Nutzer hat die neue Rolle <role/> in diesem Team erstellt. Sie ist offen und kann besetzt werden.} other {Die neue Rolle <role/> ist offen und kann besetzt werden.}}",
+      "short": "Neue Rolle <role/> erstellt."
+    },
+    "roleDeleted": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> aus diesem Team gelöscht.} named {<actor/> hat die Rolle <role/> aus diesem Team gelöscht.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> aus diesem Team gelöscht.} other {Die Rolle <role/> wurde aus diesem Team gelöscht.}}",
+      "short": "Rolle gelöscht: <role/>"
+    },
+    "roleFilled": {
+      "full": "{filler, select, you {{approver, select, named {<approver/> hat die Rolle <role/> mit dir besetzt.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> mit dir besetzt.} other {Du hast die Rolle <role/> übernommen.}}} named {{approver, select, you {Du hast die Rolle <role/> mit <filler/> besetzt.} named {<approver/> hat die Rolle <role/> mit <filler/> besetzt.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> mit <filler/> besetzt.} other {<filler/> hat die Rolle <role/> übernommen.}}} deleted {{approver, select, you {Du hast die Rolle <role/> mit einem ehemaligen Lomir-Nutzer besetzt.} named {<approver/> hat die Rolle <role/> mit einem ehemaligen Lomir-Nutzer besetzt.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> mit einem ehemaligen Lomir-Nutzer besetzt.} other {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> übernommen.}}} other {{approver, select, you {Du hast die Rolle <role/> als besetzt markiert.} named {<approver/> hat die Rolle <role/> als besetzt markiert.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> als besetzt markiert.} other {Die Rolle <role/> wurde als besetzt markiert.}}}}"
+    },
+    "roleInvitationAccepted": {
+      "fill": "{invitee, select, you {{inviter, select, named {<inviter/> hat dich für die Rolle <role/> eingeladen. Du hast angenommen und die Rolle übernommen.} deleted {Ein ehemaliger Lomir-Nutzer hat dich für die Rolle <role/> eingeladen. Du hast angenommen und die Rolle übernommen.} other {Du hast eine Einladung für die Rolle <role/> angenommen und die Rolle übernommen.}}} named {{inviter, select, you {Du hast <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} named {<inviter/> hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} deleted {Ein ehemaliger Lomir-Nutzer hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} other {<invitee/> hat eine Einladung für die Rolle <role/> angenommen und die Rolle übernommen.}}} deleted {{inviter, select, you {Du hast einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} named {<inviter/> hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen und die Rolle ist jetzt besetzt.} other {Ein ehemaliger Lomir-Nutzer hat eine Einladung für die Rolle <role/> angenommen und die Rolle übernommen.}}} other {Eine Einladung für die Rolle <role/> wurde angenommen. Die Rolle ist jetzt besetzt.}}",
+      "fillShort": "{invitee, select, you {{inviter, select, named {Du hast die Einladung von <inviter/> für <role/> angenommen und die Rolle übernommen} deleted {Du hast die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen und die Rolle übernommen} other {Du hast eine Einladung für <role/> angenommen und die Rolle übernommen}}} named {{inviter, select, you {<invitee/> hat deine Einladung für <role/> angenommen} named {<invitee/> hat die Einladung von <inviter/> für <role/> angenommen} deleted {<invitee/> hat die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen} other {<invitee/> hat eine Einladung für <role/> angenommen}}} deleted {{inviter, select, you {Ein ehemaliger Lomir-Nutzer hat deine Einladung für <role/> angenommen} named {Ein ehemaliger Lomir-Nutzer hat die Einladung von <inviter/> für <role/> angenommen} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen} other {Ein ehemaliger Lomir-Nutzer hat eine Einladung für <role/> angenommen}}} other {Eine Einladung für <role/> wurde angenommen, die Rolle ist besetzt}}",
+      "noFill": "{invitee, select, you {{inviter, select, named {<inviter/> hat dich für die Rolle <role/> eingeladen. Du hast die Einladung angenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat dich für die Rolle <role/> eingeladen. Du hast die Einladung angenommen.} other {Du hast eine Einladung für die Rolle <role/> angenommen.}}} named {{inviter, select, you {Du hast <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} named {<inviter/> hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat <invitee/> für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} other {<invitee/> hat eine Einladung für die Rolle <role/> angenommen.}}} deleted {{inviter, select, you {Du hast einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} named {<inviter/> hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat einen ehemaligen Lomir-Nutzer für die Rolle <role/> eingeladen. Die Einladung wurde angenommen.} other {Ein ehemaliger Lomir-Nutzer hat eine Einladung für die Rolle <role/> angenommen.}}} other {Eine Einladung für die Rolle <role/> wurde angenommen.}}",
+      "noFillShort": "{invitee, select, you {{inviter, select, named {Du hast die Einladung von <inviter/> für <role/> angenommen} deleted {Du hast die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen} other {Du hast eine Einladung für <role/> angenommen}}} named {{inviter, select, you {<invitee/> hat deine Einladung für <role/> angenommen} named {<invitee/> hat die Einladung von <inviter/> für <role/> angenommen} deleted {<invitee/> hat die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen} other {<invitee/> hat eine Einladung für <role/> angenommen}}} deleted {{inviter, select, you {Ein ehemaliger Lomir-Nutzer hat deine Einladung für <role/> angenommen} named {Ein ehemaliger Lomir-Nutzer hat die Einladung von <inviter/> für <role/> angenommen} deleted {Ein ehemaliger Lomir-Nutzer hat die Einladung von einem ehemaligen Lomir-Nutzer für <role/> angenommen} other {Ein ehemaliger Lomir-Nutzer hat eine Einladung für <role/> angenommen}}} other {Eine Einladung für <role/> wurde angenommen}}"
+    },
+    "roleInvitationAcceptedLegacy": {
+      "full": "{invitee, select, you {Du hast eine Rolleneinladung in diesem Team angenommen.} named {<invitee/> hat eine Rolleneinladung in diesem Team angenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat eine Rolleneinladung in diesem Team angenommen.} other {Eine Rolleneinladung wurde angenommen.}}",
+      "short": "{invitee, select, you {Du hast eine Rolleneinladung angenommen} named {<invitee/> hat eine Rolleneinladung angenommen} deleted {Ein ehemaliger Lomir-Nutzer hat eine Rolleneinladung angenommen} other {Eine Rolleneinladung wurde angenommen}}"
+    },
+    "roleInvitationAssigned": {
+      "full": "{invitee, select, you {Du hast eine Einladung für die Rolle <role/> in diesem Team angenommen.} named {<invitee/> hat eine Einladung für die Rolle <role/> in diesem Team angenommen.} deleted {Ein ehemaliger Lomir-Nutzer hat eine Einladung für die Rolle <role/> in diesem Team angenommen.} other {Eine Einladung für die Rolle <role/> wurde angenommen.}}",
+      "short": "{invitee, select, you {Du hast eine Einladung für <role/> angenommen} named {<invitee/> hat eine Einladung für <role/> angenommen} deleted {Ein ehemaliger Lomir-Nutzer hat eine Einladung für <role/> angenommen} other {Eine Einladung für <role/> wurde angenommen}}"
+    },
+    "roleInvitationFilled": {
+      "full": "{invitee, select, you {Du hast eine Einladung für die Rolle <role/> in diesem Team angenommen und die Rolle übernommen.} named {<invitee/> hat eine Einladung für die Rolle <role/> in diesem Team angenommen und die Rolle übernommen.} deleted {Ein ehemaliger Lomir-Nutzer hat eine Einladung für die Rolle <role/> in diesem Team angenommen und die Rolle übernommen.} other {Eine Einladung für die Rolle <role/> wurde angenommen. Die Rolle ist jetzt besetzt.}}",
+      "short": "{invitee, select, you {Du hast eine Einladung für <role/> angenommen und die Rolle übernommen} named {<invitee/> hat eine Einladung für <role/> angenommen und die Rolle übernommen} deleted {Ein ehemaliger Lomir-Nutzer hat eine Einladung für <role/> angenommen und die Rolle übernommen} other {Eine Einladung für <role/> wurde angenommen, die Rolle ist besetzt}}"
+    },
+    "roleReopened": {
+      "full": "{user, select, you {Du hast die Rolle <role/> verlassen. Sie ist wieder offen und kann besetzt werden.} named {<user/> hat die Rolle <role/> verlassen. Sie ist wieder offen und kann besetzt werden.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> verlassen. Sie ist wieder offen und kann besetzt werden.} other {Die Rolle <role/> ist wieder offen und kann besetzt werden.}}",
+      "short": "{user, select, you {Du hast die Rolle <role/> verlassen. Sie ist wieder offen.} named {<user/> hat die Rolle <role/> verlassen. Sie ist wieder offen.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> verlassen. Sie ist wieder offen.} other {Rolle wieder geöffnet: <role/>}}"
+    },
+    "roleReopenedAdmin": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> wieder geöffnet. Sie kann wieder besetzt werden.} named {<actor/> hat die Rolle <role/> wieder geöffnet. Sie kann wieder besetzt werden.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> wieder geöffnet. Sie kann wieder besetzt werden.} other {Die Rolle <role/> wurde wieder geöffnet und kann besetzt werden.}}",
+      "short": "Rolle wieder geöffnet: <role/>"
+    },
+    "roleUpdated": {
+      "full": "{actor, select, you {Du hast die Rolle <role/> bearbeitet.} named {<actor/> hat die Rolle <role/> bearbeitet.} deleted {Ein ehemaliger Lomir-Nutzer hat die Rolle <role/> bearbeitet.} other {Die Rolle <role/> wurde bearbeitet.}}",
+      "short": "Rolle bearbeitet: <role/>"
+    },
+    "teamDeleted": {
+      "full": "{owner, select, you {Du hast dieses Team archiviert. Es ist zur Löschung vorgemerkt.} named {<owner/> hat dieses Team archiviert. Es ist zur Löschung vorgemerkt.} deleted {Ein ehemaliger Lomir-Nutzer hat dieses Team archiviert. Es ist zur Löschung vorgemerkt.} other {Dieses Team wurde archiviert und ist zur Löschung vorgemerkt.}}",
+      "short": "{owner, select, you {Du hast dieses Team archiviert (zur Löschung vorgemerkt)} named {<owner/> hat dieses Team archiviert (zur Löschung vorgemerkt)} deleted {Ein ehemaliger Lomir-Nutzer hat dieses Team archiviert (zur Löschung vorgemerkt)} other {Dieses Team wurde archiviert (zur Löschung vorgemerkt)}}"
+    },
+    "teamJoin": {
+      "full": "{user, select, you {{role, select, named {Du bist dem Team als <role/> beigetreten. Willkommen an Bord!} other {Du bist dem Team beigetreten. Willkommen an Bord!}}} named {{role, select, named {<user/> ist dem Team als <role/> beigetreten. Sag Hallo!} other {<user/> ist dem Team beigetreten. Sag Hallo!}}} deleted {{role, select, named {Ein ehemaliger Lomir-Nutzer ist dem Team als <role/> beigetreten.} other {Ein ehemaliger Lomir-Nutzer ist dem Team beigetreten.}}} other {{role, select, named {Ein neues Mitglied ist dem Team als <role/> beigetreten. Sag Hallo!} other {Ein neues Mitglied ist dem Team beigetreten. Sag Hallo!}}}}",
+      "short": "{user, select, you {{role, select, named {Du bist dem Team als <role/> beigetreten} other {Du bist dem Team beigetreten}}} named {{role, select, named {<user/> ist dem Team als <role/> beigetreten} other {<user/> ist dem Team beigetreten}}} deleted {{role, select, named {Ein ehemaliger Lomir-Nutzer ist dem Team als <role/> beigetreten} other {Ein ehemaliger Lomir-Nutzer ist dem Team beigetreten}}} other {{role, select, named {Ein neues Mitglied ist dem Team als <role/> beigetreten} other {Ein neues Mitglied ist dem Team beigetreten}}}}"
+    },
+    "teamLeave": {
+      "full": "{user, select, you {Du hast das Team verlassen.} named {<user/> hat das Team verlassen.} deleted {Ein ehemaliger Lomir-Nutzer hat das Team verlassen.} other {Ein Mitglied hat das Team verlassen.}}",
+      "short": "{user, select, you {Du hast das Team verlassen} named {<user/> hat das Team verlassen} deleted {Ein ehemaliger Lomir-Nutzer hat das Team verlassen} other {Ein Mitglied hat das Team verlassen}}"
+    },
+    "userLeftLomir": {
+      "full": "Ein ehemaliger Lomir-Nutzer hat Lomir verlassen.",
+      "short": "Ein ehemaliger Lomir-Nutzer hat Lomir verlassen"
+    }
+  },
+  "chatHeader": {
+    "backToList": "Zurück zur Unterhaltungsliste",
+    "directChat": "Direktnachricht",
+    "directMessageChat": "Direktnachricht",
+    "teamChat": "Team-Chat",
+    "teamChatMembers": "Team-Chat mit {count, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "viewDetails": "Details von {name} ansehen",
+    "viewDetailsGeneric": "Details ansehen"
+  },
+  "chatMessage": {
+    "emptyError": "Die Nachricht darf nicht leer sein.",
+    "saveEditFailed": "Deine Änderung konnte nicht gespeichert werden."
+  },
+  "chatPage": {
+    "conversationUnavailable": "Diese Unterhaltung ist nicht mehr verfügbar.",
+    "deleteConversation": {
+      "confirmLabel": "Entfernen",
+      "loadingLabel": "Wird entfernt …",
+      "message": "Diesen Chat aus deiner Unterhaltungsliste entfernen? Dein Nachrichtenverlauf mit dieser Unterhaltung wird hier nicht mehr angezeigt.",
+      "title": "Chat entfernen"
+    },
+    "deleteMessage": {
+      "confirmLabel": "Löschen",
+      "loadingLabel": "Wird gelöscht …",
+      "message": "Diese Nachricht löschen? Sie wird in diesem Chat durch einen Hinweis auf eine gelöschte Nachricht ersetzt.",
+      "title": "Nachricht löschen"
+    },
+    "errors": {
+      "deleteConversationFailed": "Unterhaltung konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "deleteMessageFailed": "Nachricht konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "editMessageFailed": "Nachricht konnte nicht bearbeitet werden. Bitte versuche es erneut.",
+      "leaveTeamFailed": "Team konnte nicht verlassen werden. Bitte versuche es erneut.",
+      "noTeamChatAccess": "Du hast keinen Zugriff mehr auf diesen Team-Chat.",
+      "uploadFileFailed": "Datei konnte nicht hochgeladen werden. Bitte versuche es erneut.",
+      "uploadFileRejected": "Datei konnte nicht hochgeladen werden",
+      "uploadImageFailed": "Bild konnte nicht hochgeladen werden. Bitte versuche es erneut.",
+      "uploadImageRejected": "Bild konnte nicht hochgeladen werden",
+      "renderFailed": "Der Chat konnte nicht dargestellt werden. Bitte lade die Seite neu.",
+      "noConversationAccess": "Du hast keinen Zugriff mehr auf diese Unterhaltung.",
+      "teamDeleted": "Dieses Team wurde gelöscht.",
+      "removedFromTeam": "Du wurdest aus diesem Team entfernt.",
+      "leftTeamChat": "Du hast diesen Team-Chat verlassen."
+    },
+    "formerTeamMember": "{name} (ehemaliges Teammitglied)",
+    "formerTeamMemberTooltip": "Ehemaliges Teammitglied",
+    "formerTeamMemberInitials": "EM",
+    "leaveTeam": {
+      "confirmLabel": "Verlassen",
+      "fallbackTeamName": "dieses Team",
+      "loadingLabel": "Wird verlassen …",
+      "message": "„{teamName}“ verlassen? Dadurch wird der Chat aus deiner Unterhaltungsliste entfernt.",
+      "title": "Team-Chat verlassen"
+    },
+    "loadConversationsFailed": "Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
+    "loadEarlier": "Ältere Nachrichten laden",
+    "mentionLookupFailed": "„{name}“ konnte nicht nachgeschlagen werden.",
+    "mentionNotFound": "„{name}“ konnte nicht geöffnet werden.",
+    "searchAria": "Chats durchsuchen",
+    "searchClearAria": "Chat-Suche löschen",
+    "searchCountMatches": "{filtered} von {total, plural, one {# Chat} other {# Chats}} · {matches, plural, one {# Treffer} other {# Treffer}}",
+    "searchCountSearching": "{filtered} von {total, plural, one {# Chat} other {# Chats}} · Nachrichten werden durchsucht …",
+    "searchMatchesInConversation": "{count, plural, one {# Suchtreffer} other {# Suchtreffer}} für „{query}“",
+    "searchNoResults": "Keine Personennamen, Teamnamen oder Nachrichten passen zu „{query}“. Versuche einen anderen Suchbegriff.",
+    "searchLoadingDescription": "Der Nachrichtenverlauf wird nach „{query}“ durchsucht.",
+    "searchLoadingTitle": "Chats werden durchsucht …",
+    "searchPlaceholder": "Chats durchsuchen …",
+    "title": "Chats",
+    "attachmentPreview": {
+      "named": "{kind, select, image {Bild „{fileName}“ gesendet} spreadsheet {Tabelle „{fileName}“ gesendet} other {Datei „{fileName}“ gesendet}}",
+      "unnamed": "{kind, select, image {Bild gesendet} spreadsheet {Tabelle gesendet} other {Datei gesendet}}"
+    },
+    "noMessagesYet": "Noch keine Nachrichten",
+    "sendFirstMessage": "Schreib eine Nachricht, um die Unterhaltung zu beginnen",
+    "startConversation": "Starte eure Unterhaltung …",
+    "emptyList": {
+      "title": "Noch keine Unterhaltungen",
+      "description": "Beginne einen Chat über das Profil einer Person oder die Seite eines Teams.",
+      "findPeople": "Personen finden",
+      "findTeams": "Teams finden"
+    },
+    "openConversation": "Unterhaltung öffnen",
+    "deselectConversation": "Auswahl aufheben",
+    "typingOne": "{name} schreibt …",
+    "typingMany": "{count} Personen schreiben …",
+    "archivedBanner": {
+      "body": "Dieses Team wurde archiviert und wird gelöscht. Der Chat bleibt noch {remaining} verfügbar, damit ihr euch verabschieden könnt. Du kannst jederzeit gehen; sobald du den Chat verlässt oder er gelöscht wird, sind seine Nachrichten und Dateien nicht mehr zugänglich.",
+      "leaveNow": "Team-Chat jetzt verlassen"
+    }
+  },
+  "chatUploader": {
+    "addAttachmentAria": "Anhang hinzufügen",
+    "cancel": "Abbrechen",
+    "dragDropClick": "Datei hierher ziehen oder zum Auswählen klicken",
+    "dragDropPaste": "Bild hierher ziehen, klicken oder einfügen",
+    "dropFileHere": "Datei hier ablegen",
+    "errorFileTooLarge": "Die Datei muss kleiner als {maxSize} MB sein",
+    "errorFileType": "Dateityp nicht unterstützt. Zulässig: {formats}",
+    "fileHint": "Max. {maxSize} MB • {formats}",
+    "imageHint": "Max. {maxSize} MB • {formats}",
+    "optionEmoji": "Emoji",
+    "optionFile": "Datei",
+    "optionImage": "Bild",
+    "send": "Senden",
+    "shareFile": "Datei teilen",
+    "shareImage": "Bild teilen"
+  },
+  "collapse": {
+    "showAll": "Alle anzeigen",
+    "showLess": "Weniger anzeigen"
+  },
+  "communication": {
+    "languageHelp": "Lomir verwendet diese Sprache für die App und für die E-Mails, die wir dir schicken. Ohne eigene Wahl richten wir uns nach dem Land in deinem Profil und sonst nach deinem Browser.",
+    "languageLabel": "Sprache der Lomir-App",
+    "sectionTitle": "Kommunikation"
+  },
+  "confirmModal": {
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen"
+  },
+  "contact": {
+    "attachment": {
+      "attach": "Dateien anhängen",
+      "remove": "Anhang entfernen",
+      "rules": "Zulässig: {types}. Max. {maxFiles} Dateien, je {maxMb} MB, {totalMb} MB insgesamt.",
+      "selectedFile": "Ausgewählte Datei",
+      "fileError": "{name}: {message}",
+      "moreSkipped": "{count, plural, one {# weitere Datei wurde übersprungen.} other {# weitere Dateien wurden übersprungen.}}",
+      "unsafeName": "Dateiname nicht unterstützt. Bitte benenne die Datei um und versuche es erneut.",
+      "wrongType": "Dateityp nicht unterstützt. Zulässig: {types}.",
+      "empty": "Die Datei ist leer und kann nicht angehängt werden.",
+      "tooLarge": "Jede Datei muss {maxMb} MB oder kleiner sein.",
+      "duplicate": "Diese Datei ist bereits angehängt.",
+      "totalTooLarge": "Die Anhänge dürfen zusammen höchstens {totalMb} MB groß sein.",
+      "tooMany": "Du kannst bis zu {maxFiles} Dateien anhängen."
+    },
+    "email": {
+      "title": "Schreib uns eine Nachricht",
+      "titleAgain": "Noch eine E-Mail schreiben?",
+      "subtitle": "Wir antworten dir per E-Mail.",
+      "subtitleGuest": "Wir antworten dir per E-Mail. Mit einem Account schreibst du dem Lomir-Team direkt in der App.",
+      "compose": "E-Mail verfassen"
+    },
+    "errors": {
+      "invalidInput": "Bitte prüf deine Eingaben und versuch es noch einmal.",
+      "captchaFailed": "Die CAPTCHA-Prüfung ist fehlgeschlagen. Bitte versuche es erneut.",
+      "uploadFailed": "Der Anhang konnte nicht hochgeladen werden.",
+      "reportFailed": "Deine Meldung konnte nicht entgegengenommen werden. Bitte versuche es in ein paar Minuten erneut.",
+      "contactFailed": "Deine Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
+      "rateLimited": "Zu viele Nachrichten. Bitte versuche es später noch einmal."
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Dein Name",
+      "email": "E-Mail",
+      "emailPlaceholder": "du@beispiel.de",
+      "topic": "Thema",
+      "message": "Nachricht",
+      "messagePlaceholder": "Erzähl uns, was dich beschäftigt",
+      "submit": "Nachricht senden",
+      "submitting": "Wird gesendet …"
+    },
+    "inApp": {
+      "title": "Schreib dem Lomir-Team",
+      "subtitle": "Erreiche uns mit deinem Lomir-Account direkt in der App.",
+      "body": "Der Account des Lomir-Teams ist da für Fragen zum Account, Datenschutzanliegen, Rückmeldungen und alles, was ein bisschen menschlichen Kontext braucht.",
+      "button": "Chat-Nachricht senden"
+    },
+    "intro": "Fragen, Rückmeldungen, Hilfe zum Account, Datenschutzanliegen oder Meldungen zu Inhalten – hier fängt alles an.",
+    "introSecondLine": "Wir leiten deine Nachricht an die richtige Stelle weiter.",
+    "loginHint": "Schon bei Lomir dabei? <0>Melde dich an</0>, um uns über den App-Chat zu erreichen.",
+    "privacyNote": "Mit dem Absenden dieses Formulars verarbeiten wir die Angaben im Formular (Name, E-Mail-Adresse, Thema, Nachricht und Anhänge), um deine Anfrage zu beantworten. In unserer <0>Datenschutzerklärung</0> erfährst du, wie wir mit deinen Daten umgehen.",
+    "report": {
+      "topicHelp": "Nutze dieses Thema, um illegale Inhalte, Missbrauch, Belästigung, Spam, Datenschutzprobleme oder Sicherheitsbedenken zu melden.",
+      "messageHelp": "Bitte beschreibe es so genau, dass wir den Inhalt oder den Account finden können – etwa Benutzernamen, Teamnamen, den Zusammenhang der Nachricht, Links, Screenshots und warum du meinst, dass wir es prüfen sollten."
+    },
+    "status": {
+      "reportReceived": "Deine Meldung ist bei uns eingegangen. Vorgangs-ID: {reference}.",
+      "sent": "Danke, deine Nachricht ist beim Lomir-Team eingegangen.",
+      "error": "Beim Senden deiner Nachricht ist etwas schiefgegangen. Bitte versuche es erneut."
+    },
+    "title": "Lomir kontaktieren",
+    "topics": {
+      "general": "Allgemeine Frage",
+      "account": "Hilfe zum Account",
+      "privacy": "Datenschutzanliegen",
+      "report": "Inhalte oder Missbrauch melden",
+      "feedback": "Rückmeldung"
+    },
+    "validation": {
+      "name": "Bitte gib deinen Namen an",
+      "email": "Bitte gib deine E-Mail-Adresse an",
+      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse an",
+      "message": "Bitte schreib uns eine Nachricht",
+      "captcha": "Bitte schließe die CAPTCHA-Prüfung ab"
+    }
+  },
+  "countrySelect": {
+    "clear": "Auswahl löschen",
+    "groupAll": "Alle Länder",
+    "groupCommon": "Häufig",
+    "noResults": "Keine Länder gefunden",
+    "placeholder": "Land auswählen",
+    "searchPlaceholder": "Zum Suchen tippen …"
+  },
+  "focusAreaOverview": {
+    "intro": "Fokusbereiche beschreiben, was Personen und Teams in Lomir wichtig ist. Wähle einen aus, um nach Personen und Teams zu suchen, die ihn teilen.",
+    "loadError": "Fokusbereiche konnten nicht geladen werden",
+    "searchWith": "Nach Personen und Teams mit {name} suchen",
+    "title": "Fokusbereich-Übersicht"
+  },
+  "datetime": {
+    "archiveRemainingDays": "{count, plural, one {# Tag} other {# Tage}}",
+    "archiveRemainingHours": "{count, plural, one {# Stunde} other {# Stunden}}",
+    "archiveRemainingUnderAnHour": "weniger als eine Stunde",
+    "justNow": "vor weniger als einer Minute",
+    "justNowShort": "vor < 1 Min.",
+    "timeOfDay": "{time} Uhr",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "archiveRemainingUpTo": "bis zu {count, plural, one {# Tag} other {# Tage}}"
+  },
+  "demo": {
+    "profileLabel": "Demo-Profil",
+    "profileTooltip": "Demo-Profil: nur zu Testzwecken, keine echte Person",
+    "roleLabel": "Demo-Rolle",
+    "roleTooltip": "Demo-Rolle: nur zu Testzwecken, keine echte Rolle",
+    "teamTooltip": "Demo-Team: nur zu Testzwecken, kein echtes Team"
+  },
+  "distance": {
+    "away": "{km} km entfernt",
+    "awayBeyondLimit": "{km} km entfernt (> {limit} km)",
+    "awayFromYou": "{km} km von dir entfernt",
+    "awayWithinLimit": "{km} km entfernt (< {limit} km)"
+  },
+  "fileAttachment": {
+    "openTooltip": "Zum Öffnen und Herunterladen klicken",
+    "downloadFile": "Datei herunterladen",
+    "clickToDownload": "Zum Herunterladen klicken"
+  },
+  "fileExpiry": {
+    "expired": "Diese Daten sind abgelaufen und nicht mehr verfügbar.",
+    "expiringSoon": "{type, select, image {Das Bild läuft} other {Die Datei läuft}} in {days, plural, one {# Tag} other {# Tagen}} ab. Jetzt herunterladen, um eine Kopie zu behalten.",
+    "active": "{type, select, image {Das Bild läuft} other {Die Datei läuft}} in {days, plural, one {# Tag} other {# Tagen}} ab."
+  },
+  "focusAreas": {
+    "alreadyAdded": "Fokusbereich bereits hinzugefügt",
+    "cancel": "Abbrechen",
+    "desired": "Gewünschte Fokusbereiche",
+    "editAria": "Bearbeiten",
+    "empty": "Noch keine Fokusbereiche",
+    "emptyTeam": "Noch keine Fokusbereiche hinzugefügt.",
+    "fallbackName": "Fokusbereich {id}",
+    "groupTooltip": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
+    "groupTooltipMembers": "{group}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "loading": "Lädt …",
+    "placeholder": "Fokusbereiche hinzufügen …",
+    "placeholderTeam": "Fokusbereiche hinzufügen …",
+    "pendingTooltip": "{name}: +{credits} ct. aus Badges, die für andere noch nicht sichtbar sind. Die Credits zählen erst, wenn du sie sichtbar machst.",
+    "popularTitle": "Beliebte Fokusbereiche",
+    "relatedTitle": "Verwandte Fokusbereiche",
+    "remove": "{name} entfernen",
+    "removeGeneric": "Fokusbereich entfernen",
+    "searchPlaceholder": "Zum Suchen von Fokusbereichen tippen …",
+    "searchResultsTitle": "Suchergebnisse",
+    "summary": "({credits} ct. in {count, plural, one {# Bereich} other {# Bereichen}})",
+    "tagTooltip": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Person} other {# Personen}}",
+    "tagTooltipMembers": "{name}: {credits} ct., vergeben mit {badges, plural, one {# Badge} other {# Badges}} von {people, plural, one {# Mitglied} other {# Mitgliedern}}",
+    "title": "Fokusbereiche",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "updated": "Erfolgreich aktualisiert!"
+  },
+  "footer": {
+    "about": "Über uns",
+    "contact": "Kontakt",
+    "copyright": "Lomir - Team Up App © {year}",
+    "imprint": "Impressum",
+    "instagram": "Instagram",
+    "license": "Lizenz",
+    "privacy": "Datenschutz",
+    "source": "Quellcode",
+    "terms": "Nutzungsbedingungen"
+  },
+  "imageUploader": {
+    "changeImage": "Bild ändern",
+    "dragAndDrop": "Bild hierher ziehen oder zum Hochladen klicken",
+    "dropHere": "Bild hier ablegen",
+    "errorAcceptedFormats": "Bitte wähle eine Bilddatei in einem dieser Formate aus: {formats}",
+    "errorNotAnImage": "Bitte wähle eine Bilddatei aus",
+    "errorTooLarge": "Das Bild muss kleiner als {maxSize} MB sein",
+    "maxSizeHint": "Max. {maxSize} MB. Quadratische Bilder werden empfohlen.",
+    "newImageSelected": "Neues Bild ausgewählt. Zum Hochladen speichern.",
+    "previewAlt": "Vorschau",
+    "remove": "Entfernen",
+    "uploadImage": "Bild hochladen"
+  },
+  "languageSelect": {
+    "noResults": "Keine Sprachen gefunden",
+    "placeholder": "Sprache auswählen",
+    "searchPlaceholder": "Zum Suchen tippen …"
+  },
+  "legalLink": {
+    "opensInNewTab": "(öffnet in neuem Tab)"
+  },
+  "legalPage": {
+    "translationNotice": "Dies ist eine Übersetzung. Rechtlich verbindlich ist die deutsche Fassung.",
+    "lastUpdated": "Stand: {date}"
+  },
+  "location": {
+    "city": "Stadt / Ort (optional)",
+    "cityPlaceholder": "z. B. Berlin",
+    "clearCity": "Stadt löschen",
+    "clearPostalCode": "Postleitzahl löschen",
+    "country": "Land",
+    "countryOptional": "Land (optional)",
+    "divider": "Standort",
+    "locationMode": {
+      "label": "Team-Standort",
+      "locationHelper": "Gib den Standort deines Teams an. Diese Angabe ist optional.",
+      "locationLabel": "Das ist ein Team mit festem Standort",
+      "remoteHelper": "Remote-Teams haben keinen festen Treffpunkt.",
+      "remoteLabel": "Das ist ein Remote-Team",
+      "toggleAria": "Standortmodus umschalten"
+    },
+    "notFoundInCountry": "In {country} nicht gefunden.",
+    "postalCode": "Postleitzahl (optional)",
+    "postalCodePlaceholder": "z. B. 12345",
+    "remoteHelp": "Remote-Teams haben keinen festen Treffpunkt",
+    "remoteToggle": "Das ist ein Remote-Team",
+    "section": {
+      "distanceAway": "{distance} entfernt",
+      "matchShort": "Passt",
+      "matchesLocationOf": "Passt zum Standort von {name}",
+      "matchesYourLocation": "Passt zu deinem Standort",
+      "noLocationBoundaries": "Keine räumliche Bindung",
+      "noLocationSet": "Kein Standort angegeben",
+      "noPhysicalLocation": "(Kein fester Treffpunkt)",
+      "notCompared": "Standort nicht verglichen",
+      "notSpecified": "Nicht angegeben",
+      "outsideRangeOf": "Außerhalb des Umkreises von {name}",
+      "outsideYourRange": "Außerhalb deines Umkreises",
+      "preference": "Standort-Präferenz",
+      "remote": "Remote",
+      "remoteNoPreference": "Remote — keine geografische Präferenz",
+      "remoteTeam": "Remote-Team",
+      "title": "Standort",
+      "unavailable": "Standort nicht verfügbar",
+      "unavailableShort": "Keine Angabe",
+      "withinKmFromRole": "im Umkreis von {km} km um den Rollenstandort"
+    },
+    "selectCountryToLookUp": "Wähle ein Land aus, damit wir das nachschlagen können.",
+    "suggestedCity": "{city} ist der Ort zur Postleitzahl {postalCode}.",
+    "useSuggestedCity": "Übernehmen",
+    "useSuggestedCityAria": "{city} übernehmen"
+  },
+  "mapPopup": {
+    "appliedForNamedRole": "Du hast dich für {roleName} in diesem Team beworben",
+    "clickRoleDetails": "Klicke, um die Rollendetails zu sehen",
+    "clickTeamDetails": "Klicke, um die Teamdetails zu sehen",
+    "clickUserDetails": "Klicke, um die Profildetails zu sehen",
+    "close": "Schließen",
+    "demoProfile": "Demo-Profil",
+    "demoRole": "Demo-Rolle",
+    "demoTeam": "Demo-Team",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nim Umkreis von {km} km um den Rollenstandort",
+    "entityNoLocation": "{entity} ohne Standortangabe",
+    "entityRemote": "{entity} (remote)",
+    "invitedToFillNamedRole": "Du wurdest eingeladen, {roleName} in diesem Team zu übernehmen",
+    "mappedResults": "Ergebnisse auf der Karte",
+    "memberCount": "{count} von {max} Mitgliedern",
+    "memberOfTeamNamed": "Du bist Mitglied dieses Teams: {teamName}",
+    "memberWithCount": "Du bist Mitglied dieses Teams mit {count} / {max} Mitgliedern",
+    "noMapCoordinates": "Keines der sichtbaren Ergebnisse auf dieser Seite hat bisher Kartenkoordinaten.",
+    "openDetails": "Details öffnen",
+    "openRoleApplication": "Details der Rollen-Bewerbung öffnen",
+    "openRoleInvitation": "Details der Rollen-Einladung öffnen",
+    "openRoles": "{count, plural, one {In diesem Team ist # offene Rolle ausgeschrieben} other {In diesem Team sind # offene Rollen ausgeschrieben}}",
+    "openTeamApplication": "Details der Team-Bewerbung öffnen",
+    "openTeamInvitation": "Details der Team-Einladung öffnen",
+    "posted": "Eingestellt am {date}",
+    "remoteOrUnmapped": "Remote oder ohne Standort",
+    "resultAria": "Kartenergebnis {name}",
+    "typeRole": "Offene Rolle",
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeUserProfile": "Profil",
+    "viewDetails": "Details ansehen"
+  },
+  "matchDetail": {
+    "itemsTwo": "{first} und {second}",
+    "tagsOfTotal": "{shared} von {total} Fokusbereichen",
+    "tagsOfTotalRequired": "{shared} von {total} geforderten Fokusbereichen",
+    "badgesOfTotal": "{shared} von {total} Badges",
+    "tagsShared": "{count, plural, one {# Fokusbereich} other {# Fokusbereiche}}",
+    "badgesShared": "{count, plural, one {# Badge} other {# Badges}}",
+    "itemsAndLocation": "{items} gemeinsam, {location}",
+    "itemsOnly": "{items} gemeinsam",
+    "roleItemsAndLocation": "{items} erfüllt, {location}",
+    "roleItemsOnly": "{items} erfüllt",
+    "location": {
+      "same": "gleicher Ort oder Remote-freundliches Team",
+      "within100": "unter 100 km entfernt",
+      "within300": "unter 300 km entfernt",
+      "within1000": "unter 1000 km entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "locationAlone": {
+      "same": "Gleicher Ort oder Remote-freundliches Team",
+      "within100": "Unter 100 km voneinander entfernt",
+      "within300": "Unter 300 km voneinander entfernt",
+      "within1000": "Unter 1000 km voneinander entfernt",
+      "tooFar": "Standorte zu weit auseinander"
+    },
+    "roleLocation": {
+      "inside": "im Standort-Umkreis der Rolle",
+      "near": "bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "außerhalb des Standort-Umkreises der Rolle"
+    },
+    "roleLocationAlone": {
+      "inside": "Im Standort-Umkreis der Rolle",
+      "near": "Bis zu 20 km außerhalb des Rollenumkreises",
+      "outside": "Außerhalb des Standort-Umkreises der Rolle"
+    },
+    "bars": {
+      "locationWeight": "Der Standort geht mit {weight} % in den Score ein.",
+      "locationRoleRule": "Im Umkreis der Rolle = 100 %. Bis zu 20 km darüber hinaus = 25 %. Weiter = 0 %.",
+      "locationGenericRule": "Remote-Teams = 100 %. Gleiche Stadt = 100 %. Bis 100 km = 75 %.",
+      "locationGenericRuleFar": "Bis 300 km = 50 %. Bis 1000 km = 25 %. Weiter entfernt = 0 %.",
+      "tagsWeight": "Fokusbereiche gehen mit {weight} % in den Score ein.",
+      "tagsMet": "{shared} von {total} geforderten Fokusbereichen erfüllt.",
+      "tagsSharedCount": "{shared} von {total} Fokusbereichen sind gemeinsam.",
+      "tagsNone": "Es gab keine Fokusbereiche zum Vergleichen.",
+      "badgesWeight": "Badges gehen mit {weight} % in den Score ein.",
+      "badgesMet": "{shared} von {total} geforderten Badges erfüllt.",
+      "badgesSharedCount": "{shared} von {total} Badges sind gemeinsam.",
+      "badgesNone": "Es gab keine Badges zum Vergleichen."
+    }
+  },
+  "matchScore": {
+    "betweenYouAnd": "{pct}% Profil-Übereinstimmung von dir und {name}",
+    "betweenYouAndThisTeam": "{pct}% Profil-Übereinstimmung von dir und diesem Team",
+    "breakdown": "{pct}% Übereinstimmung — Tags {tagPct}% · Badges {badgePct}% · Ort {distPct}%",
+    "plain": "{pct}% Profil-Übereinstimmung",
+    "roleNamed": "{pct}% Übereinstimmung von {name} mit der Rolle {role}",
+    "roleNamedAnon": "{pct}% Übereinstimmung dieser Person mit der Rolle {role}",
+    "roleWithMember": "{pct}% Übereinstimmung von {name} mit dieser Rolle",
+    "roleWithThisMember": "{pct}% Übereinstimmung dieses Mitglieds mit dieser Rolle",
+    "shared": "{pct}% Profil-Übereinstimmung — {sharedTags, plural, one {# gemeinsamer Tag} other {# gemeinsame Tags}}, {sharedBadges, plural, one {# gemeinsamer Badge} other {# gemeinsame Badges}}",
+    "sharedFocus": "{pct}% Profil-Übereinstimmung — {count, plural, one {# gemeinsamer Fokusbereich} other {# gemeinsame Fokusbereiche}}",
+    "tierGood": "{pct}% gute Übereinstimmung",
+    "tierGreat": "{pct}% sehr gute Übereinstimmung",
+    "tierLow": "{pct}% geringe Übereinstimmung",
+    "withProfileOf": "{pct}% Übereinstimmung mit dem Profil von {name}",
+    "withYourProfile": "{pct}% Übereinstimmung mit deinem Profil",
+    "yourProfileWith": "{pct}% Übereinstimmung deines Profils mit {name}",
+    "yourProfileWithThisTeam": "{pct}% Übereinstimmung deines Profils mit diesem Team"
+  },
+  "matchSummary": {
+    "all": "Alle passend",
+    "allWithName": "Alle passend zu {name}",
+    "allWithYou": "Alle passend zu dir",
+    "counted": "{matchCount}/{total} passend",
+    "countedWithName": "{matchCount}/{total} passend zu {name}",
+    "countedWithYou": "{matchCount}/{total} passend zu dir",
+    "none": "Keine Übereinstimmung",
+    "noneWithName": "Keine Übereinstimmung mit {name}",
+    "noneWithYou": "Keine Übereinstimmung mit dir"
+  },
+  "messageBubble": {
+    "attachmentFile": "Datei",
+    "cancel": "Abbrechen",
+    "dataExpired": "Diese Daten sind abgelaufen.",
+    "deleteMessage": "Nachricht löschen",
+    "edit": "Nachricht bearbeiten",
+    "edited": "Nachricht bearbeitet",
+    "mediaExpired": "Bild oder Datei ist nicht mehr verfügbar",
+    "messageDeleted": "Diese Nachricht wurde gelöscht.",
+    "messageUnavailable": "Nachricht nicht verfügbar",
+    "openImage": "Zum Öffnen und Herunterladen in neuem Tab klicken",
+    "originalDeleted": "Die ursprüngliche Nachricht wurde gelöscht",
+    "renderError": "Diese Nachricht konnte nicht dargestellt werden.",
+    "repliedImageAlt": "Bild der zitierten Nachricht",
+    "respond": "Antworten",
+    "respondAria": "Auf Nachricht antworten",
+    "save": "Speichern",
+    "sharedImageAlt": "Geteiltes Bild"
+  },
+  "messageInput": {
+    "attachmentImage": "Bild",
+    "attachmentImageOrFile": "Bild / Datei",
+    "cancelReplyAria": "Antwort verwerfen",
+    "placeholder": "Schreibe eine Nachricht …",
+    "replyPreviewAlt": "Antwortvorschau",
+    "replyingTo": "Antwort an {name}",
+    "replyingToMessage": "Antwort auf eine Nachricht"
+  },
+  "messageNotifications": {
+    "byline": {
+      "acceptedBy": "Angenommen von {name}",
+      "appliedBy": "Bewerbung von {name}",
+      "approvedBy": "Angenommen von {name}",
+      "by": "von {name}",
+      "byYou": "von dir",
+      "cancelledBy": "Zurückgezogen von {name}",
+      "declinedBy": "Abgelehnt von {name}",
+      "from": "von {name}",
+      "invitedBy": "Eingeladen von {name}"
+    },
+    "header": {
+      "applicationApproved": "Bewerbung angenommen",
+      "applicationDeclined": "Bewerbung abgelehnt",
+      "invitationAccepted": "Einladung angenommen",
+      "invitationCancelled": "Einladung zurückgezogen",
+      "invitationDeclined": "Einladung abgelehnt",
+      "newApplication": "Neue Bewerbung",
+      "newBadge": "Neues Badge für dich!",
+      "newEvent": "Neues Ereignis",
+      "newMessage": "Neue Nachricht",
+      "removedFromTeam": "Aus dem Team entfernt",
+      "roleInvitation": "Rolleneinladung",
+      "roleOfferCreated": "Rollenangebot erstellt",
+      "teamInvitation": "Team-Einladung",
+      "teamRoleApplicationApproved": "Team- & Rollenbewerbung angenommen",
+      "teamRoleInvitation": "Team- & Rolleneinladung",
+      "teamRoleInviteAccepted": "Team- & Rolleneinladung angenommen",
+      "teamRoleInviteCancelled": "Team- & Rolleneinladung zurückgezogen",
+      "teamRoleInviteDeclined": "Team- & Rolleneinladung abgelehnt"
+    },
+    "roleStatus": {
+      "closed": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde geschlossen} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde geschlossen}}",
+      "deleted": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde gelöscht} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde gelöscht}}",
+      "filled": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde besetzt} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde besetzt}}",
+      "reopened": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, ist wieder offen} other {Die Rolle „{role}“, zu der du eingeladen wurdest, ist wieder offen}}",
+      "updated": "{userType, select, applicant {Die Rolle „{role}“, auf die du dich beworben hast, wurde bearbeitet} other {Die Rolle „{role}“, zu der du eingeladen wurdest, wurde bearbeitet}}"
+    },
+    "text": {
+      "applicationApproved": "Deine Bewerbung bei „{team}“ wurde angenommen!",
+      "applicationApprovedRole": "Deine Bewerbung bei „{team}“ für {role} wurde angenommen!",
+      "applicationReceived": "Neue Bewerbung bei „{team}“",
+      "applicationReceivedRole": "Neue Rollenbewerbung bei „{team}“",
+      "applicationRejected": "Deine Bewerbung bei „{team}“ wurde abgelehnt",
+      "badgeAwarded": "Du hast das Badge „{badge}“ erhalten!",
+      "invitationAccepted": "Deine Einladung zu „{team}“ wurde angenommen!",
+      "invitationAcceptedRole": "Deine Einladung zu „{team}“ als {role} wurde angenommen!",
+      "invitationCancelled": "Deine Einladung zu „{team}“ wurde zurückgezogen",
+      "invitationCancelledRole": "Deine Einladung zu „{team}“ als {role} wurde zurückgezogen",
+      "invitationDeclined": "Deine Einladung zu „{team}“ wurde abgelehnt",
+      "invitationDeclinedRole": "Deine Einladung zu „{team}“ als {role} wurde abgelehnt",
+      "invitationReceived": "Du wurdest zu „{team}“ eingeladen!",
+      "invitationReceivedRole": "Du wurdest zu „{team}“ als {role} eingeladen!",
+      "removed": "Du wurdest aus „{team}“ entfernt",
+      "removedNoTeam": "Du wurdest aus dem Team entfernt",
+      "roleApplicationDeferredInvite": "Deine Bewerbung für {role} in „{team}“ ist jetzt ein Rollenangebot",
+      "roleInvitation": "Du wurdest eingeladen, die Rolle „{role}“ in „{team}“ zu übernehmen"
+    },
+    "unreadOnLogin": "{count, plural, one {Du hast # ungelesene Nachricht} other {Du hast # ungelesene Nachrichten}}"
+  },
+  "modal": {
+    "close": "Dialog schließen"
+  },
+  "nav": {
+    "languageCurrent": "Sprache: {language} ({code})",
+    "languageSettings": "Spracheinstellungen",
+    "login": "Login",
+    "logoAlt": "Lomir-Logo",
+    "logout": "Abmelden",
+    "markAllAsRead": "Alle als gelesen markieren",
+    "messages": "Nachrichten",
+    "myTeams": "Meine Teams",
+    "myTeamsShort": "Teams",
+    "notifications": "Benachrichtigungen",
+    "profile": "Profil",
+    "search": "Suche",
+    "settings": "Einstellungen",
+    "signUp": "Registrieren"
+  },
+  "notificationBadge": {
+    "application": "{count} {count, plural, one {offene Bewerbung} other {offene Bewerbungen}}",
+    "invitation": "{count} {count, plural, one {offene Einladung} other {offene Einladungen}} gesendet",
+    "message": "{count} {count, plural, one {ungelesene Nachricht} other {ungelesene Nachrichten}}",
+    "alert": "{count} {count, plural, one {Benachrichtigung} other {Benachrichtigungen}}"
+  },
+  "notifications": {
+    "applicationApproved": "{count, plural, one {Deine Team-Bewerbung wurde angenommen} other {# Team-Bewerbungen wurden angenommen}}{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "applicationCancelled": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "applicationReceived": "{count, plural, one {# Team-Bewerbung} other {# Team-Bewerbungen}} zur Prüfung{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "applicationRejected": "{count, plural, one {Deine Team-Bewerbung wurde} other {Deine Team-Bewerbungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}abgelehnt",
+    "badgeAwarded": "{count, plural, one {# neue Badge-Auszeichnung} other {# neue Badge-Auszeichnungen}} für dich",
+    "count": "{count, plural, one {# Benachrichtigung} other {# Benachrichtigungen}}",
+    "invitationAccepted": "{count, plural, one {# Einladung} other {# Einladungen}} angenommen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "invitationCancelled": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}zurückgezogen",
+    "invitationDeclined": "{count, plural, one {Deine Einladung wurde} other {Deine Einladungen (#) wurden}}{teamCount, plural, =0 { } =1 { } other { in # Teams }}abgelehnt",
+    "invitationReceived": "{count, plural, one {# Team-Einladung} other {# Team-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "memberJoined": "{count, plural, one {# neues Mitglied} other {# neue Mitglieder}} ist {teamCount, plural, =0 {einem deiner Teams} =1 {einem deiner Teams} other {# deiner Teams}} beigetreten",
+    "memberLeft": "{count, plural, one {# Mitglied hat} other {# Mitglieder haben}} {teamCount, plural, =0 {eines deiner Teams} =1 {eines deiner Teams} other {# deiner Teams}} verlassen",
+    "memberRemoved": "Aus {teamCount, plural, =0 {einem Team} =1 {einem Team} other {# deiner Teams}} entfernt",
+    "messages": {
+      "mentions": "{count, plural, one {# Erwähnung} other {# Erwähnungen}}",
+      "senders": "{count, plural, one {von # Person} other {von # Personen}}",
+      "teams": "{count, plural, one {in # Team} other {in # Teams}}",
+      "unread": "{count, plural, one {# ungelesene Nachricht} other {# ungelesene Nachrichten}}"
+    },
+    "ownershipTransferred": "{count, plural, one {# Eigentumsübertragung} other {# Eigentumsübertragungen}}",
+    "roleApplicationCancelled": "{count, plural, one {# Rollenbewerbung} other {# Rollenbewerbungen}} zurückgezogen{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleApplicationDeferredInvite": "{count, plural, one {# Rollen-Angebot} other {# Rollen-Angebote}} erstellt{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleAssigned": "{count, plural, one {# Rollenzuweisung} other {# Rollenzuweisungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
+    "roleChanged": "{count, plural, one {# Rollenänderung} other {# Rollenänderungen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}}",
+    "roleClosed": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geschlossen",
+    "roleCreated": "{count, plural, one {# neue Rolle} other {# neue Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} geöffnet",
+    "roleDeleted": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} gelöscht",
+    "roleFilled": "{count, plural, one {# Rolle} other {# Rollen}} in {teamCount, plural, =0 {einem deiner Teams} =1 {einem deiner Teams} other {# deiner Teams}} besetzt",
+    "roleInvitation": "{count, plural, one {# Rollen-Einladung} other {# Rollen-Einladungen}} für dich{teamCount, plural, =0 {} =1 {} other { in # Teams}}",
+    "roleReopened": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} wieder geöffnet",
+    "roleStatusChangedApplicant": "{count, plural, one {# Rolle, auf die du dich beworben hast, hat} other {# Rollen, auf die du dich beworben hast, haben}} sich geändert",
+    "roleStatusChangedInvitee": "{count, plural, one {# Rolle, zu der du eingeladen wurdest, hat} other {# Rollen, zu denen du eingeladen wurdest, haben}} sich geändert",
+    "roleUpdated": "{count, plural, one {# Rolle} other {# Rollen}} {teamCount, plural, =0 {in einem deiner Teams} =1 {in einem deiner Teams} other {in # deiner Teams}} bearbeitet",
+    "teamDeleted": "{count, plural, one {# Team} other {# Teams}} gelöscht"
+  },
+  "pagination": {
+    "goToNext": "Zur nächsten Seite",
+    "goToPrevious": "Zur vorherigen Seite",
+    "morePages": "Weitere Seiten",
+    "nextPage": "Nächste Seite",
+    "noResults": "Keine Ergebnisse",
+    "page": "Seite {page}",
+    "perPage": "Pro Seite:",
+    "previousPage": "Vorherige Seite",
+    "showing": "Zeige <0>{start}</0> bis <1>{end}</1> von <2>{total}</2> {total, plural, one {Ergebnis} other {Ergebnissen}}"
+  },
+  "privacy": {
+    "accountDeletion": "Das Löschen des Accounts ist endgültig. Dein Profil und deine Direktnachrichten werden sofort nach der Bestätigung gelöscht, auch für die andere Person. Deine Nachrichten in Team-Chats und die Badges, die du anderen verliehen hast, bleiben bestehen und zeigen „Ehemaliger Lomir-Nutzer“ statt deines Namens.",
+    "avatarUpload": "Hochgeladene Bilder werden über ImageKit gespeichert und ausgeliefert. Dein Avatar kann je nach Sichtbarkeitseinstellungen für andere sichtbar sein, bei einem öffentlichen Profil oder Team auch für Besucher ohne Account.",
+    "chatUpload": "Dateien und Bilder, die du im Chat teilst, sind für die Teilnehmer der Unterhaltung sichtbar und werden nach 60 Tagen automatisch gelöscht. Bitte lade keine sensiblen oder vertraulichen Informationen hoch.",
+    "location": "Die Standortangabe ist freiwillig. Gespeicherte Standortdaten nutzen wir, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nicht nach einer Straßenanschrift. Je nach Sichtbarkeitseinstellungen können ungefähre Standortangaben für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account.",
+    "profileVisibilitySettings": "Öffentliche Profile sind für alle sichtbar, die Lomir besuchen – ob angemeldet oder nicht. Private Profile verringern die öffentliche Sichtbarkeit, deine Aktivität kann aber weiterhin in Teams, Nachrichten, Bewerbungen oder Badges auftauchen. Standortangaben, die du machst, können als ungefährer Standort in deinem öffentlichen Profil erscheinen.",
+    "userLocation": "Die Standortangabe ist freiwillig. Du kannst Postleitzahl, Stadt und Land leer lassen oder später wieder entfernen. Wenn du Standortdaten angibst, nutzt Lomir sie, um Nutzer, Teams und Rollen in deiner Nähe vorzuschlagen und entfernungsbasierte Übereinstimmungen zu berechnen. Lomir fragt nie nach deiner Straßenanschrift. Je nach Sichtbarkeit deines Profils können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Region oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account."
+  },
+  "publicProfile": {
+    "title": "Profil",
+    "bioHeading": "Bio",
+    "bioEmpty": "Diese Person hat noch nichts über sich geschrieben.",
+    "back": "Zurück",
+    "errors": {
+      "loadFailed": "Dieses Profil konnte nicht geladen werden. Bitte versuche es erneut.",
+      "noId": "Es wurde keine Profil-ID angegeben."
+    }
+  },
+  "readReceipt": {
+    "read": "Gelesen",
+    "readByAll": "Von allen gelesen",
+    "readBySomeone": "Von jemandem gelesen",
+    "readNoNames": "Gelesen.",
+    "readByOne": "Gelesen von {name}.",
+    "readByTwo": "Gelesen von {first} und {second}.",
+    "readByMany": "Gelesen von {leading} und {last}."
+  },
+  "requestList": {
+    "pendingCount": "{count, plural, one {# offene {kind, select, application {Bewerbung} invitation {Einladung} other {Anfrage}}} other {# offene {kind, select, application {Bewerbungen} invitation {Einladungen} other {Anfragen}}}}",
+    "emptyTitle": "{kind, select, application {Keine offenen Bewerbungen} invitation {Keine offenen Einladungen} other {Keine offenen Anfragen}}",
+    "emptyMessage": "{kind, select, application {Bewerbungen erscheinen hier.} invitation {Einladungen erscheinen hier.} other {Anfragen erscheinen hier.}}",
+    "close": "Schließen",
+    "message": "Nachricht:",
+    "unknownUser": "Unbekannte Person",
+    "unknownDate": "Unbekanntes Datum",
+    "viewProfile": "Profil ansehen"
+  },
+  "resultView": {
+    "card": {
+      "aria": "Kachelansicht",
+      "label": "Kachel",
+      "tooltip": "Kachelansicht"
+    },
+    "groupLabel": "Ansicht",
+    "list": {
+      "aria": "Listenansicht",
+      "label": "Liste",
+      "tooltip": "Listenansicht"
+    },
+    "map": {
+      "aria": "Kartenansicht",
+      "label": "Karte",
+      "tooltip": "Kartenansicht"
+    },
+    "mini": {
+      "aria": "Mini-Kachelansicht",
+      "label": "Mini-Kachel",
+      "tooltip": "Mini-Kachelansicht"
+    },
+    "switchTo": "Zu {view} wechseln"
+  },
+  "roleStatus": {
+    "closed": "Geschlossen",
+    "closedRole": "Geschlossene Rolle",
+    "filled": "Besetzt",
+    "filledRole": "Besetzte Rolle",
+    "open": "Offene Rolle",
+    "roleInvitationFallback": "Rolleneinladung",
+    "vacant": "Offen",
+    "vacantRoleFallback": "Offene Rolle"
+  },
+  "roles": {
+    "admin": "Admin",
+    "member": "Mitglied",
+    "owner": "Eigentümer",
+    "unknown": "Unbekannt"
+  },
+  "searchCriteria": {
+    "sort": {
+      "match": "Bester Match",
+      "nameDesc": "Name Z–A",
+      "recentDesc": "Aktiv",
+      "recentAsc": "Inaktiv",
+      "newestDesc": "Neueste",
+      "newestAsc": "Älteste",
+      "spotsDesc": "Meiste Plätze",
+      "spotsAsc": "Fast voll",
+      "openRolesDesc": "Meiste offene Rollen",
+      "openRolesAsc": "Wenigste offene Rollen",
+      "remoteFirst": "Remote zuerst",
+      "remoteFirstShort": "Remote",
+      "nearestFirst": "Nächste zuerst",
+      "nearestFirstShort": "Nah"
+    },
+    "maxDistance": "< {km} km",
+    "maxDistanceRemove": "Im Umkreis von {km} km",
+    "openRolesOnly": "Nur offene Rollen",
+    "myTeams": "Meine Teams",
+    "myTeamsRemove": "Meine Teams ausschließen",
+    "demo": "Demo",
+    "demoRemove": "Demo-Daten ausschließen",
+    "teamMembers": "Mitglieder von „{team}“",
+    "teamMembersRemove": "Mitglieder von „{team}“ ausschließen",
+    "teamMembersUnnamed": "Teammitglieder",
+    "teamMembersUnnamedRemove": "Teammitglieder ausschließen"
+  },
+  "searchOperators": {
+    "and": "UND",
+    "or": "ODER",
+    "not": "NICHT"
+  },
+  "searchHelp": {
+    "title": "Erweiterte Suche",
+    "intro": "Mit Operatoren kannst du deine Suche verfeinern:",
+    "closeTips": "Suchtipps schließen",
+    "capitalsOnly": "Operatoren schreibst du in Großbuchstaben",
+    "capitalsOnlyExample": "({upper} funktioniert, „{lower}“ wird als Wort gesucht)",
+    "alsoEnglish": "Die englischen Operatoren AND, OR und NOT funktionieren ebenfalls.",
+    "examples": {
+      "and": "Muss sowohl „react“ als auch „node“ enthalten",
+      "or": "Muss „react“ oder „vue“ enthalten",
+      "not": "Muss „javascript“ enthalten, aber nicht „jquery“",
+      "minus": "Wie {operator}: enthält „python“, aber nicht „django“",
+      "phrase": "Genau diese Wortfolge",
+      "combine": "Wortfolgen mit Operatoren kombinieren"
+    }
+  },
+  "searchInput": {
+    "placeholder": "Teams und Personen suchen …",
+    "submit": "Suchen",
+    "minQueryHint": "Gib mindestens zwei Zeichen ein",
+    "tips": "Suchtipps",
+    "tipsAdvancedActive": "Suchtipps (erweiterte Suche aktiv)",
+    "advanced": "Erweitert",
+    "advancedShort": "E",
+    "remove": {
+      "badge": "<icon/> Badge entfernen: <name/>",
+      "focusArea": "<icon/> Fokusbereich entfernen: <name/>",
+      "roleName": "<icon/> Rollenname entfernen: <name/>",
+      "sorting": "<icon/> Sortierung entfernen: <name/>",
+      "filter": "<icon/> Filter entfernen: <name/>"
+    }
+  },
+  "searchPage": {
+    "title": {
+      "line1": "Finde Teams, Personen",
+      "line2": "oder offene Rollen"
+    },
+    "types": {
+      "all": "Alle",
+      "teams": "Teams",
+      "people": "Personen",
+      "roles": "Offene Rollen"
+    },
+    "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}",
+    "noResults": "Keine Teams, Personen oder Rollen zu dieser Suche gefunden. Versuch es mit einem anderen Suchbegriff.",
+    "clearInput": "Sucheingabe leeren",
+    "placeholder": {
+      "default": "Probiere: Wandern {and} Fotografie oder Wandern {not} Fotografie",
+      "defaultCompact": "Probiere: Wandern {and} Foto",
+      "match": "Ergebnisse passend zu deinem Profil – tippe, um einzugrenzen",
+      "roleMatch": "Personen passend zur Rolle „{role}“ – tippe, um einzugrenzen",
+      "narrowCompact": "Tippe, um einzugrenzen …"
+    },
+    "pillFallback": {
+      "tag": "Tag {id}",
+      "badge": "Badge {id}"
+    },
+    "sort": {
+      "nameAsc": "Name (A–Z)",
+      "nameAscShort": "A–Z",
+      "nameAscTooltip": "Alphabetisch von A bis Z sortieren",
+      "nameDesc": "Name (Z–A)",
+      "nameDescShort": "Z–A",
+      "nameDescTooltip": "Alphabetisch von Z bis A sortieren",
+      "recentAscTooltip": "Am längsten inaktive Ergebnisse zuerst anzeigen",
+      "recentDescTooltip": "Zuletzt aktive Ergebnisse zuerst anzeigen",
+      "newestAscTooltip": "Älteste Ergebnisse zuerst anzeigen",
+      "newestDescShort": "Neu",
+      "newestDescTooltip": "Neueste Ergebnisse zuerst anzeigen",
+      "matchShort": "Match",
+      "matchTooltip": "Ergebnisse danach sortieren, wie gut sie zu deinem Profil passen",
+      "nearest": "Nächste",
+      "nearestTooltip": "Ergebnisse in deiner Nähe vor Remote-Ergebnissen anzeigen",
+      "remoteFirstShort": "Remote",
+      "remoteFirstTooltip": "Remote-Ergebnisse zuerst anzeigen",
+      "distance": "Entfernung",
+      "distanceTooltip": "Ergebnisse nach Entfernung von deinem Standort filtern",
+      "spotsAscShort": "Voll",
+      "spotsAscTooltip": "Teams mit den wenigsten freien Plätzen zuerst anzeigen\nNur Teams",
+      "spotsDescShort": "Plätze",
+      "spotsDescTooltip": "Teams mit den meisten freien Plätzen zuerst anzeigen\nNur Teams",
+      "leastRoles": "Wenigste Rollen",
+      "mostRoles": "Meiste Rollen",
+      "rolesOnly": "Nur Rollen"
+    },
+    "menu": {
+      "show": "Filter- und Sortieroptionen einblenden",
+      "hide": "Filter- und Sortieroptionen ausblenden",
+      "sortGroup": "Sortieroptionen",
+      "filterGroup": "Filteroptionen",
+      "searchFilters": "Suchfilter",
+      "demoGroup": "Filter für Demo-Daten",
+      "showFiltersTooltip": "Filter einblenden",
+      "hideFiltersTooltip": "Klicken, um die Filter auszublenden",
+      "hideFiltersAria": "Filter ausblenden",
+      "showFilters": "Filter einblenden …",
+      "showFiltersShort": "Filter …",
+      "hideFilters": "Filter ausblenden:",
+      "includeMyTeams": "Meine Teams einbeziehen",
+      "demoData": "Demo-Daten",
+      "includeDemo": "Test- und Demo-Profile, -Rollen und -Teams einbeziehen",
+      "excludeDemo": "Nur echte Personen, Rollen und Teams anzeigen"
+    },
+    "errors": {
+      "queryEmpty": "Die Suchanfrage ist leer.",
+      "unclosedQuote": "In deiner Suche ist ein Anführungszeichen nicht geschlossen.",
+      "startsWithOperator": "Die Suche darf nicht mit „{operator}“ beginnen.",
+      "endsWithOperator": "Die Suche darf nicht mit „{operator}“ enden.",
+      "notWithoutTerm": "Auf {operator} muss ein Suchbegriff folgen.",
+      "operatorWithoutTerms": "{operator} muss zwischen zwei Suchbegriffen stehen.",
+      "failed": "Bei der Suche ist etwas schiefgelaufen. Bitte versuch es noch einmal."
+    }
+  },
+  "team": {
+    "unknownName": "Unbekanntes Team"
+  },
+  "user": {
+    "editRedirectNote": "Für die vollständige Profilbearbeitung wirst du zur Profilseite weitergeleitet.",
+    "fallbackName": "Person",
+    "formerUser": "Ehemaliger Lomir-Nutzer",
+    "joinedOn": "Bei Lomir seit {date}",
+    "privateProfile": "Privates Profil",
+    "profileImageAlt": "Profilbild von {name}",
+    "profileImageAltGeneric": "Profilbild",
+    "profileUnavailable": {
+      "title": "Dieses Profil ist nicht verfügbar",
+      "subtitle": "Der Link führt zu keinem aktiven Profil.",
+      "goBack": "Zurück",
+      "searchUsers": "Personen suchen"
+    },
+    "profileVisibilityPrivate": "Privates Profil - nur für dich sichtbar",
+    "profileVisibilityPublic": "Öffentliches Profil - für alle sichtbar",
+    "unknown": "Unbekannt",
+    "visibilityPrivate": "Privat",
+    "visibilityPublic": "Öffentlich"
+  },
+  "userDetails": {
+    "actions": {
+      "award": "Auszeichnen",
+      "awardAria": "Mit einem Badge auszeichnen",
+      "awardTooltip": "Diese Person für ihre Fähigkeiten oder Beiträge mit einem Badge auszeichnen.",
+      "block": "Blockieren",
+      "blockAria": "Person blockieren",
+      "blockTooltip": "Diese Person blockieren. Sie kann dir dann keine Nachrichten mehr schicken und dein Profil nicht mehr sehen.",
+      "chat": "Chat",
+      "chatAria": "Chat beginnen",
+      "chatTooltip": "Eine private Unterhaltung mit dieser Person beginnen.",
+      "edit": "Bearbeiten",
+      "editAria": "Dein Profil bearbeiten",
+      "editTooltip": "Öffnet deinen Profil-Editor in einem neuen Tab und schließt diese Details.",
+      "invite": "Einladen",
+      "inviteAria": "In ein Team einladen",
+      "inviteTooltip": "Diese Person in eines deiner Teams einladen.",
+      "inviteUnavailableTooltip": "Du kannst diese Person derzeit in kein Team einladen."
+    },
+    "blockDialog": {
+      "body": "{name} kann dir dann keine Nachrichten mehr schicken und dein Profil nirgendwo auf Lomir sehen, und du siehst das Profil dieser Person nicht mehr. Rückgängig machen kannst du das unter Einstellungen → Privatsphäre.",
+      "confirmLabel": "Blockieren",
+      "loadingLabel": "Wird blockiert …",
+      "title": "Diese Person blockieren?"
+    },
+    "blockFailed": "Die Person konnte nicht blockiert werden.",
+    "closeTooltip": "Profildetails schließen und zur vorherigen Ansicht zurückkehren.",
+    "editTitle": "Profil bearbeiten",
+    "loadFailed": "Profildetails konnten nicht geladen werden. Bitte versuche es erneut.",
+    "privateProfile": "Dieses Profil ist privat.",
+    "sendChatMessage": "Chat-Nachricht senden",
+    "title": "Profildetails"
+  },
+  "userLink": {
+    "invitedBy": "Eingeladen von",
+    "invitedByName": "Eingeladen von {name}"
+  },
+  "visibility": {
+    "hidden": "Verborgen",
+    "hiddenDescription": "Nur du kannst das sehen",
+    "profileHiddenDescription": "Dein Profil erscheint nicht in den Suchergebnissen",
+    "profileVisibleDescription": "Dein Profil ist für andere auffindbar",
+    "teamHiddenDescription": "Nur Mitglieder können dieses Team sehen",
+    "teamVisibleDescription": "Alle können dein Team finden und ansehen",
+    "title": "Sichtbarkeit",
+    "toggleAria": "Sichtbarkeit umschalten",
+    "visible": "Für alle Nutzer sichtbar",
+    "visibleDescription": "Alle können das finden und ansehen"
+  },
+  "errors": {
+    "renderFailed": "Diese Seite konnte nicht dargestellt werden. Bitte lade die Seite neu."
+  }
+}

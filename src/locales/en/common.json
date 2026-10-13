@@ -1,0 +1,1237 @@
+{
+  "badgeOverview": {
+    "intro": "Badges recognize skills, qualities, and contributions of team members in Lomir. They are awarded by peers and showcase strengths across different categories.",
+    "loadError": "Failed to load badges",
+    "title": "Badge Overview"
+  },
+  "badges": {
+    "award": {
+      "generic": "Contribution",
+      "personal": "Personal Contribution",
+      "project": "Project Contribution",
+      "team": "Team Contribution",
+      "unknownAwarder": "another user",
+      "modal": {
+        "title": "Award a Badge to {name}",
+        "cancel": "Cancel",
+        "submit": "Award Badge",
+        "submitting": "Awarding …",
+        "selectBadge": "Select a badge:",
+        "noBadges": "No badges available.",
+        "creditsLabel": "Credit points for this award:",
+        "contextLabel": "What is this for?",
+        "contextPersonal": "Personal",
+        "contextTeam": "Teamwork",
+        "contextProject": "Project",
+        "loadingTeams": "Loading teams …",
+        "lomirTeam": "Lomir team",
+        "selectTeam": "Select a Lomir team …",
+        "noSharedTeams": "No shared teams with this user",
+        "otherTeamName": "Other team name",
+        "otherTeamPlaceholder": "Enter team name …",
+        "projectName": "Project name (optional)",
+        "projectPlaceholder": "Enter project name …",
+        "focusAreasLabel": "Link your award to one of {name}'s Focus Areas (optional):",
+        "loadingTags": "Loading focus areas …",
+        "noFocusAreas": "{name} hasn't added focus areas yet.",
+        "searchFocusArea": "Search for a Focus Area …",
+        "searchAnotherFocusArea": "Search for a different Focus Area …",
+        "tagSearchPlaceholder": "Type to search …",
+        "commentLabel": "Add a comment (optional):",
+        "commentPlaceholder": "Why are you awarding {name} the “{badge}” badge?",
+        "charCount": "{count}/{max} characters",
+        "unknownPerson": "this user",
+        "success": "“{badge}” awarded to {name}, +{credits, plural, one {# credit point} other {# credit points}}. It stays private until they make it visible.",
+        "errorSelectBadge": "Please select a badge.",
+        "errorSelectCredits": "Please select the credit points.",
+        "errorSelectContext": "Please select what the award is for.",
+        "errorSelectTeam": "Please select a Lomir team or enter a team name.",
+        "errorLoadFailed": "Failed to load badges. Please try again.",
+        "errorAwardFailed": "Failed to award the badge. Please try again.",
+        "orSeparator": "or"
+      }
+    },
+    "card": {
+      "awardedBy": "Awarded by",
+      "awardedTo": "Awarded to",
+      "byShort": "by",
+      "delete": "Delete badge award",
+      "hide": "Hide badge from others",
+      "noDescription": "No description",
+      "personal": "Personal",
+      "privateProfile": "Private Lomir User",
+      "project": "Project",
+      "projectLabel": "Project:",
+      "team": "Team",
+      "teamLabel": "Team:",
+      "toShort": "to",
+      "unhide": "Make badge visible for others",
+      "unknown": "Unknown",
+      "viewProfile": "View profile",
+      "viewTeam": "View team"
+    },
+    "category": {
+      "collaboration": "Collaboration Skills",
+      "creative": "Creative Thinking",
+      "leadership": "Leadership Qualities",
+      "other": "Other",
+      "personal": "Personal Attributes",
+      "technical": "Technical Expertise"
+    },
+    "pendingTooltip": "{name}: +{credits} ct., not visible to others yet. The credits count once you make the badge visible.",
+    "creditsBare": "{credits} ct.",
+    "creditsInline": "| {credits} ct.",
+    "creditsInlinePlus": "| +{credits} ct.",
+    "descriptions": {
+      "adaptable": "Flexibly responds to changing circumstances and requirements",
+      "artisan": "Creates beautiful and high-quality work in any medium",
+      "coder": "Skilled in programming languages and development",
+      "communicator": "Clear and effective in expressing ideas and listening to others",
+      "dataWhiz": "Excels at analyzing, interpreting, and visualizing data",
+      "decisionMaker": "Makes timely, thoughtful choices that move projects forward",
+      "delegator": "Effectively distributes responsibilities based on team strengths",
+      "designer": "Creates visually appealing and user-friendly interfaces",
+      "detailOriented": "Notices and addresses small details others might miss",
+      "documentationMaster": "Creates clear, thorough, and helpful documentation",
+      "empathetic": "Understands others perspectives and emotional needs",
+      "feedbackProvider": "Offers constructive criticism that helps others improve",
+      "initiativeTaker": "Proactively identifies opportunities and takes action",
+      "innovator": "Consistently brings fresh ideas and novel approaches",
+      "knowledgeSharer": "Generously shares expertise and helps others learn",
+      "mediator": "Helps resolve conflicts and find middle ground between different opinions",
+      "mentor": "Helps others develop their skills through guidance and support",
+      "motivator": "Inspires others and maintains positive energy within the team",
+      "organizer": "Keeps projects structured, manages timelines, and coordinates efforts",
+      "outsideTheBox": "Approaches challenges with unconventional thinking",
+      "persistent": "Overcomes obstacles with determination and resilience",
+      "problemSolver": "Finds creative solutions to challenging situations",
+      "quickLearner": "Rapidly adapts to new information and technologies",
+      "reliable": "Consistently delivers on commitments and meets deadlines",
+      "storyteller": "Communicates ideas effectively through compelling narratives",
+      "strategicPlanner": "Develops comprehensive, long-term approaches to achieving goals",
+      "systemsThinker": "Understands complex systems and how components interact",
+      "teamPlayer": "Consistently contributes to team goals and supports fellow members",
+      "techSupport": "Helps troubleshoot and solve technical problems",
+      "visionary": "Sees the big picture and envisions future possibilities"
+    },
+    "modal": {
+      "awards": "{count, plural, one {award} other {awards}}",
+      "badgeHeading": "{name} Badge",
+      "categories": "{count, plural, one {category} other {categories}}",
+      "categoryFallback": "Badge Category",
+      "categoryTitle": "Earned badges for",
+      "emptyCategory": "No detailed award information available.",
+      "emptySupercategory": "No badge awards linked to focus areas in this category yet.",
+      "emptyTag": "No badge awards linked to this focus area yet.",
+      "focusAreas": "focus areas with awards",
+      "focusAreasCount": "{count, plural, one {focus area} other {focus areas}}",
+      "peoplePersonal": "{count, plural, one {person} other {people}}",
+      "peopleTeam": "{count, plural, one {team member with badges} other {team members with badges}}",
+      "supercategoryTitleLong": "Earned badges in the focus area of",
+      "supercategoryTitleShort": "Earned Badges in",
+      "teams": "{count, plural, one {team} other {teams}}",
+      "thisCategory": "this category"
+    },
+    "names": {
+      "adaptable": "Adaptable",
+      "artisan": "Artisan",
+      "coder": "Coder",
+      "communicator": "Communicator",
+      "dataWhiz": "Data Whiz",
+      "decisionMaker": "Decision Maker",
+      "delegator": "Delegator",
+      "designer": "Designer",
+      "detailOriented": "Detail-Oriented",
+      "documentationMaster": "Documentation Master",
+      "empathetic": "Empathetic",
+      "feedbackProvider": "Feedback Provider",
+      "initiativeTaker": "Initiative Taker",
+      "innovator": "Innovator",
+      "knowledgeSharer": "Knowledge Sharer",
+      "mediator": "Mediator",
+      "mentor": "Mentor",
+      "motivator": "Motivator",
+      "organizer": "Organizer",
+      "outsideTheBox": "Outside-the-Box",
+      "persistent": "Persistent",
+      "problemSolver": "Problem Solver",
+      "quickLearner": "Quick Learner",
+      "reliable": "Reliable",
+      "storyteller": "Storyteller",
+      "strategicPlanner": "Strategic Planner",
+      "systemsThinker": "Systems Thinker",
+      "teamPlayer": "Team Player",
+      "techSupport": "Tech Support",
+      "visionary": "Visionary"
+    },
+    "section": {
+      "desired": "Desired Badges",
+      "empty": "No badges earned yet",
+      "hidden": "This user's badges are hidden.",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
+      "title": "Badges"
+    },
+    "tooltip": {
+      "badge": "{name}: {credits} ct. awarded {count, plural, one {# time} other {# times}} by {personCount, plural, one {# person} other {# people}}",
+      "category": "{category}: {credits} ct. awarded with {badgeCount, plural, one {# badge} other {# badges}} by {personCount, plural, one {# person} other {# people}}"
+    },
+    "input": {
+      "searchPlaceholder": "Search for badges...",
+      "loading": "Loading badges…",
+      "allBadges": "All Badges"
+    }
+  },
+  "chatEvents": {
+    "applicationApproved": {
+      "full": "{applicant, select, you {{approver, select, named {Your application was approved by <approver/>. Welcome to the team!} deleted {Your application was approved by Former Lomir User. Welcome to the team!} other {Your application was approved. Welcome to the team!}}} named {{approver, select, you {You approved <applicant/>'s application. Say hello to them!} named {<applicant/> has applied successfully and was added by <approver/>. Say hello to them!} deleted {<applicant/> has applied successfully and was added by Former Lomir User. Say hello to them!} other {<applicant/> has applied successfully and joined the team. Say hello to them!}}} deleted {{approver, select, you {You approved Former Lomir User's application.} named {Former Lomir User has applied successfully and was added by <approver/>.} deleted {Former Lomir User has applied successfully and was added by Former Lomir User.} other {Former Lomir User has applied successfully and joined the team.}}} other {{approver, select, you {You approved an application. Say hello to them!} named {A new member has applied successfully and was added by <approver/>. Say hello to them!} deleted {A new member has applied successfully and was added by Former Lomir User. Say hello to them!} other {A new member has applied successfully and joined the team. Say hello to them!}}}}",
+      "short": "{applicant, select, you {{team, select, named {Your application was approved for \"<team/>\"} other {Your application was approved}}} named {{team, select, named {<applicant/>'s application was approved for \"<team/>\"} other {<applicant/>'s application was approved}}} deleted {{team, select, named {Former Lomir User's application was approved for \"<team/>\"} other {Former Lomir User's application was approved}}} other {{team, select, named {An application was approved for \"<team/>\"} other {An application was approved}}}}"
+    },
+    "applicationApprovedDm": {
+      "full": "{applicant, select, you {{approver, select, named {{personal, select, yes {Your application to \"<team/>\" was approved by <approver/>, who added this message:} other {Your application to \"<team/>\" was approved by <approver/>. Welcome to the team!}}} deleted {{personal, select, yes {Your application to \"<team/>\" was approved by Former Lomir User, who added this message:} other {Your application to \"<team/>\" was approved by Former Lomir User. Welcome to the team!}}} other {{personal, select, yes {Your application to \"<team/>\" was approved with this message:} other {Your application to \"<team/>\" was approved. Welcome to the team!}}}}} named {{approver, select, you {{personal, select, yes {You approved <applicant/>'s application for \"<team/>\" and added this message:} other {You approved <applicant/>'s application for \"<team/>\".}}} named {{personal, select, yes {<applicant/>'s application to \"<team/>\" was approved by <approver/>, who added this message:} other {<applicant/>'s application to \"<team/>\" was approved by <approver/>.}}} deleted {{personal, select, yes {<applicant/>'s application to \"<team/>\" was approved by Former Lomir User, who added this message:} other {<applicant/>'s application to \"<team/>\" was approved by Former Lomir User.}}} other {{personal, select, yes {<applicant/>'s application to \"<team/>\" was approved with this message:} other {<applicant/>'s application to \"<team/>\" was approved.}}}}} deleted {{approver, select, you {{personal, select, yes {You approved Former Lomir User's application for \"<team/>\" and added this message:} other {You approved Former Lomir User's application for \"<team/>\".}}} named {{personal, select, yes {Former Lomir User's application to \"<team/>\" was approved by <approver/>, who added this message:} other {Former Lomir User's application to \"<team/>\" was approved by <approver/>.}}} deleted {{personal, select, yes {Former Lomir User's application to \"<team/>\" was approved by Former Lomir User, who added this message:} other {Former Lomir User's application to \"<team/>\" was approved by Former Lomir User.}}} other {{personal, select, yes {Former Lomir User's application to \"<team/>\" was approved with this message:} other {Former Lomir User's application to \"<team/>\" was approved.}}}}} other {{approver, select, you {{personal, select, yes {You approved an application for \"<team/>\" and added this message:} other {You approved an application for \"<team/>\".}}} named {{personal, select, yes {An application to \"<team/>\" was approved by <approver/>, who added this message:} other {An application to \"<team/>\" was approved by <approver/>.}}} deleted {{personal, select, yes {An application to \"<team/>\" was approved by Former Lomir User, who added this message:} other {An application to \"<team/>\" was approved by Former Lomir User.}}} other {{personal, select, yes {An application to \"<team/>\" was approved with this message:} other {An application to \"<team/>\" was approved.}}}}}}"
+    },
+    "applicationCancelled": {
+      "full": "{applicant, select, you {You cancelled your application for \"<team/>\". Want to tell them why in this chat?} named {<applicant/> cancelled their application for \"<team/>\". Want to reach out to them in this chat?} deleted {Former Lomir User cancelled their application for \"<team/>\".} other {An application for \"<team/>\" was cancelled.}}",
+      "short": "{applicant, select, you {You cancelled your application for \"<team/>\"} named {<applicant/> cancelled application for \"<team/>\"} deleted {Former Lomir User cancelled application for \"<team/>\"} other {An application was cancelled for \"<team/>\"}}"
+    },
+    "applicationDeclined": {
+      "full": "{applicant, select, you {{approver, select, named {{personal, select, yes {Your application to \"<team/>\" was declined by <approver/>, who added this message:} other {Your application to \"<team/>\" was declined by <approver/>. Want to reach out to them in this chat?}}} deleted {{personal, select, yes {Your application to \"<team/>\" was declined by Former Lomir User, who added this message:} other {Your application to \"<team/>\" was declined by Former Lomir User.}}} other {{personal, select, yes {Your application to \"<team/>\" was declined with this message:} other {Your application to \"<team/>\" was declined.}}}}} named {{approver, select, you {{personal, select, yes {You declined <applicant/>'s application for \"<team/>\" and added this message:} other {You declined <applicant/>'s application for \"<team/>\". Consider adding a personal message to explain your decision.}}} named {{personal, select, yes {<applicant/>'s application to \"<team/>\" was declined by <approver/>, who added this message:} other {<applicant/>'s application to \"<team/>\" was declined by <approver/>.}}} deleted {{personal, select, yes {<applicant/>'s application to \"<team/>\" was declined by Former Lomir User, who added this message:} other {<applicant/>'s application to \"<team/>\" was declined by Former Lomir User.}}} other {{personal, select, yes {<applicant/>'s application to \"<team/>\" was declined with this message:} other {<applicant/>'s application to \"<team/>\" was declined.}}}}} deleted {{approver, select, you {{personal, select, yes {You declined Former Lomir User's application for \"<team/>\" and added this message:} other {You declined Former Lomir User's application for \"<team/>\". Consider adding a personal message to explain your decision.}}} named {{personal, select, yes {Former Lomir User's application to \"<team/>\" was declined by <approver/>, who added this message:} other {Former Lomir User's application to \"<team/>\" was declined by <approver/>.}}} deleted {{personal, select, yes {Former Lomir User's application to \"<team/>\" was declined by Former Lomir User, who added this message:} other {Former Lomir User's application to \"<team/>\" was declined by Former Lomir User.}}} other {{personal, select, yes {Former Lomir User's application to \"<team/>\" was declined with this message:} other {Former Lomir User's application to \"<team/>\" was declined.}}}}} other {{approver, select, you {{personal, select, yes {You declined an application for \"<team/>\" and added this message:} other {You declined an application for \"<team/>\". Consider adding a personal message to explain your decision.}}} named {{personal, select, yes {An application to \"<team/>\" was declined by <approver/>, who added this message:} other {An application to \"<team/>\" was declined by <approver/>.}}} deleted {{personal, select, yes {An application to \"<team/>\" was declined by Former Lomir User, who added this message:} other {An application to \"<team/>\" was declined by Former Lomir User.}}} other {{personal, select, yes {An application to \"<team/>\" was declined with this message:} other {An application to \"<team/>\" was declined.}}}}}}",
+      "short": "{applicant, select, you {Your application was declined for \"<team/>\"} named {<applicant/>'s application was declined for \"<team/>\"} deleted {Former Lomir User's application was declined for \"<team/>\"} other {An application was declined for \"<team/>\"}}"
+    },
+    "applicationResponse": {
+      "full": "{applicant, select, you {Response to your application for \"<team/>\"} named {{responder, select, you {Your decline response to <applicant/>'s application for \"<team/>\"} other {Response to <applicant/>'s application for \"<team/>\"}}} deleted {{responder, select, you {Your decline response to Former Lomir User's application for \"<team/>\"} other {Response to Former Lomir User's application for \"<team/>\"}}} other {{responder, select, you {Your decline response to an application for \"<team/>\"} other {Response to an application for \"<team/>\"}}}}",
+      "short": "{applicant, select, you {Response to your application for \"<team/>\"} other {Response to application for \"<team/>\"}}"
+    },
+    "invitationCancelled": {
+      "full": "{invitee, select, you {{canceller, select, named {<canceller/> cancelled your invitation to join \"<team/>\". Want to reach out to them in this chat?} deleted {Former Lomir User cancelled your invitation to join \"<team/>\".} other {Your invitation to join \"<team/>\" was cancelled.}}} named {{canceller, select, you {You cancelled your invitation for <invitee/> to join \"<team/>\". Want to tell them why in this chat?} named {<canceller/> cancelled the invitation for <invitee/> to join \"<team/>\".} deleted {Former Lomir User cancelled the invitation for <invitee/> to join \"<team/>\".} other {The invitation for <invitee/> to join \"<team/>\" was cancelled.}}} deleted {{canceller, select, you {You cancelled your invitation for Former Lomir User to join \"<team/>\".} named {<canceller/> cancelled the invitation for Former Lomir User to join \"<team/>\".} deleted {Former Lomir User cancelled the invitation for Former Lomir User to join \"<team/>\".} other {The invitation for Former Lomir User to join \"<team/>\" was cancelled.}}} other {{canceller, select, you {You cancelled an invitation to join \"<team/>\".} named {<canceller/> cancelled an invitation to join \"<team/>\".} deleted {Former Lomir User cancelled an invitation to join \"<team/>\".} other {An invitation to join \"<team/>\" was cancelled.}}}}",
+      "short": "{invitee, select, you {Your invitation was cancelled for \"<team/>\"} named {Invitation cancelled for <invitee/> for \"<team/>\"} deleted {Invitation cancelled for Former Lomir User for \"<team/>\"} other {An invitation was cancelled for \"<team/>\"}}"
+    },
+    "invitationDeclined": {
+      "full": "{invitee, select, you {{inviter, select, named {{personal, select, yes {You declined <inviter/>'s invitation for \"<team/>\" and added this message:} other {You declined <inviter/>'s invitation for \"<team/>\". Consider adding a personal message to explain your decision.}}} deleted {{personal, select, yes {You declined Former Lomir User's invitation for \"<team/>\" and added this message:} other {You declined Former Lomir User's invitation for \"<team/>\". Consider adding a personal message to explain your decision.}}} other {{personal, select, yes {You declined an invitation for \"<team/>\" and added this message:} other {You declined an invitation for \"<team/>\". Consider adding a personal message to explain your decision.}}}}} named {{inviter, select, you {{personal, select, yes {Your invitation for \"<team/>\" was declined by <invitee/>, who added this message:} other {Your invitation for \"<team/>\" was declined by <invitee/>. Want to reach out to them in this chat?}}} named {{personal, select, yes {<inviter/>'s invitation for \"<team/>\" was declined by <invitee/>, who added this message:} other {<inviter/>'s invitation for \"<team/>\" was declined by <invitee/>.}}} deleted {{personal, select, yes {Former Lomir User's invitation for \"<team/>\" was declined by <invitee/>, who added this message:} other {Former Lomir User's invitation for \"<team/>\" was declined by <invitee/>.}}} other {{personal, select, yes {An invitation for \"<team/>\" was declined by <invitee/>, who added this message:} other {An invitation for \"<team/>\" was declined by <invitee/>.}}}}} deleted {{inviter, select, you {{personal, select, yes {Your invitation for \"<team/>\" was declined by Former Lomir User, who added this message:} other {Your invitation for \"<team/>\" was declined by Former Lomir User.}}} named {{personal, select, yes {<inviter/>'s invitation for \"<team/>\" was declined by Former Lomir User, who added this message:} other {<inviter/>'s invitation for \"<team/>\" was declined by Former Lomir User.}}} deleted {{personal, select, yes {Former Lomir User's invitation for \"<team/>\" was declined by Former Lomir User, who added this message:} other {Former Lomir User's invitation for \"<team/>\" was declined by Former Lomir User.}}} other {{personal, select, yes {An invitation for \"<team/>\" was declined by Former Lomir User, who added this message:} other {An invitation for \"<team/>\" was declined by Former Lomir User.}}}}} other {{inviter, select, you {{personal, select, yes {Your invitation for \"<team/>\" was declined with this message:} other {Your invitation for \"<team/>\" was declined.}}} named {{personal, select, yes {<inviter/>'s invitation for \"<team/>\" was declined with this message:} other {<inviter/>'s invitation for \"<team/>\" was declined.}}} deleted {{personal, select, yes {Former Lomir User's invitation for \"<team/>\" was declined with this message:} other {Former Lomir User's invitation for \"<team/>\" was declined.}}} other {{personal, select, yes {An invitation for \"<team/>\" was declined with this message:} other {An invitation for \"<team/>\" was declined.}}}}}}",
+      "short": "{invitee, select, you {You declined invitation for \"<team/>\"} named {<invitee/> declined invitation for \"<team/>\"} deleted {Former Lomir User declined invitation for \"<team/>\"} other {An invitation was declined for \"<team/>\"}}"
+    },
+    "invitationResponse": {
+      "full": "Response to invitation for \"<team/>\""
+    },
+    "memberRemoved": {
+      "full": "{member, select, you {{remover, select, named {You were removed from \"<team/>\" by <remover/>. Want to reach out to them in this chat?} deleted {You were removed from \"<team/>\" by Former Lomir User.} other {You were removed from \"<team/>\".}}} named {{remover, select, you {You removed <member/> from \"<team/>\".} named {<remover/> removed <member/> from \"<team/>\".} deleted {Former Lomir User removed <member/> from \"<team/>\".} other {<member/> was removed from \"<team/>\".}}} deleted {{remover, select, you {You removed Former Lomir User from \"<team/>\".} named {<remover/> removed Former Lomir User from \"<team/>\".} deleted {Former Lomir User removed Former Lomir User from \"<team/>\".} other {Former Lomir User was removed from \"<team/>\".}}} other {{remover, select, you {You removed a member from \"<team/>\".} named {<remover/> removed a member from \"<team/>\".} deleted {Former Lomir User removed a member from \"<team/>\".} other {A member was removed from \"<team/>\".}}}}",
+      "short": "{member, select, you {{team, select, named {You were removed from \"<team/>\"} other {You were removed from the team}}} named {{team, select, named {<member/> was removed from \"<team/>\"} other {<member/> was removed from the team}}} deleted {{team, select, named {Former Lomir User was removed from \"<team/>\"} other {Former Lomir User was removed from the team}}} other {{team, select, named {A member was removed from \"<team/>\"} other {A member was removed from the team}}}}"
+    },
+    "memberRemovedPublic": {
+      "full": "{member, select, you {You were removed from the team.} named {{remover, select, you {You removed <member/> from the team.} other {<member/> has been removed from the team.}}} deleted {{remover, select, you {You removed Former Lomir User from the team.} other {Former Lomir User has been removed from the team.}}} other {{remover, select, you {You removed a member from the team.} other {A member has been removed from the team.}}}}"
+    },
+    "ownershipTeam": {
+      "full": "{prevOwner, select, you {{newOwner, select, you {Ownership was transferred to you.} named {You transferred ownership to <newOwner/>.} deleted {You transferred ownership to Former Lomir User.} other {You transferred ownership.}}} named {{newOwner, select, you {<prevOwner/> transferred ownership to you.} named {<prevOwner/> transferred ownership to <newOwner/>.} deleted {<prevOwner/> transferred ownership to Former Lomir User.} other {<prevOwner/> transferred ownership.}}} deleted {{newOwner, select, you {Former Lomir User transferred ownership to you.} named {Former Lomir User transferred ownership to <newOwner/>.} deleted {Former Lomir User transferred ownership to Former Lomir User.} other {Former Lomir User transferred ownership.}}} other {{newOwner, select, you {Ownership was transferred to you.} named {Ownership was transferred to <newOwner/>.} deleted {Ownership was transferred to Former Lomir User.} other {Ownership was transferred.}}}}",
+      "short": "{newOwner, select, you {You received ownership} named {<newOwner/> received ownership} deleted {Former Lomir User received ownership} other {Ownership was transferred}}"
+    },
+    "ownershipTransferred": {
+      "full": "{prevOwner, select, you {{newOwner, select, you {Ownership of \"<team/>\" was transferred to you. Congratulations!} named {You transferred team ownership of \"<team/>\" to <newOwner/>.} deleted {You transferred team ownership of \"<team/>\" to Former Lomir User.} other {You transferred team ownership of \"<team/>\".}}} named {{newOwner, select, you {<prevOwner/> transferred ownership of \"<team/>\" to you. Congratulations!} named {<prevOwner/> transferred ownership of \"<team/>\" to <newOwner/>.} deleted {<prevOwner/> transferred ownership of \"<team/>\" to Former Lomir User.} other {<prevOwner/> transferred ownership of \"<team/>\".}}} deleted {{newOwner, select, you {Former Lomir User transferred ownership of \"<team/>\" to you. Congratulations!} named {Former Lomir User transferred ownership of \"<team/>\" to <newOwner/>.} deleted {Former Lomir User transferred ownership of \"<team/>\" to Former Lomir User.} other {Former Lomir User transferred ownership of \"<team/>\".}}} other {{newOwner, select, you {Ownership of \"<team/>\" was transferred to you. Congratulations!} named {Ownership of \"<team/>\" was transferred to <newOwner/>.} deleted {Ownership of \"<team/>\" was transferred to Former Lomir User.} other {Ownership of \"<team/>\" was transferred.}}}}",
+      "short": "{newOwner, select, you {You received ownership for \"<team/>\"} named {<newOwner/> received ownership for \"<team/>\"} deleted {Former Lomir User received ownership for \"<team/>\"} other {Ownership of \"<team/>\" was transferred}}"
+    },
+    "requestVoid": {
+      "full": "{owner, select, you {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {You deleted the team \"<team/>\". This invitation can no longer be considered. You wrote:} other {You deleted the team \"<team/>\". This invitation can no longer be considered.}}} other {{personal, select, yes {You archived the team \"<team/>\". This invitation can no longer be considered. You wrote:} other {You archived the team \"<team/>\". This invitation can no longer be considered.}}}}} role_application {{mode, select, deleted {{personal, select, yes {You deleted the team \"<team/>\". This application for a role can no longer be considered. You wrote:} other {You deleted the team \"<team/>\". This application for a role can no longer be considered.}}} other {{personal, select, yes {You archived the team \"<team/>\". This application for a role can no longer be considered. You wrote:} other {You archived the team \"<team/>\". This application for a role can no longer be considered.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {You deleted the team \"<team/>\". This invitation to a role can no longer be considered. You wrote:} other {You deleted the team \"<team/>\". This invitation to a role can no longer be considered.}}} other {{personal, select, yes {You archived the team \"<team/>\". This invitation to a role can no longer be considered. You wrote:} other {You archived the team \"<team/>\". This invitation to a role can no longer be considered.}}}}} other {{mode, select, deleted {{personal, select, yes {You deleted the team \"<team/>\". This application can no longer be considered. You wrote:} other {You deleted the team \"<team/>\". This application can no longer be considered.}}} other {{personal, select, yes {You archived the team \"<team/>\". This application can no longer be considered. You wrote:} other {You archived the team \"<team/>\". This application can no longer be considered.}}}}}}} named {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by <owner/>. Your invitation can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was deleted by <owner/>. Your invitation can no longer be considered. You can still contact <owner/> in this chat.}}} other {{personal, select, yes {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your invitation can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your invitation can no longer be considered. You can still contact <owner/> in this chat.}}}}} role_application {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by <owner/>. Your application for a role in this team can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was deleted by <owner/>. Your application for a role in this team can no longer be considered. You can still contact <owner/> in this chat.}}} other {{personal, select, yes {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your application for a role in this team can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your application for a role in this team can no longer be considered. You can still contact <owner/> in this chat.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by <owner/>. Your invitation to a role in this team can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was deleted by <owner/>. Your invitation to a role in this team can no longer be considered. You can still contact <owner/> in this chat.}}} other {{personal, select, yes {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your invitation to a role in this team can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your invitation to a role in this team can no longer be considered. You can still contact <owner/> in this chat.}}}}} other {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by <owner/>. Your application can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was deleted by <owner/>. Your application can no longer be considered. You can still contact <owner/> in this chat.}}} other {{personal, select, yes {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your application can no longer be considered. You can still contact <owner/> in this chat. <owner/> left you this message:} other {The team \"<team/>\" was archived by <owner/> and is scheduled for deletion. Your application can no longer be considered. You can still contact <owner/> in this chat.}}}}}}} deleted {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by Former Lomir User. Your invitation can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was deleted by Former Lomir User. Your invitation can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your invitation can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your invitation can no longer be considered.}}}}} role_application {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by Former Lomir User. Your application for a role in this team can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was deleted by Former Lomir User. Your application for a role in this team can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your application for a role in this team can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your application for a role in this team can no longer be considered.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by Former Lomir User. Your invitation to a role in this team can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was deleted by Former Lomir User. Your invitation to a role in this team can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your invitation to a role in this team can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your invitation to a role in this team can no longer be considered.}}}}} other {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted by Former Lomir User. Your application can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was deleted by Former Lomir User. Your application can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your application can no longer be considered. Former Lomir User left you this message:} other {The team \"<team/>\" was archived by Former Lomir User and is scheduled for deletion. Your application can no longer be considered.}}}}}}} other {{kind, select, invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted. Your invitation can no longer be considered. This message was left for you:} other {The team \"<team/>\" was deleted. Your invitation can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived and is scheduled for deletion. Your invitation can no longer be considered. This message was left for you:} other {The team \"<team/>\" was archived and is scheduled for deletion. Your invitation can no longer be considered.}}}}} role_application {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted. Your application for a role in this team can no longer be considered. This message was left for you:} other {The team \"<team/>\" was deleted. Your application for a role in this team can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived and is scheduled for deletion. Your application for a role in this team can no longer be considered. This message was left for you:} other {The team \"<team/>\" was archived and is scheduled for deletion. Your application for a role in this team can no longer be considered.}}}}} role_invitation {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted. Your invitation to a role in this team can no longer be considered. This message was left for you:} other {The team \"<team/>\" was deleted. Your invitation to a role in this team can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived and is scheduled for deletion. Your invitation to a role in this team can no longer be considered. This message was left for you:} other {The team \"<team/>\" was archived and is scheduled for deletion. Your invitation to a role in this team can no longer be considered.}}}}} other {{mode, select, deleted {{personal, select, yes {The team \"<team/>\" was deleted. Your application can no longer be considered. This message was left for you:} other {The team \"<team/>\" was deleted. Your application can no longer be considered.}}} other {{personal, select, yes {The team \"<team/>\" was archived and is scheduled for deletion. Your application can no longer be considered. This message was left for you:} other {The team \"<team/>\" was archived and is scheduled for deletion. Your application can no longer be considered.}}}}}}}}",
+      "short": "{owner, select, you {{mode, select, deleted {You deleted \"<team/>\"} other {You archived \"<team/>\"}}} other {{kind, select, invitation {Your invitation to \"<team/>\" can no longer be considered} role_application {Your application for a role in \"<team/>\" can no longer be considered} role_invitation {Your invitation to a role in \"<team/>\" can no longer be considered} other {Your application to \"<team/>\" can no longer be considered}}}}"
+    },
+    "roleApplicationApproved": {
+      "full": "{applicant, select, you {Your application for <role/> was approved.} named {<applicant/>'s application for <role/> was approved.} deleted {Former Lomir User's application for <role/> was approved.} other {An application for <role/> was approved.}}"
+    },
+    "roleApplicationDeferredInvite": {
+      "full": "{applicant, select, you {{approver, select, named {Your application for <role/> was approved by <approver/>. You already fill <currentRole/>, so this is now a role offer you can accept once you leave your current role.} deleted {Your application for <role/> was approved by Former Lomir User. You already fill <currentRole/>, so this is now a role offer you can accept once you leave your current role.} other {Your application for <role/> was approved. You already fill <currentRole/>, so this is now a role offer you can accept once you leave your current role.}}} named {{approver, select, you {<applicant/>'s application for <role/> was approved by you. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} named {<applicant/>'s application for <role/> was approved by <approver/>. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} deleted {<applicant/>'s application for <role/> was approved by Former Lomir User. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} other {<applicant/>'s application for <role/> was approved. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.}}} deleted {{approver, select, you {Former Lomir User's application for <role/> was approved by you. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} named {Former Lomir User's application for <role/> was approved by <approver/>. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} deleted {Former Lomir User's application for <role/> was approved by Former Lomir User. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.} other {Former Lomir User's application for <role/> was approved. They already fill <currentRole/>, so this is now a role offer they can accept once they leave their current role.}}} other {{approver, select, you {An application for <role/> was approved by you. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.} named {An application for <role/> was approved by <approver/>. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.} deleted {An application for <role/> was approved by Former Lomir User. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.} other {An application for <role/> was approved. The applicant already fills <currentRole/>, so this is now a role offer they can accept once they leave their current role.}}}}",
+      "short": "{applicant, select, you {Your application for <role/> was approved as a role offer} named {<applicant/>'s application for <role/> was approved as a role offer} deleted {Former Lomir User's application for <role/> was approved as a role offer} other {An application for <role/> was approved as a role offer}}"
+    },
+    "roleChanged": {
+      "full": "{change, select, promote {{member, select, you {{changer, select, named {You were promoted to Admin in \"<team/>\" by <changer/>.} deleted {You were promoted to Admin in \"<team/>\" by Former Lomir User.} other {You were promoted to Admin in \"<team/>\".}}} named {{changer, select, you {You promoted <member/> to Admin in \"<team/>\".} named {<member/>'s role in \"<team/>\" was changed to Admin by <changer/>.} deleted {<member/>'s role in \"<team/>\" was changed to Admin by Former Lomir User.} other {<member/>'s role in \"<team/>\" was changed to Admin.}}} deleted {{changer, select, you {You promoted Former Lomir User to Admin in \"<team/>\".} named {Former Lomir User's role in \"<team/>\" was changed to Admin by <changer/>.} deleted {Former Lomir User's role in \"<team/>\" was changed to Admin by Former Lomir User.} other {Former Lomir User's role in \"<team/>\" was changed to Admin.}}} other {{changer, select, you {You promoted a member to Admin in \"<team/>\".} named {A member's role in \"<team/>\" was changed to Admin by <changer/>.} deleted {A member's role in \"<team/>\" was changed to Admin by Former Lomir User.} other {A member's role in \"<team/>\" was changed to Admin.}}}}} other {{member, select, you {{changer, select, named {Your role in \"<team/>\" was changed to Member by <changer/>.} deleted {Your role in \"<team/>\" was changed to Member by Former Lomir User.} other {Your role in \"<team/>\" was changed to Member.}}} named {{changer, select, you {You changed <member/>'s role to Member in \"<team/>\".} named {<member/>'s role in \"<team/>\" was changed to Member by <changer/>.} deleted {<member/>'s role in \"<team/>\" was changed to Member by Former Lomir User.} other {<member/>'s role in \"<team/>\" was changed to Member.}}} deleted {{changer, select, you {You changed Former Lomir User's role to Member in \"<team/>\".} named {Former Lomir User's role in \"<team/>\" was changed to Member by <changer/>.} deleted {Former Lomir User's role in \"<team/>\" was changed to Member by Former Lomir User.} other {Former Lomir User's role in \"<team/>\" was changed to Member.}}} other {{changer, select, you {You changed a member's role to Member in \"<team/>\".} named {A member's role in \"<team/>\" was changed to Member by <changer/>.} deleted {A member's role in \"<team/>\" was changed to Member by Former Lomir User.} other {A member's role in \"<team/>\" was changed to Member.}}}}}}",
+      "short": "{change, select, promote {{member, select, you {You were promoted to Admin in \"<team/>\"} named {<member/> was promoted to Admin in \"<team/>\"} deleted {Former Lomir User was promoted to Admin in \"<team/>\"} other {A member was promoted to Admin in \"<team/>\"}}} other {{member, select, you {Your role changed to Member in \"<team/>\"} named {<member/>'s role changed to Member in \"<team/>\"} deleted {Former Lomir User's role changed to Member in \"<team/>\"} other {A member's role changed to Member in \"<team/>\"}}}}"
+    },
+    "roleClosed": {
+      "full": "{actor, select, you {The role <role/> has been closed by you.} named {The role <role/> has been closed by <actor/>.} deleted {The role <role/> has been closed by Former Lomir User.} other {The role <role/> has been closed.}}",
+      "short": "Role closed: <role/>"
+    },
+    "roleCreated": {
+      "full": "{actor, select, you {The new role <role/> has been created by you in this team. It is open to be filled.} named {The new role <role/> has been created by <actor/> in this team. It is open to be filled.} deleted {The new role <role/> has been created by Former Lomir User in this team. It is open to be filled.} other {The new role <role/> is open to be filled.}}",
+      "short": "New role <role/> created."
+    },
+    "roleDeleted": {
+      "full": "{actor, select, you {The role <role/> has been deleted by you from this team.} named {The role <role/> has been deleted by <actor/> from this team.} deleted {The role <role/> has been deleted by Former Lomir User from this team.} other {The role <role/> has been deleted from this team.}}",
+      "short": "Role deleted: <role/>"
+    },
+    "roleFilled": {
+      "full": "{filler, select, you {{approver, select, you {The role <role/> has been filled by you, approved by you.} named {The role <role/> has been filled by you, approved by <approver/>.} deleted {The role <role/> has been filled by you, approved by Former Lomir User.} other {The role <role/> has been filled by you.}}} named {{approver, select, you {The role <role/> has been filled by <filler/>, approved by you.} named {The role <role/> has been filled by <filler/>, approved by <approver/>.} deleted {The role <role/> has been filled by <filler/>, approved by Former Lomir User.} other {The role <role/> has been filled by <filler/>.}}} deleted {{approver, select, you {The role <role/> has been filled by Former Lomir User, approved by you.} named {The role <role/> has been filled by Former Lomir User, approved by <approver/>.} deleted {The role <role/> has been filled by Former Lomir User, approved by Former Lomir User.} other {The role <role/> has been filled by Former Lomir User.}}} other {{approver, select, you {The role <role/> was marked as filled by you.} named {The role <role/> was marked as filled by <approver/>.} deleted {The role <role/> was marked as filled by Former Lomir User.} other {The role <role/> was marked as filled.}}}}"
+    },
+    "roleInvitationAccepted": {
+      "fill": "{invitee, select, you {{inviter, select, named {<inviter/> invited you for the role <role/>. You accepted and are now filling that role.} deleted {Former Lomir User invited you for the role <role/>. You accepted and are now filling that role.} other {You accepted an invitation for the role <role/> and are now filling that role.}}} named {{inviter, select, you {You invited <invitee/> for the role <role/>. They accepted and are now filling that role.} named {<inviter/> invited <invitee/> for the role <role/>. They accepted and are now filling that role.} deleted {Former Lomir User invited <invitee/> for the role <role/>. They accepted and are now filling that role.} other {<invitee/> accepted an invitation for the role <role/> and is now filling that role.}}} deleted {{inviter, select, you {You invited Former Lomir User for the role <role/>. They accepted and are now filling that role.} named {<inviter/> invited Former Lomir User for the role <role/>. They accepted and are now filling that role.} deleted {Former Lomir User invited Former Lomir User for the role <role/>. They accepted and are now filling that role.} other {Former Lomir User accepted an invitation for the role <role/> and is now filling that role.}}} other {An invitation to fill the role <role/> was accepted and the role is now filled.}}",
+      "fillShort": "{invitee, select, you {{inviter, select, named {You accepted <inviter/>'s invitation to fill <role/> and are now filling that role} deleted {You accepted Former Lomir User's invitation to fill <role/> and are now filling that role} other {You accepted an invitation to fill <role/> and are now filling that role}}} named {{inviter, select, you {<invitee/> accepted your invitation to fill <role/>} named {<invitee/> accepted <inviter/>'s invitation to fill <role/>} deleted {<invitee/> accepted Former Lomir User's invitation to fill <role/>} other {<invitee/> accepted an invitation to fill <role/>}}} deleted {{inviter, select, you {Former Lomir User accepted your invitation to fill <role/>} named {Former Lomir User accepted <inviter/>'s invitation to fill <role/>} deleted {Former Lomir User accepted Former Lomir User's invitation to fill <role/>} other {Former Lomir User accepted an invitation to fill <role/>}}} other {An invitation to fill <role/> was accepted and the role is now filled}}",
+      "noFill": "{invitee, select, you {{inviter, select, named {<inviter/> invited you for the role <role/>. You accepted the invitation.} deleted {Former Lomir User invited you for the role <role/>. You accepted the invitation.} other {You accepted an invitation for the role <role/>.}}} named {{inviter, select, you {You invited <invitee/> for the role <role/>. They accepted the invitation.} named {<inviter/> invited <invitee/> for the role <role/>. They accepted the invitation.} deleted {Former Lomir User invited <invitee/> for the role <role/>. They accepted the invitation.} other {<invitee/> accepted an invitation for the role <role/>.}}} deleted {{inviter, select, you {You invited Former Lomir User for the role <role/>. They accepted the invitation.} named {<inviter/> invited Former Lomir User for the role <role/>. They accepted the invitation.} deleted {Former Lomir User invited Former Lomir User for the role <role/>. They accepted the invitation.} other {Former Lomir User accepted an invitation for the role <role/>.}}} other {An invitation for the role <role/> was accepted.}}",
+      "noFillShort": "{invitee, select, you {{inviter, select, named {You accepted <inviter/>'s invitation for <role/>} deleted {You accepted Former Lomir User's invitation for <role/>} other {You accepted an invitation for <role/>}}} named {{inviter, select, you {<invitee/> accepted your invitation for <role/>} named {<invitee/> accepted <inviter/>'s invitation for <role/>} deleted {<invitee/> accepted Former Lomir User's invitation for <role/>} other {<invitee/> accepted an invitation for <role/>}}} deleted {{inviter, select, you {Former Lomir User accepted your invitation for <role/>} named {Former Lomir User accepted <inviter/>'s invitation for <role/>} deleted {Former Lomir User accepted Former Lomir User's invitation for <role/>} other {Former Lomir User accepted an invitation for <role/>}}} other {An invitation for <role/> was accepted}}"
+    },
+    "roleInvitationAcceptedLegacy": {
+      "full": "{invitee, select, you {You accepted a role invitation in this team.} named {<invitee/> accepted a role invitation in this team.} deleted {Former Lomir User accepted a role invitation in this team.} other {A role invitation was accepted.}}",
+      "short": "{invitee, select, you {You accepted a role invitation} named {<invitee/> accepted a role invitation} deleted {Former Lomir User accepted a role invitation} other {A role invitation was accepted}}"
+    },
+    "roleInvitationAssigned": {
+      "full": "{invitee, select, you {You accepted an invitation to fill the role <role/> in this team.} named {<invitee/> accepted an invitation to fill the role <role/> in this team.} deleted {Former Lomir User accepted an invitation to fill the role <role/> in this team.} other {An invitation to fill the role <role/> was accepted.}}",
+      "short": "{invitee, select, you {You accepted an invitation for <role/>} named {<invitee/> accepted an invitation for <role/>} deleted {Former Lomir User accepted an invitation for <role/>} other {An invitation for <role/> was accepted}}"
+    },
+    "roleInvitationFilled": {
+      "full": "{invitee, select, you {You accepted an invitation to fill the role <role/> in this team and are now filling that role.} named {<invitee/> has accepted an invitation to fill the role <role/> in this team and is now filling that role.} deleted {Former Lomir User has accepted an invitation to fill the role <role/> in this team and is now filling that role.} other {An invitation to fill the role <role/> was accepted and the role is now filled.}}",
+      "short": "{invitee, select, you {You accepted an invitation to fill <role/> and are now filling that role} named {<invitee/> accepted an invitation to fill <role/> and is now filling that role} deleted {Former Lomir User accepted an invitation to fill <role/> and is now filling that role} other {An invitation to fill <role/> was accepted and the role is now filled}}"
+    },
+    "roleReopened": {
+      "full": "{user, select, you {You have left the role <role/>. The role is open again to be filled.} named {<user/> has left the role <role/>. The role is open again to be filled.} deleted {Former Lomir User has left the role <role/>. The role is open again to be filled.} other {The role <role/> is open again to be filled.}}",
+      "short": "{user, select, you {You left the role <role/>. It is open again.} named {<user/> left the role <role/>. It is open again.} deleted {Former Lomir User left the role <role/>. It is open again.} other {Role reopened: <role/>}}"
+    },
+    "roleReopenedAdmin": {
+      "full": "{actor, select, you {You have reopened the role <role/>. It is open again to be filled.} named {<actor/> has reopened the role <role/>. It is open again to be filled.} deleted {Former Lomir User has reopened the role <role/>. It is open again to be filled.} other {The role <role/> has been reopened and is open to be filled.}}",
+      "short": "Role reopened: <role/>"
+    },
+    "roleUpdated": {
+      "full": "{actor, select, you {The role <role/> has been updated by you.} named {The role <role/> has been updated by <actor/>.} deleted {The role <role/> has been updated by Former Lomir User.} other {The role <role/> has been updated.}}",
+      "short": "Role edited: <role/>"
+    },
+    "teamDeleted": {
+      "full": "{owner, select, you {This team has just been archived (scheduled for deletion) by you.} named {This team has just been archived (scheduled for deletion) by <owner/>.} deleted {This team has just been archived (scheduled for deletion) by Former Lomir User.} other {This team has just been archived (scheduled for deletion).}}",
+      "short": "{owner, select, you {You archived this team (scheduled for deletion)} named {<owner/> archived this team (scheduled for deletion)} deleted {Former Lomir User archived this team (scheduled for deletion)} other {This team was archived (scheduled for deletion)}}"
+    },
+    "teamJoin": {
+      "full": "{user, select, you {{role, select, named {You joined the team as <role/>. Welcome aboard!} other {You joined the team. Welcome aboard!}}} named {{role, select, named {<user/> joined the team as <role/>. Say hello to them!} other {<user/> joined the team. Say hello to them!}}} deleted {{role, select, named {Former Lomir User joined the team as <role/>.} other {Former Lomir User joined the team.}}} other {{role, select, named {A new member joined the team as <role/>. Say hello to them!} other {A new member joined the team. Say hello to them!}}}}",
+      "short": "{user, select, you {{role, select, named {You joined the team as <role/>} other {You joined the team}}} named {{role, select, named {<user/> joined the team as <role/>} other {<user/> joined the team}}} deleted {{role, select, named {Former Lomir User joined the team as <role/>} other {Former Lomir User joined the team}}} other {{role, select, named {A new member joined the team as <role/>} other {A new member joined the team}}}}"
+    },
+    "teamLeave": {
+      "full": "{user, select, you {You have left the team.} named {<user/> has left the team.} deleted {Former Lomir User has left the team.} other {A member has left the team.}}",
+      "short": "{user, select, you {You left the team} named {<user/> left the team} deleted {Former Lomir User left the team} other {A member left the team}}"
+    },
+    "userLeftLomir": {
+      "full": "Former Lomir User has left Lomir.",
+      "short": "Former Lomir User left Lomir"
+    }
+  },
+  "chatHeader": {
+    "backToList": "Back to conversation list",
+    "directChat": "DM Chat",
+    "directMessageChat": "Direct Message Chat",
+    "teamChat": "Team Chat",
+    "teamChatMembers": "Team Chat with {count, plural, one {# Member} other {# Members}}",
+    "viewDetails": "View {name} details",
+    "viewDetailsGeneric": "View details"
+  },
+  "chatMessage": {
+    "emptyError": "Message cannot be empty.",
+    "saveEditFailed": "Could not save your edit."
+  },
+  "chatPage": {
+    "conversationUnavailable": "This conversation is no longer available.",
+    "deleteConversation": {
+      "confirmLabel": "Remove",
+      "loadingLabel": "Removing...",
+      "message": "Remove this chat from your conversation list? Your message history with this conversation will no longer be shown here.",
+      "title": "Remove Chat"
+    },
+    "deleteMessage": {
+      "confirmLabel": "Delete",
+      "loadingLabel": "Deleting...",
+      "message": "Delete this message? It will be replaced with a deleted-message marker in this chat.",
+      "title": "Delete Message"
+    },
+    "errors": {
+      "deleteConversationFailed": "Failed to delete conversation. Please try again.",
+      "deleteMessageFailed": "Failed to delete message. Please try again.",
+      "editMessageFailed": "Failed to edit message. Please try again.",
+      "leaveTeamFailed": "Failed to leave team. Please try again.",
+      "noTeamChatAccess": "You no longer have access to this team chat.",
+      "uploadFileFailed": "Failed to upload file. Please try again.",
+      "uploadFileRejected": "Failed to upload file",
+      "uploadImageFailed": "Failed to upload image. Please try again.",
+      "uploadImageRejected": "Failed to upload image",
+      "renderFailed": "The chat could not be displayed. Please reload the page.",
+      "noConversationAccess": "You no longer have access to this conversation.",
+      "teamDeleted": "This team has been deleted.",
+      "removedFromTeam": "You have been removed from this team.",
+      "leftTeamChat": "You have left this team chat."
+    },
+    "formerTeamMember": "{name} (former team member)",
+    "formerTeamMemberTooltip": "Former team member",
+    "formerTeamMemberInitials": "FM",
+    "leaveTeam": {
+      "confirmLabel": "Leave",
+      "fallbackTeamName": "this team",
+      "loadingLabel": "Leaving...",
+      "message": "Leave \"{teamName}\"? This removes the chat from your conversation list.",
+      "title": "Leave Team Chat"
+    },
+    "loadConversationsFailed": "Failed to load conversations. Please try again.",
+    "loadEarlier": "Load earlier messages",
+    "mentionLookupFailed": "Could not look up \"{name}\".",
+    "mentionNotFound": "Could not open \"{name}\".",
+    "searchAria": "Search chats",
+    "searchClearAria": "Clear chat search",
+    "searchCountMatches": "{filtered} of {total, plural, one {# chat} other {# chats}} · {matches, plural, one {# match} other {# matches}}",
+    "searchCountSearching": "{filtered} of {total, plural, one {# chat} other {# chats}} · searching messages...",
+    "searchMatchesInConversation": "{count, plural, one {# search match} other {# search matches}} for “{query}”",
+    "searchNoResults": "No user names, team names, or messages match \"{query}\". Try a different search term.",
+    "searchLoadingDescription": "Looking through message history for \"{query}\".",
+    "searchLoadingTitle": "Searching chats...",
+    "searchPlaceholder": "Search chats...",
+    "title": "Chats",
+    "attachmentPreview": {
+      "named": "{kind, select, image {Image “{fileName}” sent} spreadsheet {Spreadsheet “{fileName}” sent} other {File “{fileName}” sent}}",
+      "unnamed": "{kind, select, image {Image sent} spreadsheet {Spreadsheet sent} other {File sent}}"
+    },
+    "noMessagesYet": "No messages yet",
+    "sendFirstMessage": "Send a message to start the conversation",
+    "startConversation": "Start your conversation…",
+    "emptyList": {
+      "title": "No conversations yet",
+      "description": "Start a chat from a person's profile or a team's page.",
+      "findPeople": "Find People",
+      "findTeams": "Find Teams"
+    },
+    "openConversation": "Open conversation",
+    "deselectConversation": "Deselect conversation",
+    "typingOne": "{name} is typing...",
+    "typingMany": "{count} people are typing...",
+    "archivedBanner": {
+      "body": "This team has been archived and is scheduled for deletion. The chat stays available for {remaining} so remaining teammates can say goodbye. Leave anytime; once you leave or the chat is deleted, its messages and files are no longer accessible.",
+      "leaveNow": "Leave team chat now"
+    }
+  },
+  "chatUploader": {
+    "addAttachmentAria": "Add attachment",
+    "cancel": "Cancel",
+    "dragDropClick": "Drag & drop or click to select",
+    "dragDropPaste": "Drag & drop, click, or paste",
+    "dropFileHere": "Drop file here",
+    "errorFileTooLarge": "File must be less than {maxSize}MB",
+    "errorFileType": "File type not supported. Accepted: {formats}",
+    "fileHint": "Max {maxSize}MB • {formats}",
+    "imageHint": "Max {maxSize}MB • {formats}",
+    "optionEmoji": "Emoji",
+    "optionFile": "File",
+    "optionImage": "Image",
+    "send": "Send",
+    "shareFile": "Share File",
+    "shareImage": "Share Image"
+  },
+  "collapse": {
+    "showAll": "Show all",
+    "showLess": "Show less"
+  },
+  "communication": {
+    "languageHelp": "Lomir uses this language for the app and for the emails we send you. Without a choice, we follow the country in your profile and otherwise your browser.",
+    "languageLabel": "Lomir App Language",
+    "sectionTitle": "Communication"
+  },
+  "confirmModal": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "contact": {
+    "attachment": {
+      "attach": "Attach files",
+      "remove": "Remove attachment",
+      "rules": "Accepted: {types}. Max {maxFiles} files, {maxMb} MB each, {totalMb} MB total.",
+      "selectedFile": "Selected file",
+      "fileError": "{name}: {message}",
+      "moreSkipped": "{count, plural, one {# more file was skipped.} other {# more files were skipped.}}",
+      "unsafeName": "File name is not supported. Please rename the file and try again.",
+      "wrongType": "File type not supported. Accepted: {types}.",
+      "empty": "File is empty and cannot be attached.",
+      "tooLarge": "Each file must be {maxMb} MB or smaller.",
+      "duplicate": "This file is already attached.",
+      "totalTooLarge": "Attachments must be {totalMb} MB total or smaller.",
+      "tooMany": "You can attach up to {maxFiles} files."
+    },
+    "email": {
+      "title": "Send us a message",
+      "titleAgain": "Write another email?",
+      "subtitle": "We will reply by email.",
+      "subtitleGuest": "We will reply by email. Create an account for direct in-app messaging with the Lomir team.",
+      "compose": "Compose Email"
+    },
+    "errors": {
+      "invalidInput": "Please check your entries and try again.",
+      "captchaFailed": "The CAPTCHA check failed. Please try again.",
+      "uploadFailed": "The attachment could not be uploaded.",
+      "reportFailed": "Your report could not be received. Please try again in a few minutes.",
+      "contactFailed": "Your message could not be sent. Please try again.",
+      "rateLimited": "Too many messages. Please try again later."
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "topic": "Topic",
+      "message": "Message",
+      "messagePlaceholder": "Tell us what is on your mind",
+      "submit": "Send Message",
+      "submitting": "Sending..."
+    },
+    "inApp": {
+      "title": "Talk to the Lomir Team",
+      "subtitle": "Use your Lomir account to reach us directly in the app.",
+      "body": "The Lomir Team account is available for account questions, privacy requests, feedback, and anything that needs a little human context.",
+      "button": "Send Chat Message"
+    },
+    "intro": "Questions, feedback, account help, privacy requests, or content reports can all start here.",
+    "introSecondLine": "We will get your message to the right place.",
+    "loginHint": "Already part of Lomir? <0>Log in</0> to contact us through the app chat.",
+    "privacyNote": "By submitting this form, the details you enter (name, email address, topic, message, and attachments) will be processed to respond to your inquiry. See our <0>Privacy Policy</0> for details on how we handle your data.",
+    "report": {
+      "topicHelp": "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns.",
+      "messageHelp": "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
+    },
+    "status": {
+      "reportReceived": "Your report has been received. Reference ID: {reference}.",
+      "sent": "Thanks, your message has been sent to the Lomir team.",
+      "error": "Something went wrong while sending your message. Please try again."
+    },
+    "title": "Contact Lomir",
+    "topics": {
+      "general": "General question",
+      "account": "Account support",
+      "privacy": "Privacy request",
+      "report": "Report content or abuse",
+      "feedback": "Feedback"
+    },
+    "validation": {
+      "name": "Name is required",
+      "email": "Email is required",
+      "emailInvalid": "Please enter a valid email address",
+      "message": "Message is required",
+      "captcha": "Please complete the CAPTCHA verification"
+    }
+  },
+  "countrySelect": {
+    "clear": "Clear selection",
+    "groupAll": "All Countries",
+    "groupCommon": "Common",
+    "noResults": "No countries found",
+    "placeholder": "Select a country",
+    "searchPlaceholder": "Type to search..."
+  },
+  "focusAreaOverview": {
+    "intro": "Focus areas describe what people and teams care about in Lomir. Choose one to search for the people and teams that share it.",
+    "loadError": "Failed to load focus areas",
+    "searchWith": "Search for people and teams with {name}",
+    "title": "Focus Area Overview"
+  },
+  "datetime": {
+    "archiveRemainingDays": "{count, plural, one {# day} other {# days}}",
+    "archiveRemainingHours": "{count, plural, one {# hour} other {# hours}}",
+    "archiveRemainingUnderAnHour": "less than an hour",
+    "justNow": "less than a minute ago",
+    "justNowShort": "< minute ago",
+    "timeOfDay": "{time}",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "archiveRemainingUpTo": "up to {count, plural, one {# day} other {# days}}"
+  },
+  "demo": {
+    "profileLabel": "Demo Profile",
+    "profileTooltip": "Demo Profile: for testing purposes, no real person",
+    "roleLabel": "Demo Role",
+    "roleTooltip": "Demo Role: for testing purposes, no real role",
+    "teamTooltip": "Demo Team: for testing purposes, no real team"
+  },
+  "distance": {
+    "away": "{km} km away",
+    "awayBeyondLimit": "{km} km away (> {limit} km)",
+    "awayFromYou": "{km} km away from you",
+    "awayWithinLimit": "{km} km away (< {limit} km)"
+  },
+  "fileAttachment": {
+    "openTooltip": "Click to open and download file",
+    "downloadFile": "Download file",
+    "clickToDownload": "Click to download"
+  },
+  "fileExpiry": {
+    "expired": "This data has expired and is no longer available.",
+    "expiringSoon": "{type, select, image {Image} other {File}} expires in {days, plural, one {# day} other {# days}}. Download to keep a copy.",
+    "active": "{type, select, image {Image} other {File}} expires in {days, plural, one {# day} other {# days}}."
+  },
+  "focusAreas": {
+    "alreadyAdded": "Focus area already added",
+    "cancel": "Cancel",
+    "desired": "Desired Focus Areas",
+    "editAria": "Edit",
+    "empty": "No focus areas yet",
+    "emptyTeam": "No focus areas added yet.",
+    "fallbackName": "Focus Area {id}",
+    "groupTooltip": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "groupTooltipMembers": "{group}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "loading": "Loading…",
+    "placeholder": "Add focus areas...",
+    "placeholderTeam": "Add focus areas...",
+    "pendingTooltip": "{name}: +{credits} ct. from badges that are not visible to others yet. The credits count once you make them visible.",
+    "popularTitle": "Popular Focus Areas",
+    "relatedTitle": "Related Focus Areas",
+    "remove": "Remove {name}",
+    "removeGeneric": "Remove focus area",
+    "searchPlaceholder": "Type to search focus areas...",
+    "searchResultsTitle": "Search Results",
+    "summary": "({credits} ct. in {count, plural, one {# area} other {# areas}})",
+    "tagTooltip": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# person} other {# people}}",
+    "tagTooltipMembers": "{name}: {credits} ct. awarded with {badges, plural, one {# badge} other {# badges}} by {people, plural, one {# member} other {# members}}",
+    "title": "Focus Areas",
+    "updateFailed": "Failed to update",
+    "updated": "Updated successfully!"
+  },
+  "footer": {
+    "about": "About",
+    "contact": "Contact",
+    "copyright": "Lomir - Team Up App © {year}",
+    "imprint": "Imprint",
+    "instagram": "Instagram",
+    "license": "License",
+    "privacy": "Privacy",
+    "source": "Source",
+    "terms": "Terms"
+  },
+  "imageUploader": {
+    "changeImage": "Change image",
+    "dragAndDrop": "Drag & drop or click to upload",
+    "dropHere": "Drop image here",
+    "errorAcceptedFormats": "Please select an image file in one of these formats: {formats}",
+    "errorNotAnImage": "Please select an image file",
+    "errorTooLarge": "Image must be less than {maxSize}MB",
+    "maxSizeHint": "Max {maxSize}MB. Square images recommended.",
+    "newImageSelected": "New image selected. Save to upload.",
+    "previewAlt": "Preview",
+    "remove": "Remove",
+    "uploadImage": "Upload image"
+  },
+  "languageSelect": {
+    "noResults": "No languages found",
+    "placeholder": "Select a language",
+    "searchPlaceholder": "Type to search..."
+  },
+  "legalLink": {
+    "opensInNewTab": "(opens in a new tab)"
+  },
+  "legalPage": {
+    "translationNotice": "This is a translation. The German version is legally binding.",
+    "lastUpdated": "Last updated: {date}"
+  },
+  "location": {
+    "city": "City / Town (optional)",
+    "cityPlaceholder": "e.g., Berlin",
+    "clearCity": "Clear city",
+    "clearPostalCode": "Clear postal code",
+    "country": "Country",
+    "countryOptional": "Country (optional)",
+    "divider": "Location",
+    "locationMode": {
+      "label": "Team Location",
+      "locationHelper": "Provide location information for your team. This information is optional.",
+      "locationLabel": "This is a team with a location",
+      "remoteHelper": "Remote teams don't have a physical meeting location.",
+      "remoteLabel": "This is a remote team",
+      "toggleAria": "Toggle location mode"
+    },
+    "notFoundInCountry": "Not found in {country}.",
+    "postalCode": "Postal Code (optional)",
+    "postalCodePlaceholder": "e.g., 12345",
+    "remoteHelp": "Remote teams don't have a physical meeting location",
+    "remoteToggle": "This is a remote team",
+    "section": {
+      "distanceAway": "{distance} away",
+      "matchShort": "Match",
+      "matchesLocationOf": "Matches {name}'s location",
+      "matchesYourLocation": "Matches your location",
+      "noLocationBoundaries": "No location boundaries",
+      "noLocationSet": "No location set",
+      "noPhysicalLocation": "(No physical location)",
+      "notCompared": "Location not compared",
+      "notSpecified": "Not specified",
+      "outsideRangeOf": "Outside {name}'s location range",
+      "outsideYourRange": "Outside your location range",
+      "preference": "Location Preference",
+      "remote": "Remote",
+      "remoteNoPreference": "Remote — no geographic preference",
+      "remoteTeam": "Remote Team",
+      "title": "Location",
+      "unavailable": "Location not available",
+      "unavailableShort": "Not available",
+      "withinKmFromRole": "within {km} km from Role Location"
+    },
+    "selectCountryToLookUp": "Select a country to look this up.",
+    "suggestedCity": "{city} is the city for {postalCode}.",
+    "useSuggestedCity": "Use it",
+    "useSuggestedCityAria": "Use {city}"
+  },
+  "mapPopup": {
+    "appliedForNamedRole": "You applied for {roleName} in this team",
+    "clickRoleDetails": "Click to view role details",
+    "clickTeamDetails": "Click to view team details",
+    "clickUserDetails": "Click to view user details",
+    "close": "Close",
+    "demoProfile": "Demo Profile",
+    "demoRole": "Demo Role",
+    "demoTeam": "Demo Team",
+    "entityInLocation": "{entity} in {location}",
+    "entityInLocationWithRadius": "{entity} in {location}\nwithin {km} km from Role Location",
+    "entityNoLocation": "{entity} without Location info",
+    "entityRemote": "{entity} (remote)",
+    "invitedToFillNamedRole": "You were invited to fill {roleName} in this team",
+    "mappedResults": "Mapped results",
+    "memberCount": "{count} of {max} members",
+    "memberOfTeamNamed": "You are a member of this team: {teamName}",
+    "memberWithCount": "You are a member of this team with {count} / {max} members",
+    "noMapCoordinates": "No visible results on this page include map coordinates yet.",
+    "openDetails": "Open details",
+    "openRoleApplication": "Open role application details",
+    "openRoleInvitation": "Open role invitation details",
+    "openRoles": "{count, plural, one {# open role posted in this team} other {# open roles posted in this team}}",
+    "openTeamApplication": "Open team application details",
+    "openTeamInvitation": "Open team invitation details",
+    "posted": "Posted {date}",
+    "remoteOrUnmapped": "Remote or unmapped",
+    "resultAria": "{name} map result",
+    "typeRole": "Open Role",
+    "typeTeam": "Team",
+    "typeUser": "Person",
+    "typeUserProfile": "User Profile",
+    "viewDetails": "View details"
+  },
+  "matchDetail": {
+    "itemsTwo": "{first} and {second}",
+    "tagsOfTotal": "{shared} of {total} focus areas",
+    "tagsOfTotalRequired": "{shared} of {total} required focus areas",
+    "badgesOfTotal": "{shared} of {total} badges",
+    "tagsShared": "{count, plural, one {# focus area} other {# focus areas}}",
+    "badgesShared": "{count, plural, one {# badge} other {# badges}}",
+    "itemsAndLocation": "{items} in common and {location}",
+    "itemsOnly": "{items} in common",
+    "roleItemsAndLocation": "{items} met, {location}",
+    "roleItemsOnly": "{items} met",
+    "location": {
+      "same": "same location or remote-friendly team",
+      "within100": "within 100 km of each other",
+      "within300": "within 300 km of each other",
+      "within1000": "within 1000 km of each other",
+      "tooFar": "locations too far apart"
+    },
+    "locationAlone": {
+      "same": "Same location or remote-friendly team",
+      "within100": "Within 100 km of each other",
+      "within300": "Within 300 km of each other",
+      "within1000": "Within 1000 km of each other",
+      "tooFar": "Locations too far apart"
+    },
+    "roleLocation": {
+      "inside": "within the role's location radius",
+      "near": "up to 20 km beyond the role's radius",
+      "outside": "outside the role's location radius"
+    },
+    "roleLocationAlone": {
+      "inside": "Within the role's location radius",
+      "near": "Up to 20 km beyond the role's radius",
+      "outside": "Outside the role's location radius"
+    },
+    "bars": {
+      "locationWeight": "Location factors into the score with {weight}%.",
+      "locationRoleRule": "Within the role's radius = 100%. Up to 20 km beyond = 25%. Farther = 0%.",
+      "locationGenericRule": "Remote teams = 100%. Same city = 100%. Within 100 km = 75%.",
+      "locationGenericRuleFar": "Within 300 km = 50%. Within 1000 km = 25%. Farther away = 0%.",
+      "tagsWeight": "Focus Areas factor into the score with {weight}%.",
+      "tagsMet": "{shared} out of {total} required focus areas met.",
+      "tagsSharedCount": "{shared} out of {total} focus areas are shared.",
+      "tagsNone": "No focus areas were available to compare.",
+      "badgesWeight": "Badges factor into the score with {weight}%.",
+      "badgesMet": "{shared} out of {total} required badges met.",
+      "badgesSharedCount": "{shared} out of {total} badges are shared.",
+      "badgesNone": "No badges were available to compare."
+    }
+  },
+  "matchScore": {
+    "betweenYouAnd": "{pct}% profile match of you and {name}",
+    "betweenYouAndThisTeam": "{pct}% profile match of you and this team",
+    "breakdown": "{pct}% match — Tags {tagPct}% · Badges {badgePct}% · Location {distPct}%",
+    "plain": "{pct}% profile match",
+    "roleNamed": "{pct}% matching score of {name} with the {role} role",
+    "roleNamedAnon": "{pct}% matching score of this person with the {role} role",
+    "roleWithMember": "{pct}% matching score for {name} with this role",
+    "roleWithThisMember": "{pct}% matching score for this member with this role",
+    "shared": "{pct}% profile match — {sharedTags, plural, one {# shared tag} other {# shared tags}}, {sharedBadges, plural, one {# shared badge} other {# shared badges}}",
+    "sharedFocus": "{pct}% profile match — {count, plural, one {# shared focus area} other {# shared focus areas}}",
+    "tierGood": "{pct}% good match",
+    "tierGreat": "{pct}% great match",
+    "tierLow": "{pct}% low match",
+    "withProfileOf": "{pct}% match with {name}'s profile",
+    "withYourProfile": "{pct}% match with your profile",
+    "yourProfileWith": "{pct}% match of your profile with {name}",
+    "yourProfileWithThisTeam": "{pct}% match of your profile with this team"
+  },
+  "matchSummary": {
+    "all": "All matching",
+    "allWithName": "All matching with {name}",
+    "allWithYou": "All matching with you",
+    "counted": "{matchCount}/{total} matching",
+    "countedWithName": "{matchCount}/{total} matching with {name}",
+    "countedWithYou": "{matchCount}/{total} matching with you",
+    "none": "None matching",
+    "noneWithName": "None matching with {name}",
+    "noneWithYou": "None matching with you"
+  },
+  "messageBubble": {
+    "attachmentFile": "File",
+    "cancel": "Cancel",
+    "dataExpired": "This data has expired.",
+    "deleteMessage": "Delete message",
+    "edit": "Edit message",
+    "edited": "Message edited",
+    "mediaExpired": "Image or file no longer available",
+    "messageDeleted": "This message was deleted.",
+    "messageUnavailable": "Message unavailable",
+    "openImage": "Click to open and download image in new tab",
+    "originalDeleted": "Original message was deleted",
+    "renderError": "Could not render this message.",
+    "repliedImageAlt": "Replied image",
+    "respond": "Respond",
+    "respondAria": "Respond to message",
+    "save": "Save",
+    "sharedImageAlt": "Shared image"
+  },
+  "messageInput": {
+    "attachmentImage": "Image",
+    "attachmentImageOrFile": "Image / File",
+    "cancelReplyAria": "Cancel reply",
+    "placeholder": "Type a message...",
+    "replyPreviewAlt": "Reply preview",
+    "replyingTo": "Replying to {name}",
+    "replyingToMessage": "Replying to a message"
+  },
+  "messageNotifications": {
+    "byline": {
+      "acceptedBy": "Accepted by {name}",
+      "appliedBy": "Applied by {name}",
+      "approvedBy": "Approved by {name}",
+      "by": "by {name}",
+      "byYou": "by You",
+      "cancelledBy": "Cancelled by {name}",
+      "declinedBy": "Declined by {name}",
+      "from": "from {name}",
+      "invitedBy": "Invited by {name}"
+    },
+    "header": {
+      "applicationApproved": "Application Approved",
+      "applicationDeclined": "Application Declined",
+      "invitationAccepted": "Invitation Accepted",
+      "invitationCancelled": "Invitation Cancelled",
+      "invitationDeclined": "Invitation Declined",
+      "newApplication": "New Application",
+      "newBadge": "New Badge for you!",
+      "newEvent": "New Event",
+      "newMessage": "New Message",
+      "removedFromTeam": "Removed from Team",
+      "roleInvitation": "Role Invitation",
+      "roleOfferCreated": "Role Offer Created",
+      "teamInvitation": "Team Invitation",
+      "teamRoleApplicationApproved": "Team & Role Application Approved",
+      "teamRoleInvitation": "Team & Role Invitation",
+      "teamRoleInviteAccepted": "Team & Role Invite Accepted",
+      "teamRoleInviteCancelled": "Team & Role Invite Cancelled",
+      "teamRoleInviteDeclined": "Team & Role Invite Declined"
+    },
+    "roleStatus": {
+      "closed": "{userType, select, applicant {The role \"{role}\" you applied for has been closed} other {The role \"{role}\" you were invited to has been closed}}",
+      "deleted": "{userType, select, applicant {The role \"{role}\" you applied for has been deleted} other {The role \"{role}\" you were invited to has been deleted}}",
+      "filled": "{userType, select, applicant {The role \"{role}\" you applied for has been filled} other {The role \"{role}\" you were invited to has been filled}}",
+      "reopened": "{userType, select, applicant {The role \"{role}\" you applied for is open again} other {The role \"{role}\" you were invited to is open again}}",
+      "updated": "{userType, select, applicant {The role \"{role}\" you applied for has been updated} other {The role \"{role}\" you were invited to has been updated}}"
+    },
+    "text": {
+      "applicationApproved": "Your application to \"{team}\" was approved!",
+      "applicationApprovedRole": "Your application to \"{team}\" for {role} was approved!",
+      "applicationReceived": "New application to join \"{team}\"",
+      "applicationReceivedRole": "New role application for \"{team}\"",
+      "applicationRejected": "Your application to \"{team}\" was declined",
+      "badgeAwarded": "You received the \"{badge}\" badge!",
+      "invitationAccepted": "Your invitation to \"{team}\" was accepted!",
+      "invitationAcceptedRole": "Your invitation to join \"{team}\" as {role} was accepted!",
+      "invitationCancelled": "Your invitation to \"{team}\" was cancelled",
+      "invitationCancelledRole": "Your invitation to join \"{team}\" as {role} was cancelled",
+      "invitationDeclined": "Your invitation to \"{team}\" was declined",
+      "invitationDeclinedRole": "Your invitation to join \"{team}\" as {role} was declined",
+      "invitationReceived": "You've been invited to join \"{team}\"!",
+      "invitationReceivedRole": "You've been invited to join \"{team}\" as {role}!",
+      "removed": "You were removed from \"{team}\"",
+      "removedNoTeam": "You were removed from the team",
+      "roleApplicationDeferredInvite": "Your application for {role} in \"{team}\" is now a role offer",
+      "roleInvitation": "You've been invited to fill the role \"{role}\" in \"{team}\""
+    },
+    "unreadOnLogin": "{count, plural, one {You have # unread message} other {You have # unread messages}}"
+  },
+  "modal": {
+    "close": "Close modal"
+  },
+  "nav": {
+    "languageCurrent": "Language: {language} ({code})",
+    "languageSettings": "Language Settings",
+    "login": "Login",
+    "logoAlt": "Lomir Logo",
+    "logout": "Logout",
+    "markAllAsRead": "Mark all as read",
+    "messages": "Messages",
+    "myTeams": "My Teams",
+    "myTeamsShort": "Teams",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "search": "Search",
+    "settings": "Settings",
+    "signUp": "Sign Up"
+  },
+  "notificationBadge": {
+    "application": "{count} pending {count, plural, one {application} other {applications}}",
+    "invitation": "{count} pending {count, plural, one {invitation} other {invitations}} sent",
+    "message": "{count} unread {count, plural, one {message} other {messages}}",
+    "alert": "{count} {count, plural, one {notification} other {notifications}}"
+  },
+  "notifications": {
+    "applicationApproved": "{count, plural, one {Your team application was approved} other {# team applications were approved}}{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationCancelled": "{count, plural, one {# team application} other {# team applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationReceived": "{count, plural, one {# team application} other {# team applications}} to review{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "applicationRejected": "{count, plural, one {Your team application was} other {Your team applications (#) were}} rejected{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "badgeAwarded": "{count, plural, one {# new badge award} other {# new badge awards}} for you",
+    "count": "{count, plural, one {# notification} other {# notifications}}",
+    "invitationAccepted": "{count, plural, one {# invitation} other {# invitations}} accepted{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "invitationCancelled": "{count, plural, one {Your invitation was} other {Your invitations (#) were}} cancelled{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "invitationDeclined": "{count, plural, one {Your invitation was} other {Your invitations (#) were}} declined{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "invitationReceived": "{count, plural, one {# team invitation} other {# team invitations}} for you{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "memberJoined": "{count, plural, one {# new member} other {# new members}} joined {teamCount, plural, =0 {one of your teams} =1 {one of your teams} other {# of your teams}}",
+    "memberLeft": "{count, plural, one {# member} other {# members}} left {teamCount, plural, =0 {one of your teams} =1 {one of your teams} other {# of your teams}}",
+    "memberRemoved": "Removed from {teamCount, plural, =0 {a team} =1 {a team} other {# of your teams}}",
+    "messages": {
+      "mentions": "{count, plural, one {# mention} other {# mentions}}",
+      "senders": "{count, plural, one {from # person} other {from # people}}",
+      "teams": "{count, plural, one {in # team} other {in # teams}}",
+      "unread": "{count, plural, one {# unread message} other {# unread messages}}"
+    },
+    "ownershipTransferred": "{count, plural, one {# ownership transfer} other {# ownership transfers}}",
+    "roleApplicationCancelled": "{count, plural, one {# role application} other {# role applications}} withdrawn{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleApplicationDeferredInvite": "{count, plural, one {# role offer} other {# role offers}} created{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleAssigned": "{count, plural, one {# role assignment} other {# role assignments}} {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleChanged": "{count, plural, one {# role change} other {# role changes}} {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleClosed": "{count, plural, one {# role} other {# roles}} closed {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleCreated": "{count, plural, one {# new role} other {# new roles}} opened {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleDeleted": "{count, plural, one {# role} other {# roles}} deleted {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleFilled": "{count, plural, one {# role} other {# roles}} filled {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleInvitation": "{count, plural, one {# role invitation} other {# role invitations}} for you{teamCount, plural, =0 {} =1 {} other { in # teams}}",
+    "roleReopened": "{count, plural, one {# role} other {# roles}} reopened {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "roleStatusChangedApplicant": "{count, plural, one {# role} other {# roles}} you applied for changed",
+    "roleStatusChangedInvitee": "{count, plural, one {# role} other {# roles}} you were invited to changed",
+    "roleUpdated": "{count, plural, one {# role} other {# roles}} edited {teamCount, plural, =0 {in one of your teams} =1 {in one of your teams} other {in # of your teams}}",
+    "teamDeleted": "{count, plural, one {# team} other {# teams}} deleted"
+  },
+  "pagination": {
+    "goToNext": "Go to next page",
+    "goToPrevious": "Go to previous page",
+    "morePages": "More pages",
+    "nextPage": "Next page",
+    "noResults": "No results",
+    "page": "Page {page}",
+    "perPage": "Per page:",
+    "previousPage": "Previous page",
+    "showing": "Showing <0>{start}</0> to <1>{end}</1> of <2>{total}</2> {total, plural, one {result} other {results}}"
+  },
+  "privacy": {
+    "accountDeletion": "Account deletion is permanent. Your profile and direct messages are deleted immediately after confirmation, also for the other person. Your messages in team chats and the badges you awarded to others remain and show \"Former Lomir User\" instead of your name.",
+    "avatarUpload": "Uploaded images are stored and delivered via ImageKit. Your avatar may be visible to others depending on your visibility settings, and with a public profile or team also to visitors without an account.",
+    "chatUpload": "Files and images shared in chat are visible to conversation participants and are deleted automatically after 60 days. Please do not upload sensitive or confidential information.",
+    "location": "Location is optional. We use saved location information to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir does not ask for a street address. Depending on visibility settings, approximate location details may be visible to others, and with a public profile also to visitors without an account.",
+    "profileVisibilitySettings": "Public profiles are visible to anyone visiting Lomir, whether or not they are logged in. Private profiles reduce public visibility, but your activity may still appear in teams, messages, applications, or badges. Location details you add may be shown as part of your approximate public profile location.",
+    "userLocation": "Location is optional. You can leave postal code, city, and country empty or remove them later. If you add location information, Lomir uses it to suggest nearby users, teams, and roles and to calculate distance-based matches. Lomir never asks for your street address. Depending on your profile visibility, approximate location details such as postal code, city, district, region, or country may be visible to others, and with a public profile also to visitors without an account."
+  },
+  "publicProfile": {
+    "title": "Profile",
+    "bioHeading": "Bio",
+    "bioEmpty": "This person has not added a bio yet.",
+    "back": "Back",
+    "errors": {
+      "loadFailed": "Failed to load this profile. Please try again.",
+      "noId": "No profile ID was provided."
+    }
+  },
+  "readReceipt": {
+    "read": "Read",
+    "readByAll": "Read by all",
+    "readBySomeone": "Read by someone",
+    "readNoNames": "Read.",
+    "readByOne": "Read by {name}.",
+    "readByTwo": "Read by {first} and {second}.",
+    "readByMany": "Read by {leading} and {last}."
+  },
+  "requestList": {
+    "pendingCount": "{count, plural, one {# pending {kind, select, application {application} invitation {invitation} other {item}}} other {# pending {kind, select, application {applications} invitation {invitations} other {items}}}}",
+    "emptyTitle": "{kind, select, application {No pending applications} invitation {No pending invitations} other {No pending items}}",
+    "emptyMessage": "{kind, select, application {Applications will appear here.} invitation {Invitations will appear here.} other {Items will appear here.}}",
+    "close": "Close",
+    "message": "Message:",
+    "unknownUser": "Unknown User",
+    "unknownDate": "Unknown date",
+    "viewProfile": "View profile"
+  },
+  "resultView": {
+    "card": {
+      "aria": "Card view",
+      "label": "Card",
+      "tooltip": "Card View"
+    },
+    "groupLabel": "Result view",
+    "list": {
+      "aria": "List view",
+      "label": "List",
+      "tooltip": "List View"
+    },
+    "map": {
+      "aria": "Map view",
+      "label": "Map",
+      "tooltip": "Map View"
+    },
+    "mini": {
+      "aria": "Mini card view",
+      "label": "Mini Card",
+      "tooltip": "Mini Card View"
+    },
+    "switchTo": "Switch to {view}"
+  },
+  "roleStatus": {
+    "closed": "Closed",
+    "closedRole": "Closed Role",
+    "filled": "Filled",
+    "filledRole": "Filled Role",
+    "open": "Open Role",
+    "roleInvitationFallback": "Role Invitation",
+    "vacant": "Open",
+    "vacantRoleFallback": "Open Role"
+  },
+  "roles": {
+    "admin": "Admin",
+    "member": "Member",
+    "owner": "Owner",
+    "unknown": "Unknown"
+  },
+  "searchCriteria": {
+    "sort": {
+      "match": "Best Match",
+      "nameDesc": "Name Z-A",
+      "recentDesc": "Active",
+      "recentAsc": "Inactive",
+      "newestDesc": "Newest",
+      "newestAsc": "Oldest",
+      "spotsDesc": "Most Spots",
+      "spotsAsc": "Almost Full",
+      "openRolesDesc": "Most Open Roles",
+      "openRolesAsc": "Least Open Roles",
+      "remoteFirst": "Remote First",
+      "remoteFirstShort": "Remote",
+      "nearestFirst": "Nearest First",
+      "nearestFirstShort": "Near"
+    },
+    "maxDistance": "< {km} km",
+    "maxDistanceRemove": "Within {km} km",
+    "openRolesOnly": "Open Roles Only",
+    "myTeams": "My Teams",
+    "myTeamsRemove": "Exclude My Teams",
+    "demo": "Demo",
+    "demoRemove": "Exclude Demo Data",
+    "teamMembers": "{team} members",
+    "teamMembersRemove": "Exclude {team} members",
+    "teamMembersUnnamed": "team members",
+    "teamMembersUnnamedRemove": "Exclude team members"
+  },
+  "searchOperators": {
+    "and": "AND",
+    "or": "OR",
+    "not": "NOT"
+  },
+  "searchHelp": {
+    "title": "Advanced Search",
+    "intro": "Use operators to refine your search:",
+    "closeTips": "Close search tips",
+    "capitalsOnly": "Write operators in capital letters",
+    "capitalsOnlyExample": "({upper} works, “{lower}” is searched as a word)",
+    "alsoEnglish": "The English operators AND, OR and NOT work too.",
+    "examples": {
+      "and": "Must contain both \"react\" AND \"node\"",
+      "or": "Must contain either \"react\" OR \"vue\"",
+      "not": "Must contain \"javascript\" but NOT \"jquery\"",
+      "minus": "Same as {operator}: contains \"python\" but not \"django\"",
+      "phrase": "Exact phrase match",
+      "combine": "Combine phrases with operators"
+    }
+  },
+  "searchInput": {
+    "placeholder": "Search teams and users...",
+    "submit": "Search",
+    "minQueryHint": "Enter at least two characters",
+    "tips": "Search tips",
+    "tipsAdvancedActive": "Search tips (Advanced Search active)",
+    "advanced": "Advanced",
+    "advancedShort": "A",
+    "remove": {
+      "badge": "Remove <icon/> Badge: <name/>",
+      "focusArea": "Remove <icon/> Focus Area: <name/>",
+      "roleName": "Remove <icon/> Role Name: <name/>",
+      "sorting": "Remove <icon/> Sorting: <name/>",
+      "filter": "Remove <icon/> Filter: <name/>"
+    }
+  },
+  "searchPage": {
+    "title": {
+      "line1": "Find teams, people",
+      "line2": "or open roles"
+    },
+    "types": {
+      "all": "All",
+      "teams": "Teams",
+      "people": "People",
+      "roles": "Open Roles"
+    },
+    "resultCount": "{count, plural, one {# result} other {# results}}",
+    "noResults": "No teams, users or Roles found matching this search query. Try a different search term.",
+    "clearInput": "Clear search input",
+    "placeholder": {
+      "default": "Try: hiking {and} photography, or hiking {not} photography",
+      "defaultCompact": "Try: hiking {and} photo",
+      "match": "Matching results to your profile — type to narrow",
+      "roleMatch": "Finding people matching the \"{role}\" role — type to narrow",
+      "narrowCompact": "Type to narrow results..."
+    },
+    "pillFallback": {
+      "tag": "Tag {id}",
+      "badge": "Badge {id}"
+    },
+    "sort": {
+      "nameAsc": "Name (A-Z)",
+      "nameAscShort": "A-Z",
+      "nameAscTooltip": "Sort alphabetically from A to Z",
+      "nameDesc": "Name (Z-A)",
+      "nameDescShort": "Z-A",
+      "nameDescTooltip": "Sort alphabetically from Z to A",
+      "recentAscTooltip": "Show the least recently active results first",
+      "recentDescTooltip": "Show the most recently active results first",
+      "newestAscTooltip": "Show the oldest results first",
+      "newestDescShort": "New",
+      "newestDescTooltip": "Show the newest results first",
+      "matchShort": "Match",
+      "matchTooltip": "Sort results by how well they match your profile",
+      "nearest": "Nearest",
+      "nearestTooltip": "Keep nearby results ahead of remote-friendly results",
+      "remoteFirstShort": "Remote 1st",
+      "remoteFirstTooltip": "Show remote-friendly results first",
+      "distance": "Distance",
+      "distanceTooltip": "Filter results by distance from your location",
+      "spotsAscShort": "Full",
+      "spotsAscTooltip": "Show teams with the fewest open spots first\nTeams only",
+      "spotsDescShort": "Spots",
+      "spotsDescTooltip": "Show teams with the most open spots first\nTeams only",
+      "leastRoles": "Least Roles",
+      "mostRoles": "Most Roles",
+      "rolesOnly": "Roles only"
+    },
+    "menu": {
+      "show": "Show Filtering & Sorting Options",
+      "hide": "Hide Filtering & Sorting Options",
+      "sortGroup": "Sort options",
+      "filterGroup": "Filter options",
+      "searchFilters": "Search filters",
+      "demoGroup": "Demo data filter",
+      "showFiltersTooltip": "Show filter controls",
+      "hideFiltersTooltip": "Click to hide filters",
+      "hideFiltersAria": "Hide filter controls",
+      "showFilters": "Show Filters ...",
+      "showFiltersShort": "Filters ...",
+      "hideFilters": "Hide Filters:",
+      "includeMyTeams": "Include My Teams",
+      "demoData": "Demo Data",
+      "includeDemo": "Include test/demo profiles, roles and teams",
+      "excludeDemo": "Show only real users, roles and teams"
+    },
+    "errors": {
+      "queryEmpty": "Search query is empty.",
+      "unclosedQuote": "Unclosed quote in search query.",
+      "startsWithOperator": "Query cannot start with \"{operator}\".",
+      "endsWithOperator": "Query cannot end with \"{operator}\".",
+      "notWithoutTerm": "{operator} must be followed by a search term.",
+      "operatorWithoutTerms": "{operator} must be between two search terms.",
+      "failed": "Something went wrong with the search. Please try again."
+    }
+  },
+  "team": {
+    "unknownName": "Unknown Team"
+  },
+  "user": {
+    "editRedirectNote": "For comprehensive profile editing, you'll be redirected to the full profile page.",
+    "fallbackName": "User",
+    "formerUser": "Former Lomir User",
+    "joinedOn": "Joined Lomir on {date}",
+    "privateProfile": "Private Profile",
+    "profileImageAlt": "Profile picture of {name}",
+    "profileImageAltGeneric": "Profile picture",
+    "profileUnavailable": {
+      "title": "This profile is not available",
+      "subtitle": "The link does not lead to an active profile.",
+      "goBack": "Go back",
+      "searchUsers": "Search users"
+    },
+    "profileVisibilityPrivate": "Private Profile - only visible for you",
+    "profileVisibilityPublic": "Public Profile - visible for everyone",
+    "unknown": "Unknown",
+    "visibilityPrivate": "Private",
+    "visibilityPublic": "Public"
+  },
+  "userDetails": {
+    "actions": {
+      "award": "Award",
+      "awardAria": "Award badge",
+      "awardTooltip": "Award this person a badge for their skills or contributions.",
+      "block": "Block",
+      "blockAria": "Block user",
+      "blockTooltip": "Block this person. They won't be able to message you or see your profile.",
+      "chat": "Chat",
+      "chatAria": "Start chat",
+      "chatTooltip": "Start a private chat with this person.",
+      "edit": "Edit",
+      "editAria": "Edit your profile",
+      "editTooltip": "Open your profile editor in a new tab and close these details.",
+      "invite": "Invite",
+      "inviteAria": "Invite to team",
+      "inviteTooltip": "Invite this person to one of your teams.",
+      "inviteUnavailableTooltip": "You cannot invite this person to a team right now."
+    },
+    "blockDialog": {
+      "body": "{name} won’t be able to message you or see your profile anywhere on Lomir, and you won’t see theirs. You can undo this from Settings → Privacy.",
+      "confirmLabel": "Block",
+      "loadingLabel": "Blocking…",
+      "title": "Block this user?"
+    },
+    "blockFailed": "Failed to block this user.",
+    "closeTooltip": "Close user details and return to the previous view.",
+    "editTitle": "Edit Profile",
+    "loadFailed": "Failed to load user details. Please try again.",
+    "privateProfile": "This profile is private.",
+    "sendChatMessage": "Send Chat Message",
+    "title": "User Details"
+  },
+  "userLink": {
+    "invitedBy": "Invited by",
+    "invitedByName": "Invited by {name}"
+  },
+  "visibility": {
+    "hidden": "Hidden",
+    "hiddenDescription": "Only you can see this",
+    "profileHiddenDescription": "Your profile will be hidden from search results",
+    "profileVisibleDescription": "Your profile will be discoverable by others",
+    "teamHiddenDescription": "Only members can see this team",
+    "teamVisibleDescription": "Anyone can find and view your team",
+    "title": "Visibility",
+    "toggleAria": "Toggle visibility",
+    "visible": "Visible for all Users",
+    "visibleDescription": "Anyone can find and view this"
+  },
+  "errors": {
+    "renderFailed": "This page could not be displayed. Please reload the page."
+  }
+}

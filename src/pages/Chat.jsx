@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   LogOut,
   Trash2,
@@ -50,15 +51,16 @@ import {
 // Stable empty fallback so the conversations query's default never changes
 // identity between renders (avoids needless re-renders / effect re-runs).
 const EMPTY_CONVERSATIONS = [];
-const EMPTY_DIRECT_CONVERSATION_PREVIEW = "Start your conversation...";
-
+// A direct chat opened from a profile before its first message exists: it has
+// no last message yet. Recognised by that, not by a placeholder sentence —
+// the list words "start your conversation" at render.
 const isTransientEmptyDirectConversation = (conversation) =>
   conversation?.type === "direct" &&
   conversation?.isVirtual &&
-  (conversation.lastMessage ?? conversation.last_message) ===
-    EMPTY_DIRECT_CONVERSATION_PREVIEW;
+  !(conversation.lastMessage ?? conversation.last_message);
 
 const Chat = () => {
+  const { t, i18n } = useTranslation();
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -199,7 +201,12 @@ const Chat = () => {
     };
     update();
     return () => clearTimeout(timeoutId);
-  }, [isActiveTeamArchived, activeTeamArchivedAt]);
+    // `i18n.language` is a dependency because `formatArchiveTimeRemaining`
+    // returns a finished, worded string that is then held in state and only
+    // refreshed by the timer - once a day while more than a day remains. Without
+    // this, switching language leaves "13 Tage" sitting in an English paragraph
+    // for up to 24 hours.
+  }, [isActiveTeamArchived, activeTeamArchivedAt, i18n.language]);
 
   const teamMembers = useMemo(() => {
     const members =
@@ -385,7 +392,7 @@ const Chat = () => {
       activeConversationRef.current,
     );
     if (isBlockedId(activePartnerId)) {
-      setError("This conversation is no longer available.");
+      setError(t("chatPage.conversationUnavailable"));
       setActiveConversation(null);
       setMessages([]);
       clearTypingUsers();
@@ -410,9 +417,9 @@ const Chat = () => {
   // fetch-effect error message).
   useEffect(() => {
     if (conversationsLoadError) {
-      setError("Failed to load conversations. Please try again.");
+      setError(t("chatPage.loadConversationsFailed"));
     }
-  }, [conversationsLoadError]);
+  }, [conversationsLoadError, t]);
 
   // Once the conversation list has loaded, either auto-select the first chat
   // (landed on /chat with none chosen) or seed a virtual DM entry when the URL
@@ -471,7 +478,7 @@ const Chat = () => {
             is_synthetic:
               userData.is_synthetic ?? userData.isSynthetic ?? undefined,
           },
-          lastMessage: EMPTY_DIRECT_CONVERSATION_PREVIEW,
+          lastMessage: "",
           updatedAt: new Date().toISOString(),
           isVirtual: true,
           unreadCount: 0,
@@ -627,28 +634,30 @@ const Chat = () => {
   const pendingChatActionType = pendingChatAction?.type;
   const pendingChatActionConfig = {
     "delete-message": {
-      title: "Delete Message",
-      message:
-        "Delete this message? It will be replaced with a deleted-message marker in this chat.",
-      confirmLabel: "Delete",
-      loadingLabel: "Deleting...",
+      title: t("chatPage.deleteMessage.title"),
+      message: t("chatPage.deleteMessage.message"),
+      confirmLabel: t("chatPage.deleteMessage.confirmLabel"),
+      loadingLabel: t("chatPage.deleteMessage.loadingLabel"),
       variant: "error",
       icon: <Trash2 size={16} />,
     },
     "delete-conversation": {
-      title: "Remove Chat",
-      message:
-        "Remove this chat from your conversation list? Your message history with this conversation will no longer be shown here.",
-      confirmLabel: "Remove",
-      loadingLabel: "Removing...",
+      title: t("chatPage.deleteConversation.title"),
+      message: t("chatPage.deleteConversation.message"),
+      confirmLabel: t("chatPage.deleteConversation.confirmLabel"),
+      loadingLabel: t("chatPage.deleteConversation.loadingLabel"),
       variant: "error",
       icon: <Trash2 size={16} />,
     },
     "leave-team": {
-      title: "Leave Team Chat",
-      message: `Leave "${pendingChatAction?.teamName || "this team"}"? This removes the chat from your conversation list.`,
-      confirmLabel: "Leave",
-      loadingLabel: "Leaving...",
+      title: t("chatPage.leaveTeam.title"),
+      message: t("chatPage.leaveTeam.message", {
+        teamName:
+          pendingChatAction?.teamName ||
+          t("chatPage.leaveTeam.fallbackTeamName"),
+      }),
+      confirmLabel: t("chatPage.leaveTeam.confirmLabel"),
+      loadingLabel: t("chatPage.leaveTeam.loadingLabel"),
       variant: "error",
       icon: <LogOut size={16} />,
     },
@@ -659,7 +668,7 @@ const Chat = () => {
     Boolean(conversationId) &&
     showChatView &&
     (Boolean(activeConversation) || loadingMessages);
-  const chatSearchPlaceholder = "Search chats...";
+  const chatSearchPlaceholder = t("chatPage.searchPlaceholder");
   const chatSearchInputWidth = `${Math.max(
     chatSearchQuery.length,
     chatSearchPlaceholder.length,
@@ -673,7 +682,7 @@ const Chat = () => {
           type="search"
           className="min-w-0 text-sm"
           placeholder={chatSearchPlaceholder}
-          aria-label="Search chats"
+          aria-label={t("chatPage.searchAria")}
           value={chatSearchQuery}
           onChange={(event) => setChatSearchQuery(event.target.value)}
           style={{
@@ -687,7 +696,7 @@ const Chat = () => {
             type="button"
             className="btn btn-ghost btn-xs ml-auto h-6 min-h-0 w-6 p-0"
             onClick={() => setChatSearchQuery("")}
-            aria-label="Clear chat search"
+            aria-label={t("chatPage.searchClearAria")}
           >
             <X size={14} />
           </button>
@@ -695,17 +704,23 @@ const Chat = () => {
       </label>
       {isChatSearchActive && !isNoSearchResults && (
         <p className="mt-1 text-xs text-base-content/60 sm:text-right">
-          {filteredConversations.length} of {conversations.length} chats
           {searchingChatMessages
-            ? " · searching messages..."
-            : ` · ${totalSearchMatches} ${totalSearchMatches === 1 ? "match" : "matches"}`}
+            ? t("chatPage.searchCountSearching", {
+                filtered: filteredConversations.length,
+                total: conversations.length,
+              })
+            : t("chatPage.searchCountMatches", {
+                filtered: filteredConversations.length,
+                total: conversations.length,
+                matches: totalSearchMatches,
+              })}
         </p>
       )}
     </div>
   );
   return (
     <PageContainer
-      title="Chats"
+      title={t("chatPage.title")}
       action={chatSearchAction}
       className="p-0"
       variant="muted"
@@ -715,7 +730,9 @@ const Chat = () => {
         type="violet"
         message={
           searchNoResultsToastQuery
-            ? `No user names, team names, or messages match "${searchNoResultsToastQuery}". Try a different search term.`
+            ? t("chatPage.searchNoResults", {
+                query: searchNoResultsToastQuery,
+              })
             : null
         }
         onClose={() => setSearchNoResultsToastQuery(null)}
@@ -738,7 +755,7 @@ const Chat = () => {
               onClick={closePendingChatAction}
               disabled={pendingChatActionLoading}
             >
-              Cancel
+              {t("confirmModal.cancel")}
             </Button>
             <Button
               variant={pendingChatActionConfig?.variant || "primary"}
@@ -809,7 +826,18 @@ const Chat = () => {
             onEditMessage={handleEditMessage}
             onLeaveTeam={handleLeaveTeam}
             onReply={handleReplyToMessage}
-            searchQuery={chatSearchQuery}
+            // Defence in depth, mirroring the conversation list above, which
+            // already guarded this: with no search results there is nothing to
+            // highlight.
+            // ⚠️ Do not read this as a fix for a bug anyone can reproduce.
+            // `useChatSearchState` resets `searchChatVisible` to false on every
+            // query change, so `hideChatDuringSearch` unmounts this panel
+            // entirely while a search is active — the state "no results AND an
+            // open transcript" is unreachable by typing. It survives only in a
+            // narrow race: reveal the chat from a result while
+            // `searchingChatMessages` is still true, then have the list fall to
+            // zero matches without the query changing.
+            searchQuery={isNoSearchResults ? "" : chatSearchQuery}
             isActiveTeamArchived={isActiveTeamArchived}
             isCurrentUserActiveTeamMember={isCurrentUserActiveTeamMember}
             activeTeamArchiveTimeRemaining={activeTeamArchiveTimeRemaining}

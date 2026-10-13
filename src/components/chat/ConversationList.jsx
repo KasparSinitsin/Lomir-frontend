@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Archive,
@@ -29,10 +30,7 @@ import TeamDetailsModal from "../teams/TeamDetailsModal";
 import UserDetailsModal from "../users/UserDetailsModal";
 import UserAvatar from "../users/UserAvatar";
 import TeamAvatar from "../teams/TeamAvatar";
-import {
-  DELETED_USER_DISPLAY_NAME,
-  getDisplayName as getDeletedUserDisplayName,
-} from "../../utils/deletedUser";
+import { getDisplayName as getDeletedUserDisplayName } from "../../utils/deletedUser";
 import {
   getCachedChatTeamProfile,
   getCachedChatUserProfile,
@@ -40,6 +38,16 @@ import {
   mergeResolvedUserData,
 } from "../../utils/chatEntityResolvers";
 import { getEventPreview } from "../../utils/eventPreview";
+import { splitChatSearchMatches } from "../../utils/chatSearch";
+import { useAuth } from "../../contexts/AuthContext";
+import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
+import {
+  collectEventPersonIds,
+  collectEventRoleRefs,
+  collectEventTeamIds,
+} from "../../utils/describeEvent";
+import { resolveRoleNames, resolveTeamNames } from "../../utils/chatEntityResolvers";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -57,48 +65,48 @@ const EVENT_PREVIEW_ICONS = {
   UserSearch,
 };
 
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
+// One phrase, case- and diacritic-insensitive — the rule lives in
+// `chatSearch.js` beside the counter that has to agree with it.
 const renderHighlightedText = (value, query) => {
-  const text = String(value ?? "");
-  const terms = String(query ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(escapeRegExp);
+  const parts = splitChatSearchMatches(value, query);
+  if (parts.length === 1 && !parts[0].isMatch) return parts[0].text;
 
-  if (!text || terms.length === 0) return text;
-
-  const matcher = new RegExp(`(${terms.join("|")})`, "gi");
-  const parts = text.split(matcher);
-
-  return parts.map((part, index) => {
-    if (!part) return null;
-
-    const isMatch = terms.some((term) =>
-      new RegExp(`^${term}$`, "i").test(part),
-    );
-
-    if (!isMatch) return part;
-
-    return (
+  return parts.map((part, index) =>
+    part.isMatch ? (
       <mark
-        key={`${part}-${index}`}
+        key={index}
         className="rounded-full bg-yellow-100 px-1.5 py-0.5"
         // Highlight only adds the yellow background — keep the surrounding text's
         // colour and weight (override the browser's default <mark> styling).
         style={{ color: "inherit", fontWeight: "inherit" }}
       >
-        {part}
+        {part.text}
       </mark>
-    );
-  });
+    ) : (
+      part.text
+    ),
+  );
 };
 
-const MENTION_TOKEN_RE = /@\[([^\]]+)\]\([^)]+\)/g;
-
-const stripMentionTokens = (text) =>
-  text ? text.replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1") : text;
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - precedence shared via utils/mentions.js.
+//
+// ⚠️ This file held the SEVENTH and EIGHTH copies of the mention pattern, and
+// it is the reason the inventory for this work was wrong once: a grep for the
+// literal `"@["` found the other surfaces, because each pre-checks the string
+// before running its regex - this one never did, so it did not show up. Two
+// surfaces, one shared constant, both invisible to the search that found the
+// rest. Keep the pattern in one module and the question stops arising.
+const stripMentionTokens = (text, blockedIds = null, t = null, names = null) =>
+  text
+    ? splitMentions(text)
+        .map((segment) =>
+          segment.isMention
+            ? `@${resolveMentionLabel(segment, { blockedIds, names, t }).label}`
+            : segment.text,
+        )
+        .join("")
+    : text;
 
 const MESSAGE_PAYLOAD_KEYS = [
   "lastMessage",
@@ -162,10 +170,9 @@ const pickFirst = (source, keys) => {
 
 const SPREADSHEET_EXTENSIONS = ["xls", "xlsx", "csv"];
 
-const getFileTypeLabel = (fileName) => {
+const getAttachmentKind = (fileName) => {
   const ext = fileName?.split(".").pop()?.toLowerCase();
-  if (SPREADSHEET_EXTENSIONS.includes(ext)) return "Spreadsheet";
-  return "File";
+  return SPREADSHEET_EXTENSIONS.includes(ext) ? "spreadsheet" : "file";
 };
 
 const normalizeFileName = (value) => {
@@ -186,38 +193,6 @@ const getAttachmentPreviewIcon = (attachmentPreview) => {
   if (["xls", "xlsx", "csv"].includes(extension)) return FileSpreadsheet;
 
   return File;
-};
-
-const getFormattedAttachmentPreview = (text) => {
-  const value = String(text || "");
-  const fileMatch = value.match(/^(?:File|Spreadsheet)\s+"(.+)"\s+sent$/);
-
-  if (fileMatch) {
-    return {
-      text: value,
-      type: "file",
-      fileName: fileMatch[1],
-    };
-  }
-
-  if (value === "Image sent") {
-    return {
-      text: value,
-      type: "image",
-    };
-  }
-
-  const imageMatch = value.match(/^Image\s+"(.+)"\s+sent$/);
-
-  if (imageMatch) {
-    return {
-      text: value,
-      type: "image",
-      fileName: imageMatch[1],
-    };
-  }
-
-  return null;
 };
 
 const getConversationLastMessagePayload = (conversation) => {
@@ -265,7 +240,7 @@ const getConversationLastMessageText = (conversation) => {
   ]) ?? "";
 };
 
-const getConversationAttachmentPreview = (conversation) => {
+const getConversationAttachmentPreview = (conversation, t) => {
   const candidates = getConversationMessagePayloadCandidates(conversation);
   const fileName = normalizeFileName(candidates
     .map((candidate) => pickFirst(candidate, FILE_NAME_KEYS))
@@ -277,19 +252,15 @@ const getConversationAttachmentPreview = (conversation) => {
     .map((candidate) => pickFirst(candidate, IMAGE_URL_KEYS))
     .find(Boolean);
 
-  if (imageUrl) {
+  // Worded here, at render, in the reader's language. `kind` is data; the
+  // icon is chosen from it, never from the sentence.
+  if (imageUrl || fileName || fileUrl) {
+    const kind = imageUrl ? "image" : getAttachmentKind(fileName);
     return {
-      text: fileName ? `Image "${fileName}" sent` : "Image sent",
-      type: "image",
-      fileName,
-    };
-  }
-
-  if (fileName || fileUrl) {
-    const label = getFileTypeLabel(fileName);
-    return {
-      text: `${label} "${fileName || "attachment"}" sent`,
-      type: "file",
+      text: fileName
+        ? t("chatPage.attachmentPreview.named", { kind, fileName })
+        : t("chatPage.attachmentPreview.unnamed", { kind }),
+      type: kind === "image" ? "image" : "file",
       fileName,
     };
   }
@@ -297,26 +268,63 @@ const getConversationAttachmentPreview = (conversation) => {
   return null;
 };
 
-const renderPreviewWithMentions = (text, query) => {
-  if (!text) return null;
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_TOKEN_RE.lastIndex = 0;
-  while ((m = MENTION_TOKEN_RE.exec(text)) !== null) {
-    if (m.index > last) parts.push({ type: "text", value: text.slice(last, m.index) });
-    parts.push({ type: "mention", name: m[1] });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+// One mention in a preview, resolving its own id. A component because asking
+// for the name is a side effect and the list does not otherwise know which ids
+// its previews mention - same shape as NotificationMention and MentionChip.
+const PreviewMention = ({ segment, query, blockedIds, t }) => {
+  const { names, requestIds } = useMentionNames();
 
-  return parts.map((part, idx) =>
-    part.type === "mention" ? (
-      <span key={idx} className="text-primary font-medium">@{part.name}</span>
-    ) : (
-      <React.Fragment key={idx}>{renderHighlightedText(part.value, query)}</React.Fragment>
-    ),
+  useEffect(() => {
+    requestIds([segment.userId]);
+  }, [requestIds, segment.userId]);
+
+  const { label, isAnonymized } = resolveMentionLabel(segment, {
+    blockedIds,
+    names,
+    t,
+  });
+
+  return (
+    <span
+      className={
+        isAnonymized
+          ? "font-medium text-base-content/50"
+          : "text-primary font-medium"
+      }
+    >
+      {/* Same string the search index holds for a mention, as in MentionChip. */}
+      {renderHighlightedText(`@${label}`, query)}
+    </span>
   );
+};
+
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account.
+const renderPreviewWithMentions = (
+  text,
+  query,
+  blockedIds = null,
+  t = null,
+) => {
+  if (!text) return null;
+  return splitMentions(text).map((segment, index) => {
+    if (!segment.isMention) {
+      return (
+        <React.Fragment key={index}>
+          {renderHighlightedText(segment.text, query)}
+        </React.Fragment>
+      );
+    }
+    return (
+      <PreviewMention
+        key={index}
+        segment={segment}
+        query={query}
+        blockedIds={blockedIds}
+        t={t}
+      />
+    );
+  });
 };
 
 const ConversationList = ({
@@ -331,6 +339,72 @@ const ConversationList = ({
   chatVisible = true,
   currentUser = null,
 }) => {
+  const { t } = useTranslation();
+  const { blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  // Only the plain-text path needs it here; the JSX path resolves per span.
+  const { names: mentionNames, requestIds: requestEventPersonIds } =
+    useMentionNames();
+
+  /**
+   * This surface asks for its OWN event-person ids rather than relying on the
+   * transcript having asked — the same reason MessageBubble does. A surface
+   * that forgets keeps the stored name, which looks exactly like the fix not
+   * being there.
+   */
+  useEffect(() => {
+    const ids = new Set();
+    for (const conversation of conversations || []) {
+      for (const id of collectEventPersonIds(
+        getConversationLastMessageText(conversation),
+      )) {
+        ids.add(id);
+      }
+    }
+    if (ids.size > 0) requestEventPersonIds([...ids]);
+  }, [conversations, requestEventPersonIds]);
+
+  // Team and role names too: the preview text comes from describeEvent, which
+  // uses current names once they have been fetched. The counter re-renders the
+  // list when the names have arrived.
+  const [, setTeamNamesResolved] = useState(0);
+  useEffect(() => {
+    const ids = new Set();
+    const roleRefs = [];
+    for (const conversation of conversations || []) {
+      const lastMessageText = getConversationLastMessageText(conversation);
+      for (const id of collectEventTeamIds(lastMessageText)) {
+        ids.add(id);
+      }
+      roleRefs.push(
+        ...collectEventRoleRefs(
+          lastMessageText,
+          conversation.type === "team" ? conversation.id : null,
+        ),
+      );
+    }
+    if (ids.size === 0 && roleRefs.length === 0) return undefined;
+
+    let isCurrent = true;
+    Promise.all([resolveTeamNames([...ids]), resolveRoleNames(roleRefs)]).then(() => {
+      if (isCurrent) setTeamNamesResolved((count) => count + 1);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [conversations]);
+
+
+  /**
+   * The same tooltip appears at nine sites in this file, and again in
+   * ConversationHeader and ConversationList. A display name can resolve to
+   * an empty string, and an empty interpolation reads "View  details" - in
+   * German a sentence with no object - so the nameless case has its own key.
+   */
+  const detailsTooltip = (name) =>
+    name
+      ? t("chatHeader.viewDetails", { name })
+      : t("chatHeader.viewDetailsGeneric");
+
   // State for team details modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
@@ -547,10 +621,11 @@ const ConversationList = ({
   }
 
   if (conversations.length === 0) {
-    const emptyTitle = emptyState?.title || "No conversations yet";
+    const emptyTitle = emptyState?.title || t("chatPage.emptyList.title");
+    // No button label is quoted: the button is named differently on a
+    // profile and on a team page, and a quoted label drifts from both.
     const emptyDescription =
-      emptyState?.description ||
-      `Start chatting with other people or team members by visiting their profile and clicking "Send Message"`;
+      emptyState?.description || t("chatPage.emptyList.description");
     const showEmptyActions = emptyState?.showActions !== false;
 
     return (
@@ -564,14 +639,14 @@ const ConversationList = ({
               className="btn btn-sm btn-primary gap-2"
             >
               <User size={16} />
-              Find People
+              {t("chatPage.emptyList.findPeople")}
             </Link>
             <Link
               to="/search?type=teams"
               className="btn btn-sm btn-primary gap-2"
             >
               <Users size={16} />
-              Find Teams
+              {t("chatPage.emptyList.findTeams")}
             </Link>
           </div>
         )}
@@ -613,14 +688,18 @@ const ConversationList = ({
           // Get display name
           const displayName = isTeam
             ? conversationData?.name
-            : directDisplayName || DELETED_USER_DISPLAY_NAME;
+            : directDisplayName || t("user.formerUser");
           const isSearchActive = Boolean(searchQuery.trim());
           const lastMessageText = getConversationLastMessageText(conversation);
           const attachmentPreview =
-            getConversationAttachmentPreview(conversation);
+            getConversationAttachmentPreview(conversation, t);
           const eventPreview = getEventPreview(
             lastMessageText,
             currentUser,
+            t,
+            blockedRelationshipIds,
+            blockedRelationshipNames,
+            mentionNames,
           );
           // During search the matched message may be an older system/event
           // message (not the conversation's last message). Style it through the
@@ -629,7 +708,14 @@ const ConversationList = ({
           const hasSearchMessageMatch =
             isSearchActive && Boolean(conversation.searchMatchContent);
           const searchEventPreview = hasSearchMessageMatch
-            ? getEventPreview(conversation.searchMatchContent, currentUser)
+            ? getEventPreview(
+                conversation.searchMatchContent,
+                currentUser,
+                t,
+                blockedRelationshipIds,
+                blockedRelationshipNames,
+                mentionNames,
+              )
             : null;
           // When the hit is on the conversation's metadata (e.g. team name) and
           // no message matched, the preview shows the last message — style it the
@@ -647,13 +733,12 @@ const ConversationList = ({
             ? activeEventPreview.text
             : isSearchActive && conversation.searchMatchPreview
               ? conversation.searchMatchPreview
-              : attachmentPreview?.text || lastMessageText || "No messages yet";
-          const formattedAttachmentPreview =
-            !isSearchActive && !attachmentPreview
-              ? getFormattedAttachmentPreview(previewText)
-              : null;
-          const visibleAttachmentPreview =
-            attachmentPreview || formattedAttachmentPreview;
+              : attachmentPreview?.text ||
+                lastMessageText ||
+                (conversation.isVirtual && !isTeam
+                  ? t("chatPage.startConversation")
+                  : t("chatPage.noMessagesYet"));
+          const visibleAttachmentPreview = attachmentPreview;
           const hasConversationPreview = Boolean(
             shouldUseEventPreview ||
               visibleAttachmentPreview ||
@@ -707,9 +792,9 @@ const ConversationList = ({
                 <Tooltip
                   content={
                     isTeam
-                      ? `View ${conversationData?.name} details`
+                      ? detailsTooltip(conversationData?.name)
                       : isUserClickable
-                        ? `View ${displayName} details`
+                        ? detailsTooltip(displayName)
                         : undefined
                   }
                   wrapperClassName="inline-flex items-center mr-3"
@@ -762,13 +847,16 @@ const ConversationList = ({
                     {/* Name - Clickable for both team and direct conversations */}
                     <Tooltip
                       content={
-                        isUserClickable
-                          ? `Click to view ${displayName}'s details`
-                          : isTeam
-                            ? `Click to view ${displayName} details`
-                            : displayName?.length > 22
-                              ? displayName
-                              : undefined
+                        // Same sentence as the avatar tooltip three elements
+                        // up: they point at the same conversation, so saying
+                        // it two different ways was only ever an accident.
+                        // The possessive form this replaced also produced
+                        // "Click to view 's details" when the name was empty.
+                        isUserClickable || isTeam
+                          ? detailsTooltip(displayName)
+                          : displayName?.length > 22
+                            ? displayName
+                            : undefined
                       }
                       wrapperClassName="block min-w-0 flex-1 overflow-hidden"
                     >
@@ -787,14 +875,14 @@ const ConversationList = ({
                               : undefined
                         }
                       >
-                        {renderHighlightedText(displayName || "Unknown", searchQuery)}
+                        {renderHighlightedText(displayName || t("user.unknown"), searchQuery)}
                       </h3>
                     </Tooltip>
                   </div>
                   <Tooltip
                     content={
                       (previewText?.length ?? 0) > 60
-                        ? stripMentionTokens(previewText)
+                        ? stripMentionTokens(previewText, blockedRelationshipIds, t, mentionNames)
                         : undefined
                     }
                     position="bottom"
@@ -838,17 +926,21 @@ const ConversationList = ({
                             },
                           )}
                           <span className="truncate">
-                            {renderPreviewWithMentions(previewText, searchQuery)}
+                            {renderPreviewWithMentions(previewText, searchQuery, blockedRelationshipIds, t)}
                           </span>
                         </span>
                       </p>
                     ) : hasConversationPreview ? (
                       <p className="text-sm text-base-content/70 truncate">
-                        {renderPreviewWithMentions(previewText, searchQuery)}
+                        {renderPreviewWithMentions(previewText, searchQuery, blockedRelationshipIds, t)}
+                      </p>
+                    ) : conversation.isVirtual && !isTeam ? (
+                      <p className="text-sm text-base-content/70 truncate">
+                        {previewText}
                       </p>
                     ) : (
                       <p className="text-sm text-base-content/50 truncate italic">
-                        This message was deleted.
+                        {t("messageBubble.messageDeleted")}
                       </p>
                     )}
                   </Tooltip>
@@ -867,21 +959,27 @@ const ConversationList = ({
                           )}
                           <Users size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
-                            {renderHighlightedText("Team Chat", searchQuery)}
+                            {renderHighlightedText(t("chatHeader.teamChat"), searchQuery)}
                           </span>
                         </>
                       ) : (
                         <>
                           <User size={12} className="flex-shrink-0" />
                           <span className={`lomir-conversation-kind-label whitespace-nowrap ${isSearchActive && chatVisible ? "hidden sm:inline md:hidden" : "inline"}`}>
-                            {renderHighlightedText("Direct Message Chat", searchQuery)}
+                            {renderHighlightedText(t("chatHeader.directMessageChat"), searchQuery)}
                           </span>
                         </>
                       )}
                       {isSearchActive && conversation.searchMatchCount > 0 && (() => {
                         const count = conversation.searchMatchCount;
-                        const matchWord = count === 1 ? "match" : "matches";
                         const query = searchQuery.trim();
+                        // Resolved at render, so a language change re-words it.
+                        // The quotation marks belong to the translation: “…” in
+                        // English, „…“ in German.
+                        const matchSentence = t(
+                          "chatPage.searchMatchesInConversation",
+                          { count, query },
+                        );
                         return (
                           <>
                             <Search size={12} className="flex-shrink-0 ml-2" />
@@ -890,7 +988,7 @@ const ConversationList = ({
                               <>
                                 <span className="whitespace-nowrap sm:hidden">{count}</span>
                                 <span className="truncate whitespace-nowrap hidden sm:inline md:hidden">
-                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                  {matchSentence}
                                 </span>
                                 <span className="whitespace-nowrap hidden md:inline">{count}</span>
                               </>
@@ -899,7 +997,7 @@ const ConversationList = ({
                               <>
                                 <span className="whitespace-nowrap sm:hidden">{count}</span>
                                 <span className="truncate whitespace-nowrap hidden sm:inline">
-                                  {count} search {matchWord} for &ldquo;{query}&rdquo;
+                                  {matchSentence}
                                 </span>
                               </>
                             )}
@@ -920,13 +1018,13 @@ const ConversationList = ({
 
                 {(!isActive || chatVisible) && (
                   <Tooltip
-                    content={isActive ? "Deselect Conversation" : "Open conversation"}
+                    content={isActive ? t("chatPage.deselectConversation") : t("chatPage.openConversation")}
                     position="top"
                     wrapperClassName="inline-flex items-center flex-shrink-0 ml-1 -mr-4"
                   >
                     <button
                       type="button"
-                      aria-label={isActive ? "Deselect Conversation" : "Open conversation"}
+                      aria-label={isActive ? t("chatPage.deselectConversation") : t("chatPage.openConversation")}
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectConversation(conversation.id);
@@ -949,7 +1047,7 @@ const ConversationList = ({
           return (
             <Tooltip
               key={`${conversation.type}-${conversation.id}`}
-              content={isActive ? "Deselect Conversation" : undefined}
+              content={isActive ? t("chatPage.deselectConversation") : undefined}
               position="top"
               wrapperClassName="block"
             >

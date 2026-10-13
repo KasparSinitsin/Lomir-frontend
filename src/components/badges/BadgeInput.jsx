@@ -7,9 +7,11 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { X, Award, Check } from "lucide-react";
 import { useBadges } from "../../hooks/useBadgeQueries";
 import { getCategoryIcon, getBadgeIcon } from "../../utils/badgeIconUtils";
+import { getBadgeName, getCategoryLabel } from "../../utils/badgeLabels";
 import {
   CATEGORY_COLORS,
   CATEGORY_ORDER,
@@ -31,9 +33,13 @@ const hexToRgba = (hex, alpha) => {
 const BadgeInput = ({
   selectedBadgeIds = [],
   onBadgeIdsChange,
-  placeholder = "Search for badges...",
+  // Declared without a value: a user-facing default in a parameter list
+  // cannot be translated. Resolved in the body instead, so a caller-supplied
+  // label still wins.
+  placeholder,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const { data: allBadges = [], isLoading } = useBadges();
 
   const [inputValue, setInputValue] = useState("");
@@ -66,16 +72,21 @@ const BadgeInput = ({
     return m;
   }, [allBadges]);
 
+  // Matches what the user reads as well as what is stored: a German user types
+  // „Teamplayer", the database holds "Team Player". Name and category stay the
+  // stored English values everywhere else — they are grouping keys and icon keys.
   const filteredBadges = useMemo(() => {
     const q = inputValue.trim().toLowerCase();
     if (!q) return allBadges;
     return allBadges.filter(
       (b) =>
         b.name.toLowerCase().includes(q) ||
+        getBadgeName(b.name, t).toLowerCase().includes(q) ||
         b.category?.toLowerCase().includes(q) ||
+        (b.category && getCategoryLabel(b.category, t).toLowerCase().includes(q)) ||
         b.description?.toLowerCase().includes(q)
     );
-  }, [allBadges, inputValue]);
+  }, [allBadges, inputValue, t]);
 
   const groupedBadges = useMemo(() => {
     const groups = new Map();
@@ -222,7 +233,11 @@ const BadgeInput = ({
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onFocus={() => !disabled && !isLoading && setShowDropdown(true)}
-        placeholder={isLoading ? "Loading badges…" : placeholder}
+        placeholder={
+          isLoading
+            ? t("badges.input.loading")
+            : (placeholder ?? t("badges.input.searchPlaceholder"))
+        }
         disabled={disabled || isLoading}
         className="input input-bordered w-full pr-10 focus:input-primary"
       />
@@ -247,12 +262,12 @@ const BadgeInput = ({
                   <span className="shrink-0 mt-px">
                     {getBadgeIcon(badge.name, "white", 14)}
                   </span>
-                  {badge.name}
+                  {getBadgeName(badge.name, t)}
                   <button
                     type="button"
                     onClick={() => handleToggle(badgeId)}
                     className="hover:text-error transition-colors"
-                    aria-label={`Remove ${badge.name}`}
+                    aria-label={t("focusAreas.remove", { name: getBadgeName(badge.name, t) })}
                     disabled={disabled}
                   >
                     <X size={14} />
@@ -307,10 +322,14 @@ const BadgeInput = ({
                     <span className="flex items-center justify-start gap-1.5">
                       <Award size={16} strokeWidth={2.5} className="text-primary" />
                       <span className="font-semibold text-primary-focus">
-                        {inputValue.trim() ? "Search Results" : "All Badges"}
+                        {inputValue.trim()
+                          ? t("focusAreas.searchResultsTitle")
+                          : t("badges.input.allBadges")}
                       </span>
                       {filteredBadges.length === 0 && (
-                        <span className="text-xs opacity-70">No results</span>
+                        <span className="text-xs opacity-70">
+                          {t("pagination.noResults")}
+                        </span>
                       )}
                     </span>
                   </li>
@@ -369,7 +388,7 @@ const BadgeInput = ({
                                     style={{ color }}
                                   >
                                     {getCategoryIcon(category, color, 10)}
-                                    <span>{category}</span>
+                                    <span>{getCategoryLabel(category, t)}</span>
                                   </span>
                                 )}
                               </div>
@@ -377,7 +396,7 @@ const BadgeInput = ({
                                 <span className="shrink-0">
                                   {getBadgeIcon(badge.name, color, 14)}
                                 </span>
-                                <span className="font-medium">{badge.name}</span>
+                                <span className="font-medium">{getBadgeName(badge.name, t)}</span>
                               </div>
                             </button>
                           </li>

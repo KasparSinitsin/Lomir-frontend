@@ -73,6 +73,9 @@ export const FOCUS_GREEN_DARK = "#036b0c";
 /** Light green background for tag section containers */
 export const TAG_SECTION_BG = "#F0FDF4"; // green-50
 
+/** Fine outline of a focus area box: FOCUS_GREEN_DARK at 20% (as in the tag awards modal) */
+export const FOCUS_BORDER = "rgba(3, 107, 12, 0.2)";
+
 // ═══════════════════════════════════════════════════════════
 // SUPERCATEGORY ORDER
 // ═══════════════════════════════════════════════════════════

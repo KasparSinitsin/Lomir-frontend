@@ -3,6 +3,8 @@ import { tagService } from "../services/tagService";
 
 export const structuredTagsQueryKey = ["tags", "structured"];
 
+export const tagTranslationsQueryKey = (language) => ["tags", "translations", language];
+
 export const popularTagsQueryKey = (limit = 10, supercategory = null) => [
   "tags",
   "popular",
@@ -43,5 +45,20 @@ export const usePopularTags = (
     queryKey: popularTagsQueryKey(limit, supercategory),
     queryFn: () => tagService.getPopularTags(limit, supercategory),
     staleTime: 10 * 60_000,
+    ...options,
+  });
+
+/**
+ * The dictionary of translated tag names for a language. English (or no language) is never
+ * fetched. The names change when somebody imports a portion, not while the app runs, so the
+ * answer is kept for half an hour; a failure is retried once and then shows the stored names.
+ */
+export const useTagTranslations = (language, options = {}) =>
+  useQuery({
+    queryKey: tagTranslationsQueryKey(language),
+    queryFn: () => tagService.getTagTranslations(language),
+    enabled: Boolean(language) && language !== "en",
+    staleTime: 30 * 60_000,
+    retry: 1,
     ...options,
   });

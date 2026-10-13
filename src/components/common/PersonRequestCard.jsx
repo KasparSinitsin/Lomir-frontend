@@ -1,9 +1,9 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Calendar, MapPin, FlaskConical } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
 import Tooltip from "./Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
   getDisplayName as getUserDisplayName,
   isSyntheticUser,
 } from "../../utils/userHelpers";
@@ -40,7 +40,7 @@ const PersonRequestCard = ({
   user,
   date,
   message,
-  messageLabel = "Message:",
+  messageLabel,
   messageIcon,
   onUserClick,
   actions,
@@ -54,6 +54,12 @@ const PersonRequestCard = ({
   forceNarrow = false,
   privateProfile,
 }) => {
+  // Location text is resolved by `locationUtils`, which reads the active
+  // language from the i18n instance rather than from props. This hook is
+  // what makes the component re-render on `changeLanguage`; `t` is used
+  // directly as well, for the demo-profile tooltip.
+  const { t } = useTranslation();
+
   // ============ Helper Functions ============
   const isPrivateUser = privateProfile ?? isPrivateProfileUser(user);
   const displayUser = isPrivateUser
@@ -76,21 +82,22 @@ const PersonRequestCard = ({
 
   // Get display name
   const getDisplayName = () => {
-    if (isPrivateUser) return "Private Profile";
+    if (isPrivateUser) return t("user.privateProfile");
 
+    // `getDisplayName` returns the English constant "Unknown" as a marker.
     const displayName = getUserDisplayName(user);
-    return displayName === "Unknown" ? "Unknown User" : displayName;
+    return displayName === "Unknown" ? t("requestList.unknownUser") : displayName;
   };
 
   // Format date
   const formatDate = () => {
-    if (!date) return "Unknown date";
+    if (!date) return t("requestList.unknownDate");
 
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
-      return "Unknown date";
+      return t("requestList.unknownDate");
     }
   };
 
@@ -122,10 +129,17 @@ const PersonRequestCard = ({
   const probeRef = useRef(null);
   const dateRef = useRef(null);
   const fullName = getDisplayName();
-  const abbrevName = displayUser ? formatDisplayName(displayUser) : fullName;
+  // A private profile's stand-in name is translated text, not a person's name,
+  // so it is never abbreviated.
+  const abbrevName =
+    displayUser && !isPrivateUser ? formatDisplayName(displayUser) : fullName;
   const hasLocation =
     !isPrivateUser &&
     (user?.city || user?.country || getPostalCode());
+  // Country code on the line, the country's name (active language) on hover.
+  const { short: locationShort, full: locationFull } = formatListLocation(user, {
+    isRemote: user?.is_remote || user?.isRemote,
+  });
   const [displayedName, setDisplayedName] = useState(fullName);
   const [isOverflow, setIsOverflow] = useState(false);
   const isOverflowRef = useRef(false);
@@ -170,7 +184,7 @@ const PersonRequestCard = ({
         <div className="flex min-w-0 flex-1 items-start space-x-4">
           {/* Avatar */}
           <Tooltip
-            content={effectiveClickable ? "View profile" : undefined}
+            content={effectiveClickable ? t("requestList.viewProfile") : undefined}
             wrapperClassName={`avatar ${clickableStyles}`}
           >
             <UserAvatar
@@ -189,7 +203,7 @@ const PersonRequestCard = ({
           <div className="flex-1 min-w-0">
             <h4 ref={nameContainerRef} className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative">
               {effectiveClickable ? (
-                <Tooltip content="View profile" wrapperClassName="cursor-pointer hover:text-primary transition-colors">
+                <Tooltip content={t("requestList.viewProfile")} wrapperClassName="cursor-pointer hover:text-primary transition-colors">
                   <span onClick={handleUserClick}>{displayedName}</span>
                 </Tooltip>
               ) : (
@@ -203,7 +217,7 @@ const PersonRequestCard = ({
                 {showUsername && (
                   effectiveClickable ? (
                     <div className="min-w-0 flex-[0_1_auto] overflow-hidden">
-                      <Tooltip content="View profile" wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
+                      <Tooltip content={t("requestList.viewProfile")} wrapperClassName="block truncate leading-[1.05] text-base-content/70 cursor-pointer hover:text-primary transition-colors">
                         <span onClick={handleUserClick}>@{user.username}</span>
                       </Tooltip>
                     </div>
@@ -220,17 +234,20 @@ const PersonRequestCard = ({
                   </div>
                 )}
                 {showLocation && hasLocation && (
-                  <div className="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden">
+                  <Tooltip
+                    content={locationFull || locationShort || getPostalCode()}
+                    wrapperClassName="flex min-w-0 max-w-[calc(100%-1.5rem)] flex-[0_1_auto] items-center gap-1 overflow-hidden"
+                  >
                     <MapPin size={10} className="text-base-content/60 shrink-0" />
                     <span className="min-w-0 truncate text-base-content/60 leading-[1.05]">
-                      {formatListLocation(user, { isRemote: user?.is_remote || user?.isRemote }).short || getPostalCode()}
+                      {locationShort || getPostalCode()}
                     </span>
-                  </div>
+                  </Tooltip>
                 )}
                 {sublineExtra}
                 {showDemoProfile && (
                   <Tooltip
-                    content={DEMO_PROFILE_TOOLTIP}
+                    content={t("demo.profileTooltip")}
                     wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
                     <FlaskConical size={10} className="flex-shrink-0" />
@@ -265,7 +282,7 @@ const PersonRequestCard = ({
           {message && (
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               {messageIcon}
-              {messageLabel}
+              {messageLabel ?? t("requestList.message")}
             </p>
           )}
           <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">

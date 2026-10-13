@@ -1,7 +1,19 @@
-import { parseSystemMessage } from "../utils/messageSystemParser";
+import {
+  collectEventPersonIds,
+  collectEventRoleRefs,
+  collectEventTeamIds,
+  describeEvent,
+} from "../utils/describeEvent";
+import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
 import { messageService } from "../services/messageService";
+import {
+  collectMentionIds,
+  hasMention,
+  resolveMentionLabel,
+  splitMentions,
+} from "./mentions";
 import {
   getConversationPartnerId,
   isDirectConversationForPartner,
@@ -14,6 +26,57 @@ import {
 
 export const CHAT_SEARCH_PAGE_SIZE = 100;
 export const CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION = 500;
+
+// Resolve mention labels with the same snapshot the index awaited for events.
+// Blocked/deleted people and @all follow the display renderer's precedence;
+// unresolved ids retain their stored label after a failed or timed-out lookup.
+const sanitizeMentionsForSearch = (content, options = {}) => {
+  if (!hasMention(content)) return content;
+  return splitMentions(content)
+    .map((segment) =>
+      segment.isMention
+        ? `@${resolveMentionLabel(segment, options).label}`
+        : segment.text,
+    )
+    .join("");
+};
+
+// Shared by both index builds and the search-target reveal. Include mentions
+// inside personal event text as well as the event's person slots.
+export const collectMessageSearchPersonIds = (messages) => {
+  const ids = new Set();
+  for (const message of messages ?? []) {
+    const content = message?.content ?? null;
+    for (const id of [
+      ...collectEventPersonIds(content),
+      ...collectMentionIds(content),
+    ]) {
+      ids.add(id);
+    }
+  }
+  return [...ids];
+};
+
+// The team ids the same messages name, so the index can await their current
+// names (resolveTeamNames) before it is built.
+export const collectMessageSearchTeamIds = (messages) => {
+  const ids = new Set();
+  for (const message of messages ?? []) {
+    for (const id of collectEventTeamIds(message?.content ?? null)) ids.add(id);
+  }
+  return [...ids];
+};
+
+export const collectMessageSearchRoleRefs = (messages, chatTeamId = null) => {
+  const refs = new Map();
+  for (const message of messages ?? []) {
+    const fallbackTeamId = message?.team_id ?? message?.teamId ?? chatTeamId;
+    for (const ref of collectEventRoleRefs(message?.content ?? null, fallbackTeamId)) {
+      refs.set(`${ref.teamId}:${ref.roleId}`, ref);
+    }
+  }
+  return [...refs.values()];
+};
 
 export const dedupeConversations = (list) =>
   (list || []).filter((conv, index, self) => {
@@ -58,6 +121,90 @@ export const countChatSearchMatches = (value, normalizedQuery) => {
   return count;
 };
 
+/**
+ * Split `value` into alternating plain and matching segments, by exactly the
+ * rule `countChatSearchMatches` counts by: the query as **one contiguous
+ * phrase**, case-insensitive and diacritic-insensitive.
+ *
+ * ⚠️ This replaces three independent copies of a per-WORD highlighter (in
+ * `messageDisplayRenderers.jsx`, `MessageText.jsx` and `ConversationList.jsx`)
+ * that disagreed with the counter in two separate ways:
+ *
+ *  1. They split the query on whitespace and highlighted each word on its own.
+ *     Searching `cooking & Recipe Swap` — a phrase that occurs verbatim, and
+ *     that the counter matched once — painted **four** separate yellow pills
+ *     over it, one per word, with the spaces between them unmarked.
+ *  2. They matched with a `gi` regex against the RAW text, while the counter
+ *     matches against `normalizeChatSearchText` output. So a search for
+ *     "Muller" was counted inside "Müller" and highlighted in neither — which
+ *     matters in a German UI (Müller, Köln, Straße).
+ *
+ * Both mechanisms now come from this one function, beside the counter, so they
+ * cannot drift apart again. The query is trimmed then normalized, matching
+ * `useChatSearchState`'s `normalizedChatSearchQuery` exactly.
+ *
+ * Returns data, not JSX, on purpose: the three call sites style their `<mark>`
+ * differently — the conversation list keeps the surrounding colour and weight —
+ * and that difference is deliberate.
+ *
+ * @param {string} value the text to highlight, as displayed
+ * @param {string} query the raw search box content
+ * @returns {{text: string, isMatch: boolean}[]}
+ */
+export const splitChatSearchMatches = (value, query) => {
+  const text = String(value ?? "");
+  const needle = normalizeChatSearchText(String(query ?? "").trim());
+
+  if (!text || !needle) return [{ text, isMatch: false }];
+
+  // Normalize per CODE POINT, remembering where each normalized character came
+  // from, so a match found in the normalized text is sliced out of the
+  // ORIGINAL text with its accents, case and emoji intact. Iterating with
+  // `for...of` rather than by index is what keeps a surrogate pair (any emoji)
+  // from being normalized as two broken halves.
+  let normalized = "";
+  const originIndex = [];
+  let cursor = 0;
+
+  for (const char of text) {
+    const piece = normalizeChatSearchText(char);
+    for (let i = 0; i < piece.length; i += 1) originIndex.push(cursor);
+    normalized += piece;
+    cursor += char.length;
+  }
+  originIndex.push(text.length); // sentinel, so an end offset always maps
+
+  const parts = [];
+  let searchFrom = 0;
+  let sliceFrom = 0;
+
+  while (searchFrom + needle.length <= normalized.length) {
+    const found = normalized.indexOf(needle, searchFrom);
+    if (found === -1) break;
+
+    const start = originIndex[found];
+    const end = originIndex[found + needle.length] ?? text.length;
+
+    if (end > start) {
+      if (start > sliceFrom) {
+        parts.push({ text: text.slice(sliceFrom, start), isMatch: false });
+      }
+      parts.push({ text: text.slice(start, end), isMatch: true });
+      sliceFrom = end;
+    }
+
+    // Advancing by the whole needle makes matches non-overlapping, which is
+    // how `countChatSearchMatches` counts them.
+    searchFrom = found + needle.length;
+  }
+
+  if (sliceFrom < text.length) {
+    parts.push({ text: text.slice(sliceFrom), isMatch: false });
+  }
+
+  return parts.length ? parts : [{ text, isMatch: false }];
+};
+
 const addSearchPart = (parts, value) => {
   if (value == null) return;
 
@@ -97,14 +244,62 @@ const addUserSearchParts = (parts, user) => {
   ]);
 };
 
-export const buildMessageSearchText = (message) => {
+/**
+ * The sentence a translated event shows THIS reader, in the active language —
+ * the transcript/quote form (D3). `null` for everything that is not an event,
+ * which is indexed by its content.
+ *
+ * ⚠️ The stored content is deliberately NOT indexed for these: it is English
+ * or a wire format ("ROLE_CLOSED: 12:Chor | …"), so a German reader searching
+ * „geschlossen" found nothing and a search for "closed" found a German banner.
+ *
+ * ⚠️ Only the long form, not the list form as well: both usually share the
+ * verb, so every event counted twice ("34 Treffer" for 17 banners) in the
+ * number that orders the conversation list. Decided 2026-09-16; the cost is
+ * a word that only the short form uses ("Rolle wieder geöffnet").
+ */
+const getTranslatedEventSearchParts = (
+  message,
+  {
+    viewer = null,
+    t = null,
+    blockedIds = null,
+    blockedNames = null,
+    names = null,
+  } = {},
+) => {
+  const event = describeEvent(
+    message?.content ?? null,
+    viewer,
+    blockedIds,
+    blockedNames,
+    names,
+  );
+  const full = getEventSentenceText(t, event, "full");
+  if (full == null) return null;
+  // What the member typed is shown beside the banner, so it stays searchable.
+  return event.personalMessage
+    ? [
+        full,
+        sanitizeMentionsForSearch(event.personalMessage, { blockedIds, names, t }),
+      ]
+    : [full];
+};
+
+/**
+ * @param {object} message
+ * @param {{ viewer?: object|null, t?: Function|null, blockedIds?: Set|null, names?: Map|null }} [options]
+ *   the reader, the active `t`, and their block relationships — required for
+ *   event messages
+ */
+export const buildMessageSearchText = (message, options = {}) => {
   const parts = [];
-  const parsedSystemMessage = parseSystemMessage(message?.content);
-  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
+  const eventParts = getTranslatedEventSearchParts(message, options);
 
   addSearchPart(parts, [
-    message?.content,
-    systemMessageText,
+    ...(eventParts ?? [
+      sanitizeMentionsForSearch(message?.content, options),
+    ]),
     message?.fileName,
     message?.file_name,
     message?.senderUsername,
@@ -122,77 +317,8 @@ export const buildMessageSearchText = (message) => {
   return normalizeChatSearchText(parts.join(" "));
 };
 
-const buildSystemMessageSearchSnippet = (parsedMessage) => {
-  if (!parsedMessage) return "";
-
-  switch (parsedMessage.type) {
-    case "application_approved_dm":
-      return [
-        `You approved ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was approved by ${parsedMessage.approverName}`,
-        parsedMessage.hasPersonalMessage ? "who added this message" : "Welcome to the team",
-      ].join(". ");
-    case "application_approved":
-      return [
-        `Your application was approved by ${parsedMessage.approverName}. Welcome to the team`,
-        `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them`,
-      ].join(". ");
-    case "application_declined":
-      return [
-        `You declined ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}`,
-        `Your application to ${parsedMessage.teamName} was declined by ${parsedMessage.approverName}`,
-        parsedMessage.hasPersonalMessage
-          ? "who added this message"
-          : "Want to reach out to them in this chat",
-      ].join(". ");
-    case "application_response":
-      return `Response to your application for ${parsedMessage.teamName}. Your decline response to ${parsedMessage.applicantName}'s application for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
-    case "invitation_declined":
-      return [
-        `You declined ${parsedMessage.inviterName}'s invitation for ${parsedMessage.teamName}`,
-        `Your invitation for ${parsedMessage.teamName} was declined by ${parsedMessage.inviteeName}`,
-        parsedMessage.hasPersonalMessage
-          ? "who added this message"
-          : "Want to reach out to them in this chat",
-      ].join(". ");
-    case "invitation_response":
-      return `Response to your invitation for ${parsedMessage.teamName}. ${parsedMessage.personalMessage || ""}`;
-    case "team_join":
-      return `${parsedMessage.userName} joined the team. You joined the team. Welcome aboard. ${parsedMessage.personalMessage || ""}`;
-    case "team_leave":
-      return `${parsedMessage.userName} has left the team. You have left the team.`;
-    case "role_application_approved":
-      return `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`;
-    case "role_reopened":
-      return `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`;
-    case "role_filled":
-      return parsedMessage.userName && parsedMessage.userName !== "Someone"
-        ? `${parsedMessage.userName} is now filling the role ${parsedMessage.roleName}.`
-        : `The role ${parsedMessage.roleName} was marked as filled.`;
-    case "member_removed_public":
-      return `${parsedMessage.userName} has been removed from the team. You removed ${parsedMessage.userName} from the team.`;
-    case "invitation_cancelled":
-      return `${parsedMessage.cancellerName} cancelled your invitation to join ${parsedMessage.teamName}. You cancelled your invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName}.`;
-    case "application_cancelled":
-      return `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}. You cancelled your application for ${parsedMessage.teamName}.`;
-    case "member_removed":
-      return `You were removed from ${parsedMessage.teamName} by ${parsedMessage.removerName}. You removed ${parsedMessage.memberName} from ${parsedMessage.teamName}.`;
-    case "role_changed":
-      return `Your role in ${parsedMessage.teamName} was changed to ${parsedMessage.newRole} by ${parsedMessage.changerName}. You changed ${parsedMessage.memberName}'s role to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`;
-    case "ownership_team":
-      return `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}`;
-    case "ownership_transferred":
-      return `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to you. You transferred team ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}. Congratulations`;
-    case "team_deleted":
-      return `${parsedMessage.ownerName} deleted the team ${parsedMessage.teamName}. You deleted the team ${parsedMessage.teamName}.`;
-    default:
-      return "";
-  }
-};
-
-const buildMessageSearchSnippet = (message) => {
-  const parsedSystemMessage = parseSystemMessage(message?.content);
-  const systemMessageText = buildSystemMessageSearchSnippet(parsedSystemMessage);
+const buildMessageSearchSnippet = (message, options = {}) => {
+  const systemMessageText = getTranslatedEventSearchParts(message, options)?.join(" ");
   const senderName = [
     message?.senderFirstName || message?.sender_first_name,
     message?.senderLastName || message?.sender_last_name,
@@ -206,13 +332,18 @@ const buildMessageSearchSnippet = (message) => {
     message?.sender_username ||
     message?.sender?.username ||
     "";
+  const { t } = options;
   const body =
     systemMessageText ||
-    message?.content ||
+    sanitizeMentionsForSearch(message?.content, options) ||
     message?.fileName ||
     message?.file_name ||
-    (message?.imageUrl || message?.image_url ? "Image" : "") ||
-    (message?.fileUrl || message?.file_url ? "File" : "");
+    (message?.imageUrl || message?.image_url
+      ? t?.("messageInput.attachmentImage") ?? ""
+      : "") ||
+    (message?.fileUrl || message?.file_url
+      ? t?.("messageBubble.attachmentFile") ?? ""
+      : "");
 
   return [sender, body].filter(Boolean).join(": ");
 };
@@ -281,21 +412,20 @@ export const getNotificationEventHighlightIds = (messages, eventTarget) => {
   return target?.id ? [target.id] : [];
 };
 
+// The conversation list's `lastMessage`: the text for a text message, and for
+// an attachment its data, never a sentence. This runs in hooks without `t` and
+// the result is kept in state, so a sentence built here would be English, or
+// stuck in the language of the moment it was built. `ConversationList` words
+// the attachment at render (and picks its icon from the data, not the text).
 export const buildConversationLastMessagePreview = (message) => {
   if (message?.content) return message.content;
 
-  const fileName = message?.fileName || message?.file_name;
-  const fileUrl = message?.fileUrl || message?.file_url;
-  const imageUrl = message?.imageUrl || message?.image_url;
+  const fileName = message?.fileName || message?.file_name || null;
+  const fileUrl = message?.fileUrl || message?.file_url || null;
+  const imageUrl = message?.imageUrl || message?.image_url || null;
 
-  if (imageUrl) {
-    return fileName ? `Image "${fileName}" sent` : "Image sent";
-  }
-
-  if (fileName || fileUrl) {
-    const ext = fileName?.split(".").pop()?.toLowerCase();
-    const label = ["xls", "xlsx", "csv"].includes(ext) ? "Spreadsheet" : "File";
-    return `${label} "${fileName || "attachment"}" sent`;
+  if (imageUrl || fileName || fileUrl) {
+    return { fileName, fileUrl, imageUrl };
   }
 
   return message?.content ?? "";
@@ -430,7 +560,7 @@ const getMessageSearchTimestampValue = (message) =>
   message?.updated_at ||
   null;
 
-export const buildMessageSearchSnippets = (messages) =>
+export const buildMessageSearchSnippets = (messages, options = {}) =>
   (messages || [])
     .map((message, index) => ({
       message,
@@ -440,7 +570,7 @@ export const buildMessageSearchSnippets = (messages) =>
     .sort((a, b) => a.timestamp - b.timestamp || a.index - b.index)
     .map(({ message }) => ({
       id: getMessageSearchId(message),
-      text: buildMessageSearchSnippet(message),
+      text: buildMessageSearchSnippet(message, options),
       // Raw content is kept alongside the humanised search text so the
       // conversation list can render a matched system/event message with its
       // canonical icon + colour styling (via getEventPreview), not just plain text.
@@ -470,19 +600,38 @@ export const buildLatestMatchPreview = (snippet, normalizedQuery) => {
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 };
 
-export const buildMessagesSearchText = (messages) =>
-  normalizeChatSearchText((messages || []).map(buildMessageSearchText).join(" "));
+// ⚠️ Not `.map(buildMessageSearchText)`: map would pass the index as `options`.
+export const buildMessagesSearchText = (messages, options = {}) =>
+  normalizeChatSearchText(
+    (messages || [])
+      .map((message) => buildMessageSearchText(message, options))
+      .join(" "),
+  );
 
-export const buildConversationSearchText = (conversation) => {
+export const buildConversationSearchText = (conversation, options = {}) => {
+  // Last-message metadata is searched too. Events and mentions must use the
+  // same resolved text as the message index, or their stored labels reintroduce
+  // old-name hits. Defer these previews until the conversation's lookup settles.
+  const previewText = (value) => {
+    if (typeof value !== "string") return value;
+    const eventParts = getTranslatedEventSearchParts({ content: value }, options);
+    if (eventParts) return options.names ? eventParts.join(" ") : null;
+    if (!hasMention(value)) return value;
+    return options.names ? sanitizeMentionsForSearch(value, options) : null;
+  };
   const parts = [];
   const isTeam = conversation?.type === "team";
 
   addSearchPart(parts, [
     conversation?.type,
-    conversation?.lastMessage,
-    conversation?.last_message,
-    conversation?.lastMessage?.content,
-    conversation?.last_message?.content,
+    previewText(conversation?.lastMessage),
+    previewText(conversation?.last_message),
+    previewText(conversation?.lastMessage?.content),
+    previewText(conversation?.last_message?.content),
+    // An attachment preview is data (buildConversationLastMessagePreview);
+    // its file name stays findable.
+    conversation?.lastMessage?.fileName,
+    conversation?.last_message?.fileName,
   ]);
 
   if (isTeam) {

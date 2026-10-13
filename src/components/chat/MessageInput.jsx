@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
+import { resolveMentionLabel, splitMentions } from "../../utils/mentions";
 import {
   AlertTriangle,
   CircleX,
@@ -20,6 +24,8 @@ import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import MentionDropdown from "./MentionDropdown";
 import { getEventPreview } from "../../utils/eventPreview";
 import { getFileExpirationStatus } from "../../utils/fileExpiration";
+import { useFileExpirationText } from "../../hooks/useFileExpirationText";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -47,24 +53,34 @@ const tokenizeMentions = (text, mentionMap) => {
   return result;
 };
 
-const MENTION_RE = /@\[([^\]]+)\]\([^)]+\)/g;
-const renderReplyText = (text) => {
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_RE.lastIndex = 0;
-  while ((m = MENTION_RE.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    parts.push(
-      <span key={m.index} className="font-medium text-primary">
-        @{m[1]}
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - precedence shared via utils/mentions.js.
+//
+// ⚠️ The write side of mentions - `tokenizeMentions` above - deliberately does
+// NOT move into that module. This file is the only place that turns a typed
+// `@Name` into a stored token, and reading must stay free to handle shapes the
+// current writer no longer produces.
+const renderReplyText = (text, blockedIds = null, t = null, names = null) =>
+  splitMentions(text).map((segment, index) => {
+    if (!segment.isMention) return segment.text;
+    const { label, isAnonymized } = resolveMentionLabel(segment, {
+      blockedIds,
+      names,
+      t,
+    });
+    return (
+      <span
+        key={index}
+        className={
+          isAnonymized
+            ? "font-medium text-base-content/50"
+            : "font-medium text-primary"
+        }
+      >
+        @{label}
       </span>
     );
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-};
+  });
 
 const MessageInput = ({
   onSendMessage,
@@ -76,6 +92,20 @@ const MessageInput = ({
   replyingTo = null,
   onClearReply,
 }) => {
+  const { t } = useTranslation();
+  const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames } = useMentionNames();
+  const expirationText = useFileExpirationText();
+
+  /**
+   * The sender of a replied-to message may have neither a first name nor a
+   * username. The English fallback was the bare word "message", interpolated
+   * into the same slot as a name - which reads "Replying to message" and, in
+   * German, "Antwort an message". The nameless case gets its own sentence.
+   */
+  const replySenderName =
+    replyingTo?.senderFirstName || replyingTo?.senderUsername || "";
+
   const [message, setMessage] = useState("");
   const [mentionQuery, setMentionQuery] = useState(null);
   const [mentionStart, setMentionStart] = useState(null);
@@ -83,8 +113,19 @@ const MessageInput = ({
   const typingTimerRef = useRef(null);
   const isTypingRef = useRef(false);
   const inputRef = useRef(null);
+  // ⚠️ The reader was not passed here, so the reply bar described your own
+  // event in the third person while the conversation list above it said "You".
+  // The whole user is needed, not just the id: the id-less legacy formats
+  // (OWNERSHIP_TEAM, the 👋/🎯 messages) can only recognise the reader by name.
   const replyEventPreview = replyingTo?.content
-    ? getEventPreview(replyingTo.content)
+    ? getEventPreview(
+        replyingTo.content,
+        user,
+        t,
+        blockedRelationshipIds,
+        blockedRelationshipNames,
+        mentionNames,
+      )
     : null;
   const ReplyEventIcon = replyEventPreview
     ? EVENT_PREVIEW_ICONS[replyEventPreview.icon]
@@ -166,7 +207,7 @@ const MessageInput = ({
   };
 
   const handleMentionSelect = (participant) => {
-    const fullName = `${participant.firstName || ""} ${participant.lastName || ""}`.trim();
+    const fullName = joinNameParts(participant.firstName, participant.lastName);
     const cursorPos = inputRef.current?.selectionStart ?? message.length;
     const before = message.slice(0, mentionStart);
     const after = message.slice(cursorPos);
@@ -242,22 +283,21 @@ const MessageInput = ({
           <Reply size={14} className="text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-primary truncate">
-              Replying to{" "}
-              {replyingTo.senderFirstName ||
-                replyingTo.senderUsername ||
-                "message"}
+              {replySenderName
+                ? t("messageInput.replyingTo", { name: replySenderName })
+                : t("messageInput.replyingToMessage")}
             </p>
             {replyImageUrl ? (
               <div className="mt-1 flex min-w-0 items-center gap-2">
                 <img
                   src={replyImageUrl}
-                  alt="Reply preview"
+                  alt={t("messageInput.replyPreviewAlt")}
                   className="h-10 w-10 shrink-0 rounded-md object-cover"
                 />
                 <div className="min-w-0 flex-1">
                   {replyingTo.content && (
                     <p className="text-xs text-base-content/60 truncate">
-                      {renderReplyText(replyingTo.content.slice(0, 100))}
+                      {renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t, mentionNames)}
                     </p>
                   )}
                   {replyExpirationStatus.status !== "none" &&
@@ -269,12 +309,12 @@ const MessageInput = ({
                           : "text-base-content/60"
                       }`}
                     >
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   ) : (
                     !replyingTo.content && (
                       <p className="text-xs text-base-content/60 truncate">
-                        Image
+                        {t("messageInput.attachmentImage")}
                       </p>
                     )
                   )}
@@ -293,8 +333,8 @@ const MessageInput = ({
             ) : (
               <p className="text-xs text-base-content/60 truncate">
                 {replyingTo.content
-                  ? renderReplyText(replyingTo.content.slice(0, 100))
-                  : "Image / File"}
+                  ? renderReplyText(replyingTo.content.slice(0, 100), blockedRelationshipIds, t, mentionNames)
+                  : t("messageInput.attachmentImageOrFile")}
               </p>
             )}
           </div>
@@ -302,7 +342,7 @@ const MessageInput = ({
             type="button"
             onClick={onClearReply}
             className="btn btn-ghost btn-xs btn-circle shrink-0"
-            aria-label="Cancel reply"
+            aria-label={t("messageInput.cancelReplyAria")}
           >
             <X size={14} />
           </button>
@@ -326,7 +366,7 @@ const MessageInput = ({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           className="input input-bordered flex-grow"
-          placeholder="Type a message..."
+          placeholder={t("messageInput.placeholder")}
           maxLength={500}
           disabled={disabled}
         />

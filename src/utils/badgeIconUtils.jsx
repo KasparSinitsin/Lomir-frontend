@@ -53,6 +53,52 @@ import {
   PawPrint,
   Plane,
   Layers,
+  // Focus area category icons
+  ArrowLeftRight,
+  Atom,
+  BookOpenText,
+  BrainCircuit,
+  Brush,
+  Building2,
+  ChefHat,
+  Clapperboard,
+  Coffee,
+  Cpu,
+  Dices,
+  Dog,
+  Drama,
+  FlaskConical,
+  Flower2,
+  FolderKanban,
+  Footprints,
+  Guitar,
+  Hammer,
+  HandHeart,
+  Handshake,
+  HeartPulse,
+  Image,
+  Landmark,
+  Languages,
+  LayoutDashboard,
+  Medal,
+  Megaphone,
+  Mic,
+  Music,
+  PartyPopper,
+  PenTool,
+  PersonStanding,
+  Puzzle,
+  School,
+  Snowflake,
+  Sofa,
+  Star,
+  Swords,
+  Target,
+  Tent,
+  UtensilsCrossed,
+  Volleyball,
+  Vote,
+  Waves,
 } from "lucide-react";
 import { FOCUS_GREEN } from "../constants/badgeConstants";
 
@@ -192,6 +238,94 @@ export const SUPERCATEGORY_ICONS = {
   Leisure: Gamepad2,
   Pets: PawPrint,
   Travels: Plane,
+};
+
+/**
+ * Icon per focus area CATEGORY, keyed by its English name. A category with no entry (those named
+ * like their supercategory: Travels, Languages, Sports & Fitness, ...) takes its supercategory's icon.
+ * Both lists are closed for now; a category made later falls back the same way.
+ */
+export const CATEGORY_ICONS = {
+  "Business": Building2,
+  "Finance": Landmark,
+  "Marketing": Megaphone,
+  "Product Management & Strategy": Target,
+  "Project Types": FolderKanban,
+  "Social Impact": HandHeart,
+  "Arts & Crafts": Brush,
+  "Crafts & DIY": Hammer,
+  "Design & Collaboration Tools": PenTool,
+  "Digital & UX Design": LayoutDashboard,
+  "Instruments": Guitar,
+  "Music": Music,
+  "Performance Arts": Drama,
+  "Production": Clapperboard,
+  "Visual Arts": Image,
+  "Vocal": Mic,
+  "Writing & Literature": BookOpenText,
+  "Crafting": Scissors,
+  "African Languages": Languages,
+  "Asian Languages": Languages,
+  "Balkan Languages": Languages,
+  "Baltic Languages": Languages,
+  "European Languages": Languages,
+  "Middle Eastern Languages": Languages,
+  "Nordic Languages": Languages,
+  "Uralic Languages": Languages,
+  "Class": School,
+  "Education": GraduationCap,
+  "Natural Sciences": FlaskConical,
+  "Science & Learning": Atom,
+  "Social Sciences": Users,
+  "Soft Skills": Handshake,
+  "Tandem": ArrowLeftRight,
+  "Board Games": Dices,
+  "Games": Puzzle,
+  "Hangouts": Coffee,
+  "Popular Games": Star,
+  "Video & Computer Games": Gamepad2,
+  "Hiking & Trekking": Footprints,
+  "Outdoor Activities": Tent,
+  "Water Sports": Waves,
+  "Pet Care": Dog,
+  "Civic Engagement": Vote,
+  "Social Activities": PartyPopper,
+  "Dance & Movement": PersonStanding,
+  "Individual Sports": Medal,
+  "Martial Arts & Combat Sports": Swords,
+  "Racquet & Paddle Sports": Volleyball,
+  "Strength & Conditioning": Dumbbell,
+  "Team Sports": Users,
+  "Winter Sports": Snowflake,
+  "AI & Data Science": BrainCircuit,
+  "Hardware & Engineering": Cpu,
+  "Software Development": Code,
+  "Food & Cooking": ChefHat,
+  "Food & Drinks": UtensilsCrossed,
+  "Health & Wellness": HeartPulse,
+  "Lifestyle": Sofa,
+  "Mindfulness": Flower2,
+};
+
+/**
+ * Returns the icon element for a focus area category.
+ *
+ * @param {string} category - Category name
+ * @param {string} supercategory - Its supercategory name (the fallback)
+ * @param {number} [size=20] - Icon size in px
+ * @param {string} [color] - Override color (defaults to FOCUS_GREEN)
+ * @returns {React.ReactElement}
+ */
+export const getFocusAreaCategoryIcon = (category, supercategory, size = 20, color) => {
+  const IconComponent =
+    CATEGORY_ICONS[category] || SUPERCATEGORY_ICONS[supercategory] || Layers;
+  return (
+    <IconComponent
+      size={size}
+      style={{ color: color || FOCUS_GREEN }}
+      className="flex-shrink-0"
+    />
+  );
 };
 
 /**

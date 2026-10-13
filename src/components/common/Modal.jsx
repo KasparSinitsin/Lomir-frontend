@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import {
   useModalLayer,
@@ -60,6 +61,7 @@ const Modal = ({
   zIndexStyle = null,
   boxZIndexStyle = null,
 }) => {
+  const { t } = useTranslation();
   // Get z-index from context (will be default 50 if no provider above)
   const layerZIndex = useModalLayer();
 
@@ -112,11 +114,17 @@ const Modal = ({
   // Otherwise, fall back to zIndexClass (no inline style)
 
   // Build class names
-  const backdropClassName = `fixed inset-0 ${useInlineStyle ? "" : zIndexClass} flex ${positionClass} justify-center`;
+  // top/left + explicit dvw/dvh instead of inset-0: some pages have elements
+  // (e.g. tooltip-lomir's absolutely-positioned bubble) that inflate the
+  // document's scrollable overflow without being visible, which widens the
+  // mobile layout viewport (window.innerWidth) beyond the real screen.
+  // inset-0 would stretch to that inflated width; dvw/dvh always match the
+  // true visual viewport.
+  const backdropClassName = `fixed top-0 left-0 w-dvw h-dvh ${useInlineStyle ? "" : zIndexClass} flex ${positionClass} justify-center px-4`;
   const boxClassName = `
     relative ${useInlineStyle ? "" : boxZIndexClass}
     bg-base-100 rounded-xl shadow-soft
-    w-full ${sizeClass} mx-4
+    w-full ${sizeClass}
     ${maxHeight} ${minHeight}
     overflow-y-auto overflow-x-hidden
   `;
@@ -128,7 +136,7 @@ const Modal = ({
       type="button"
       className="btn btn-sm btn-ghost ml-2"
       onClick={onClose}
-      aria-label="Close modal"
+      aria-label={t("modal.close")}
     >
       ✕
     </button>
@@ -152,7 +160,7 @@ const Modal = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="sticky top-0 z-20 flex items-center justify-between px-6 pt-6 pb-4 border-b border-base-200 bg-base-100">
+          <div className="sticky top-0 z-20 flex items-center px-6 pt-6 pb-4 border-b border-base-200 bg-base-100">
             <div className="flex-1 min-w-0">
               {typeof title === "string" ? (
                 <h2 className="text-lg font-semibold text-primary truncate">
@@ -162,16 +170,20 @@ const Modal = ({
                 title
               )}
             </div>
-            {headerActions}
-            {showCloseButton && (
-              closeButtonTooltip ? (
-                <Tooltip content={closeButtonTooltip} position="bottom">
-                  {closeButton}
-                </Tooltip>
-              ) : (
-                closeButton
-              )
-            )}
+            {/* Actions and close button as one group, so they never get
+                clipped separately when a modal has several actions. */}
+            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+              {headerActions}
+              {showCloseButton && (
+                closeButtonTooltip ? (
+                  <Tooltip content={closeButtonTooltip} position="bottom">
+                    {closeButton}
+                  </Tooltip>
+                ) : (
+                  closeButton
+                )
+              )}
+            </div>
           </div>
         )}
 

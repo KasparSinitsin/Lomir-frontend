@@ -1,5 +1,7 @@
 import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Button from "../common/Button";
+import Tooltip from "../common/Tooltip";
 import TeamApplicationModal from "./TeamApplicationModal";
 import { teamService } from "../../services/teamService";
 
@@ -25,11 +27,17 @@ const TeamApplicationButton = ({
   variant = "primary",
   onAfterSubmit,
   onSuccess,
-  buttonLabel = "Apply to Join Team",
+  buttonLabel,
   buttonIcon = null,
   ariaLabel = null,
   onApplicationModalToggle,
+  // A full team takes no applications: the button stays visible, greyed out,
+  // and says why. The backend refuses anyway (TEAM_FULL).
+  teamIsFull = false,
+  // Off where the caller's own tooltip already wraps the button.
+  showFullTooltip = true,
 }) => {
+  const { t } = useTranslation("teams");
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationLoading, setApplicationLoading] = useState(false);
 
@@ -87,9 +95,8 @@ const TeamApplicationButton = ({
         }
       } catch (error) {
         console.error("Error submitting application:", error);
-        throw new Error(
-          error.response?.data?.message || "Failed to submit application",
-        );
+        // Re-thrown as is: `TeamApplicationModal` words it from the code.
+        throw error;
       } finally {
         setApplicationLoading(false);
       }
@@ -99,19 +106,33 @@ const TeamApplicationButton = ({
 
   if (!effectiveTeamId) return null;
 
+  const button = (
+    <Button
+      variant={variant}
+      size={size}
+      onClick={handleApplyToJoin}
+      disabled={disabled || applicationLoading || teamIsFull}
+      className={className}
+      icon={buttonIcon}
+      aria-label={ariaLabel}
+    >
+      {buttonLabel ?? t("applicationButton.defaultLabel")}
+    </Button>
+  );
+
   return (
     <>
-      <Button
-        variant={variant}
-        size={size}
-        onClick={handleApplyToJoin}
-        disabled={disabled || applicationLoading}
-        className={className}
-        icon={buttonIcon}
-        aria-label={ariaLabel}
-      >
-        {buttonLabel}
-      </Button>
+      {teamIsFull && showFullTooltip ? (
+        <Tooltip
+          content={t("applicationButton.teamFull")}
+          position="top"
+          wrapperClassName={className.includes("w-full") ? "flex w-full" : undefined}
+        >
+          {button}
+        </Tooltip>
+      ) : (
+        button
+      )}
 
       <TeamApplicationModal
         isOpen={isApplicationModalOpen}

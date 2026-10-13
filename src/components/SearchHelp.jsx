@@ -7,6 +7,8 @@ import React, {
 } from "react";
 import { Info } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import { getOperatorWords } from "../utils/searchOperators";
 import Tooltip from "./common/Tooltip";
 
 /**
@@ -17,6 +19,7 @@ import Tooltip from "./common/Tooltip";
  * - Popup uses a portal so it always appears on top of everything
  */
 const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }, ref) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
   const activeTriggerRef = useRef(null);
@@ -78,13 +81,20 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
     );
   }, [isOpen]);
 
+  // The operators are shown in the words of the interface language; the terms
+  // are product names that every language knows. The English operators work
+  // everywhere, so a query copied from elsewhere keeps working.
+  const operatorWords = getOperatorWords(t);
   const examples = [
-    { query: "react AND node", description: 'Must contain both "react" AND "node"' },
-    { query: "react OR vue", description: 'Must contain either "react" OR "vue"' },
-    { query: "javascript NOT jquery", description: 'Must contain "javascript" but NOT "jquery"' },
-    { query: "python -django", description: 'Same as NOT: contains "python" but not "django"' },
-    { query: '"full stack developer"', description: "Exact phrase match" },
-    { query: '"web development" OR backend', description: "Combine phrases with operators" },
+    { query: `react ${operatorWords.AND} node`, description: t("searchHelp.examples.and") },
+    { query: `react ${operatorWords.OR} vue`, description: t("searchHelp.examples.or") },
+    { query: `javascript ${operatorWords.NOT} jquery`, description: t("searchHelp.examples.not") },
+    {
+      query: "python -django",
+      description: t("searchHelp.examples.minus", { operator: operatorWords.NOT }),
+    },
+    { query: '"full stack developer"', description: t("searchHelp.examples.phrase") },
+    { query: `"web development" ${operatorWords.OR} backend`, description: t("searchHelp.examples.combine") },
   ];
 
   return (
@@ -92,13 +102,13 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
       {/* Inline trigger inside the input */}
       {!hideButton && (
         <div className={`relative flex h-[1.125rem] items-center ${className}`}>
-          <Tooltip content="Search tips" position="top">
+          <Tooltip content={t("searchInput.tips")} position="top">
             <button
               ref={triggerRef}
               type="button"
               onClick={(e) => openFromEl(e.currentTarget)}
               className="inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full bg-transparent p-0 text-[var(--color-primary-focus)] transition-colors hover:text-[var(--color-primary)] focus:outline-none"
-              aria-label="Search tips"
+              aria-label={t("searchInput.tips")}
             >
               <Info className="h-3.5 w-3.5" />
             </button>
@@ -115,7 +125,7 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
               type="button"
               className="absolute inset-0 z-0 cursor-default"
               onClick={() => setIsOpen(false)}
-              aria-label="Close search tips"
+              aria-label={t("searchHelp.closeTips")}
             />
 
             {/* Arrow pointing up toward the visible search tips trigger */}
@@ -150,20 +160,20 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
             >
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-base-content">
-                  Advanced Search
+                  {t("searchHelp.title")}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
                   className="text-base-content/60 hover:text-base-content"
-                  aria-label="Close"
+                  aria-label={t("mapPopup.close")}
                 >
                   ✕
                 </button>
               </div>
 
               <p className="text-sm text-base-content/70 mb-3">
-                Use operators to refine your search:
+                {t("searchHelp.intro")}
               </p>
 
               <div className="space-y-2">
@@ -184,9 +194,18 @@ const SearchHelp = forwardRef(({ className = "", anchorRef, hideButton = false }
 
               <div className="mt-3 pt-3 border-t border-base-300">
                 <p className="text-xs text-base-content/50">
-                  Operators are case-insensitive
+                  {t("searchHelp.capitalsOnly")}
                   <br />
-                  (AND, and, And all work)
+                  {t("searchHelp.capitalsOnlyExample", {
+                    upper: operatorWords.AND,
+                    lower: operatorWords.AND.toLowerCase(),
+                  })}
+                  {operatorWords.AND !== "AND" && (
+                    <>
+                      <br />
+                      {t("searchHelp.alsoEnglish")}
+                    </>
+                  )}
                 </p>
               </div>
             </div>

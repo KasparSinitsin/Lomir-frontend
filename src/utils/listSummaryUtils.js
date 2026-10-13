@@ -4,13 +4,17 @@
  * Handles string arrays, object arrays, and mixed values.
  *
  * @param {Array} items
+ * @param {(item: object) => string} [labelOf] - the text to show for an object
+ *   item (e.g. a translated name); the stored name is used when it returns nothing
  * @returns {string[]}
  */
-export const extractNames = (items) =>
+export const extractNames = (items, labelOf) =>
   (items || [])
     .map((item) => {
       if (typeof item === "string") return item.trim();
       if (item && typeof item === "object") {
+        const label = labelOf?.(item);
+        if (label) return String(label).trim();
         return String(
           item.name ??
             item.tag ??

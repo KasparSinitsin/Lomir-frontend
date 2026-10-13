@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   MapPin,
@@ -13,11 +14,13 @@ import ScreenAlert from "../common/ScreenAlert";
 import { teamService } from "../../services/teamService";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import { formatListLocation } from "../../utils/locationUtils";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import CardMetaItem from "../common/CardMetaItem";
 import CardMetaRow from "../common/CardMetaRow";
 import Tooltip from "../common/Tooltip";
 import UserAvatar from "../users/UserAvatar";
-import { DEMO_PROFILE_TOOLTIP, isSyntheticUser } from "../../utils/userHelpers";
+import { isSyntheticUser } from "../../utils/userHelpers";
+import { joinNameParts } from "../../utils/nameFormatters";
 
 const getTeamMemberId = (member) =>
   member?.userId ??
@@ -46,6 +49,7 @@ const TeamMembersSection = ({
   className = "",
   roles = [],
 }) => {
+  const { t } = useTranslation("teams");
   const [notification, setNotification] = React.useState({
     type: null,
     message: null,
@@ -88,9 +92,9 @@ const TeamMembersSection = ({
       <div className="flex items-center mb-4">
         <Users size={18} className="mr-2 text-primary flex-shrink-0" />
         <h3 className="font-medium">
-          Team Members
+          {t("membersSection.title")}
           <span className="font-normal text-sm text-base-content/60 ml-1">
-            ({team.members.length} {team.members.length === 1 ? 'member' : 'members'})
+            {t("membersSection.count", { count: team.members.length })}
           </span>
         </h3>
       </div>
@@ -182,15 +186,17 @@ const TeamMembersSection = ({
                       wrapperClassName="block min-w-0 flex-1"
                       content={
                         anonymize
-                          ? "Private Profile"
+                          ? t("common:user.privateProfile")
                           : (() => {
                               const firstName =
                                 member.firstName || member.first_name || "";
                               const lastName =
                                 member.lastName || member.last_name || "";
-                              const fullName =
-                                `${firstName} ${lastName}`.trim();
-                              return fullName || member.username || "Unknown";
+                              const fullName = joinNameParts(
+                                firstName,
+                                lastName,
+                              );
+                              return fullName || member.username || t("common:user.unknown");
                             })()
                       }
                     >
@@ -206,7 +212,7 @@ const TeamMembersSection = ({
                       >
                         <h3 className="font-medium text-base truncate leading-[120%]">
                           {anonymize
-                            ? "Private Profile"
+                            ? t("common:user.privateProfile")
                             : formatDisplayName(member)}
                         </h3>
                       </div>
@@ -230,11 +236,22 @@ const TeamMembersSection = ({
                           );
                           setNotification({
                             type: "success",
-                            message: `${formatDisplayName(member)} has been ${
-                              newRole === "admin"
-                                ? "promoted to Admin"
-                                : "demoted to Member"
-                            } successfully!`,
+                            // Three roles are reachable from the dropdown
+                            // (owner / admin / member). The original had a
+                            // two-way ternary, so transferring ownership
+                            // reported a demotion to Member.
+                            message:
+                              newRole === "owner"
+                                ? t("membersSection.ownershipTransferred", {
+                                    name: formatDisplayName(member),
+                                  })
+                                : newRole === "admin"
+                                  ? t("membersSection.promoted", {
+                                      name: formatDisplayName(member),
+                                    })
+                                  : t("membersSection.demoted", {
+                                      name: formatDisplayName(member),
+                                    }),
                           });
                           // Refresh team data from parent
                           if (onRoleChange) {
@@ -243,9 +260,15 @@ const TeamMembersSection = ({
                         } catch (error) {
                           setNotification({
                             type: "error",
-                            message:
-                              error.response?.data?.message ||
-                              "Failed to update role",
+                            // BE #333 codes the three failures a user can
+                            // reach here. Everything else the endpoint
+                            // answers is English prose for a guard no UI
+                            // offers, so it never reaches the screen.
+                            message: getTeamErrorText(
+                              error,
+                              t,
+                              t("membersSection.roleUpdateFailed"),
+                            ),
                           });
                         }
                         }}
@@ -280,8 +303,13 @@ const TeamMembersSection = ({
                             type: "success",
                             message:
                               reopenedRoles.length > 0
-                                ? `${formatDisplayName(member)} has been removed from the team. ${reopenedRoles.length} filled ${reopenedRoles.length === 1 ? "role was" : "roles were"} reopened.`
-                                : `${formatDisplayName(member)} has been removed from the team.`,
+                                ? t("membersSection.removedWithReopened", {
+                                    name: formatDisplayName(member),
+                                    count: reopenedRoles.length,
+                                  })
+                                : t("membersSection.removed", {
+                                    name: formatDisplayName(member),
+                                  }),
                           });
                           if (onMemberRemoved) {
                             await onMemberRemoved();
@@ -304,9 +332,14 @@ const TeamMembersSection = ({
 
                           setNotification({
                             type: "error",
-                            message:
-                              error.response?.data?.message ||
-                              "Failed to remove member",
+                            // The removal endpoint carries no codes yet, so
+                            // this always words the fallback - which is the
+                            // point: its prose is untranslated English.
+                            message: getTeamErrorText(
+                              error,
+                              t,
+                              t("membersSection.removeFailed"),
+                            ),
                           });
                         }
                         }}
@@ -328,7 +361,9 @@ const TeamMembersSection = ({
 
                       {!anonymize && member.distance_km != null && (
                         <CardMetaItem icon={Ruler} tone="muted" nowrap>
-                          {Math.round(member.distance_km)} km away
+                          {t("common:distance.away", {
+                            km: Math.round(member.distance_km),
+                          })}
                         </CardMetaItem>
                       )}
 
@@ -340,7 +375,7 @@ const TeamMembersSection = ({
 
                       {showDemoAvatarOverlay && (
                         <Tooltip
-                          content={DEMO_PROFILE_TOOLTIP}
+                          content={t("common:demo.profileTooltip")}
                           wrapperClassName="flex items-center gap-1 min-w-0 text-base-content/50"
                         >
                           <FlaskConical size={10} className="shrink-0" />
@@ -374,7 +409,7 @@ const TeamMembersSection = ({
           onClick={() => setIsExpanded((v) => !v)}
         >
           {isExpanded ? <ChevronUp size={14} /> : <ChevronRight size={14} />}
-          {isExpanded ? "Show less" : "Show all"}
+          {isExpanded ? t("common:collapse.showLess") : t("common:collapse.showAll")}
         </button>
       )}
     </div>

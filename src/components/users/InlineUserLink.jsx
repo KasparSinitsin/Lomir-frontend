@@ -1,11 +1,11 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FlaskConical } from "lucide-react";
 import { useUserModalSafe } from "../../contexts/UserModalContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserProfile } from "../../hooks/useUserQueries";
 import Tooltip from "../common/Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
   isSyntheticUser,
 } from "../../utils/userHelpers";
 import {
@@ -102,6 +102,7 @@ const InlineUserLink = ({
   showAvatar = true,
   displayName,
 }) => {
+  const { t } = useTranslation();
   // Try to get global modal context (returns null if not available)
   const userModalContext = useUserModalSafe();
   const { blockedRelationshipIds } = useAuth();
@@ -141,10 +142,10 @@ const InlineUserLink = ({
     (userModalContext || onOpenUser);
   const inlineUser = mergeInlineUserData(user, resolvedInlineProfile);
   const name = isFormerUser
-    ? getDisplayName(inlineUser)
+    ? getDisplayName(inlineUser, t("user.formerUser"))
     : isPrivateUser
-      ? "Private Profile"
-      : displayName ?? getDisplayName(inlineUser);
+      ? t("badges.card.privateProfile")
+      : displayName ?? getDisplayName(inlineUser, t("user.formerUser"));
   const showDemoIndicator =
     !isFormerUser && !isPrivateUser && isSyntheticUser(inlineUser);
 
@@ -172,7 +173,7 @@ const InlineUserLink = ({
       {/* Avatar */}
       {showAvatar && (
         <Tooltip
-          content={canClick ? "View profile" : null}
+          content={canClick ? t("badges.card.viewProfile") : null}
           wrapperClassName="inline-flex mr-1"
         >
           <UserAvatar
@@ -195,7 +196,7 @@ const InlineUserLink = ({
 
       {/* Name */}
       <Tooltip
-        content={canClick ? "View profile" : null}
+        content={canClick ? t("badges.card.viewProfile") : null}
         wrapperClassName="inline-flex min-w-0"
       >
         <span
@@ -211,7 +212,7 @@ const InlineUserLink = ({
       </Tooltip>
       {showDemoIndicator && (
         <Tooltip
-          content={DEMO_PROFILE_TOOLTIP}
+          content={t("demo.profileTooltip")}
           wrapperClassName="ml-1 flex items-center text-base-content/50"
         >
           <FlaskConical size={10} className="shrink-0" />
@@ -221,41 +222,10 @@ const InlineUserLink = ({
   );
 };
 
-/**
- * Preset variants for common use cases
- */
-
-// "Awarded by [avatar] Name"
-export const AwardedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Awarded by" {...props} />
-);
-
-// "Invited by [avatar] Name"
-export const InvitedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Invited by" {...props} />
-);
-
-// "Sent by [avatar] Name"
-export const SentByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Sent by" {...props} />
-);
-
-// "From [avatar] Name"
-export const FromUserLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="From" {...props} />
-);
-
-// "Applied by [avatar] Name"
-export const AppliedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Applied by" {...props} />
-);
-
-// "Received by [avatar] Name"
-export const ReceivedByLink = ({ user, ...props }) => (
-  <InlineUserLink user={user} label="Received by" {...props} />
-);
-
-// Just "[avatar] Name" (no label)
-export const UserLink = (props) => <InlineUserLink {...props} />;
+// "Invited by [avatar] Name" — the only preset variant with a caller.
+export const InvitedByLink = ({ user, ...props }) => {
+  const { t } = useTranslation();
+  return <InlineUserLink user={user} label={t("userLink.invitedBy")} {...props} />;
+};
 
 export default InlineUserLink;

@@ -3,6 +3,12 @@
 // trailingIcon, color }) — the Icon/trailingIcon values are lucide component
 // references, not JSX. formatReplyTooltipText renders a reply's plain-text
 // tooltip. EVENT_REACTION_PREVIEW_COLORS is the shared color palette.
+//
+// This is the QUOTE path of the four that render an event (see
+// `lomir-docs-internal/PROPOSAL-event-sentences.md`): the quoted reply above a
+// message and its tooltip. It now starts from the same descriptor as the
+// transcript and the short preview, so it knows who the reader is — the quote
+// used to say "Anna has left the team." to Anna herself.
 
 import {
   AlertTriangle,
@@ -21,7 +27,9 @@ import {
   UserPlus,
   UserSearch,
 } from "lucide-react";
-import { parseSystemMessage } from "./messageSystemParser";
+import { describeEvent } from "./describeEvent";
+import { getEventSentenceText } from "./eventSentences";
+import { resolveMentionLabel, splitMentions } from "./mentions";
 
 // Maps a file name to its lucide icon component reference (not JSX). Shared by
 // FileAttachment and the reply-preview block in MessageDisplay.
@@ -44,191 +52,129 @@ const EVENT_REACTION_PREVIEW_COLORS = {
   error: "#dc2626",
 };
 
-export const getEventReactionPreview = (content) => {
-  const parsedMessage = parseSystemMessage(content);
-  if (!parsedMessage) return null;
+/**
+ * @param {string} content        the stored message
+ * @param {object|null} viewer    the reader — the whole user, not only `{ id }`:
+ *                                the id-less formats match the reader by name
+ * @param {Function|null} t       i18next `t` — required: every event sentence is translated
+ */
+export const getEventReactionPreview = (
+  content,
+  viewer = null,
+  t = null,
+  blockedIds = null,
+  blockedNames = null,
+  names = null,
+) => {
+  const event = describeEvent(content, viewer, blockedIds, blockedNames, names);
+  if (!event) return null;
 
-  switch (parsedMessage.type) {
-    case "team_join":
+  switch (event.type) {
+    case "team_join": {
       return {
-        text: parsedMessage.roleName
-          ? `${parsedMessage.userName} joined the team as ${parsedMessage.roleName}. Say hello to them!`
-          : `${parsedMessage.userName} has followed your invite and joined your team. Say hello to them!`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
+    }
     case "application_approved":
-      return {
-        text: `${parsedMessage.applicantName} has applied successfully and was added by ${parsedMessage.approverName}. Say hello to them!`,
-        Icon: UserPlus,
-        trailingIcon: PartyPopper,
-        color: EVENT_REACTION_PREVIEW_COLORS.success,
-      };
     case "application_approved_dm":
       return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was approved.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserPlus,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.success,
       };
+    // The roles family — the same sentence as the transcript above it (D1),
+    // with the reader's perspective (D2), from eventSentences.js.
     case "role_application_approved":
-      return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.roleName} was approved.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
     case "role_application_filled":
+    case "role_invitation_filled":
+    case "role_invitation_accepted":
+    case "role_invitation_assigned_legacy":
+    case "role_invitation_accepted_legacy":
+    case "role_filled":
       return {
-        text: parsedMessage.approverName
-          ? `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}, approved by ${parsedMessage.approverName}.`
-          : `The role "${parsedMessage.roleName}" has been filled by ${parsedMessage.applicantName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserCheck,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
     case "role_application_deferred_invite":
-      return {
-        text: `${parsedMessage.applicantName}'s application for "${parsedMessage.roleName}" was approved as a role offer because they already fill "${parsedMessage.currentRoleName}".`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    case "role_invitation_filled":
-      return {
-        text: `${parsedMessage.inviteeName} has accepted an invitation to fill the role "${parsedMessage.roleName}" in this team and is now filling that role.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    case "role_invitation_accepted":
-      return {
-        text: parsedMessage.fillRole
-          ? `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} to fill "${parsedMessage.roleName}". They accepted and are now filling that role.`
-          : `${parsedMessage.inviterName} invited ${parsedMessage.inviteeName} for "${parsedMessage.roleName}". They accepted the invitation.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    case "role_invitation_assigned_legacy":
-      return {
-        text: `${parsedMessage.inviteeName} accepted an invitation and was assigned to the role "${parsedMessage.roleName}".`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
     case "role_created":
+    case "role_reopened":
+    case "role_reopened_admin":
       return {
-        text: parsedMessage.creatorName
-          ? `The new role "${parsedMessage.roleName}" has been created by ${parsedMessage.creatorName}. It is open to be filled.`
-          : `The new role "${parsedMessage.roleName}" is open to be filled.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserSearch,
+        color: EVENT_REACTION_PREVIEW_COLORS.role,
+      };
+    case "role_updated":
+      return {
+        text: getEventSentenceText(t, event, "full"),
+        Icon: Pencil,
         color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
     case "role_closed":
       return {
-        text: parsedMessage.closedByName
-          ? `The role "${parsedMessage.roleName}" has been closed by ${parsedMessage.closedByName}.`
-          : `The role "${parsedMessage.roleName}" has been closed.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "role_updated":
-      return {
-        text: parsedMessage.updatedByName
-          ? `The role "${parsedMessage.roleName}" has been updated by ${parsedMessage.updatedByName}.`
-          : `The role "${parsedMessage.roleName}" has been updated.`,
-        Icon: Pencil,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
     case "role_deleted":
       return {
-        text: parsedMessage.deletorName
-          ? `The role "${parsedMessage.roleName}" has been deleted by ${parsedMessage.deletorName}.`
-          : `The role "${parsedMessage.roleName}" has been deleted.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
-    case "role_reopened":
-      return {
-        text: parsedMessage.userName
-          ? `${parsedMessage.userName} has left the role ${parsedMessage.roleName}. The role is open again to be filled.`
-          : `The role ${parsedMessage.roleName} is open again to be filled.`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    case "role_reopened_admin":
-      return {
-        text: parsedMessage.userName
-          ? `${parsedMessage.userName} has reopened the role ${parsedMessage.roleName}. It is open again to be filled.`
-          : `The role ${parsedMessage.roleName} has been reopened and is open to be filled.`,
-        Icon: UserSearch,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
-      };
-    case "role_filled":
-      return {
-        text: parsedMessage.userName && parsedMessage.filledByName
-          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}, approved by ${parsedMessage.filledByName}.`
-          : parsedMessage.userName
-          ? `The role ${parsedMessage.roleName} has been filled by ${parsedMessage.userName}.`
-          : `The role ${parsedMessage.roleName} has been marked filled.`,
-        Icon: UserCheck,
-        color: EVENT_REACTION_PREVIEW_COLORS.role,
       };
     case "application_response":
     case "invitation_response":
       return {
-        text: `Response for ${parsedMessage.teamName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: FileText,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "team_leave":
+    case "team_leave": {
       return {
-        text: `${parsedMessage.userName} has left the team.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
+    }
     case "user_left_lomir":
       return {
-        text: "Former Lomir Member has left Lomir.",
+        text: getEventSentenceText(t, event, "full"),
         Icon: LogOut,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "member_removed_public":
+    case "member_removed_public": {
       return {
-        text: `${parsedMessage.userName} has been removed from the team.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
+    }
     case "application_declined":
-      return {
-        text: `${parsedMessage.applicantName}'s application for ${parsedMessage.teamName} was declined.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
     case "invitation_declined":
-      return {
-        text: `${parsedMessage.inviteeName} declined the invitation for ${parsedMessage.teamName}.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
     case "invitation_cancelled":
-      return {
-        text: `Invitation for ${parsedMessage.inviteeName} to join ${parsedMessage.teamName} was cancelled.`,
-        Icon: CircleX,
-        color: EVENT_REACTION_PREVIEW_COLORS.neutral,
-      };
     case "application_cancelled":
+    case "request_void":
       return {
-        text: `${parsedMessage.applicantName} cancelled their application for ${parsedMessage.teamName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: CircleX,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
-    case "member_removed":
+    case "member_removed": {
       return {
-        text: `${parsedMessage.memberName} was removed from ${parsedMessage.teamName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: UserMinus,
         color: EVENT_REACTION_PREVIEW_COLORS.neutral,
       };
+    }
     case "role_changed": {
-      const isAdmin = parsedMessage.newRole === "admin";
+      const isAdmin = event.newRole === "admin";
       return {
-        text: `${parsedMessage.memberName}'s role was changed to ${parsedMessage.newRole} in ${parsedMessage.teamName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: isAdmin ? Shield : User,
         trailingIcon: isAdmin ? PartyPopper : null,
         color: isAdmin
@@ -236,32 +182,49 @@ export const getEventReactionPreview = (content) => {
           : EVENT_REACTION_PREVIEW_COLORS.member,
       };
     }
-    case "ownership_transferred":
+    case "ownership_transferred": {
       return {
-        text: `${parsedMessage.prevOwnerName} transferred ownership of ${parsedMessage.teamName} to ${parsedMessage.newOwnerName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: Crown,
         trailingIcon: PartyPopper,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
-    case "ownership_team":
+    }
+    case "ownership_team": {
       return {
-        text: `${parsedMessage.prevOwnerName} transferred ownership to ${parsedMessage.newOwnerName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: Crown,
         color: EVENT_REACTION_PREVIEW_COLORS.owner,
       };
-    case "team_deleted":
+    }
+    case "team_deleted": {
       return {
-        text: `${parsedMessage.ownerName} archived ${parsedMessage.teamName}.`,
+        text: getEventSentenceText(t, event, "full"),
         Icon: AlertTriangle,
         color: EVENT_REACTION_PREVIEW_COLORS.error,
       };
+    }
     default:
       return null;
   }
 };
 
-export const formatReplyTooltipText = (content, eventPreview = null) => {
+export const formatReplyTooltipText = (
+  content,
+  eventPreview = null,
+  { blockedIds = null, names = null, t = null } = {},
+) => {
   if (eventPreview?.text) return eventPreview.text;
 
-  return String(content ?? "").replace(/@\[([^\]]+)\]\([^)]+\)/g, "@$1");
+  // Plain text, not JSX - a tooltip takes a string. The name precedence is
+  // still the shared one, which is the whole point of utils/mentions.js: this
+  // site used to carry its own unnamed inline copy of the pattern and would
+  // have been the easiest of the six to forget.
+  return splitMentions(String(content ?? ""))
+    .map((segment) =>
+      segment.isMention
+        ? `@${resolveMentionLabel(segment, { blockedIds, names, t }).label}`
+        : segment.text,
+    )
+    .join("");
 };

@@ -1,5 +1,21 @@
 import React, { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, X, ImagePlus, Trash2 } from "lucide-react";
+
+/**
+ * Display names for the types this app uses, so the message reads "WebP"
+ * rather than the "WEBP" a bare toUpperCase() produces. Any other type a
+ * caller passes falls back to its bare subtype.
+ */
+const TYPE_LABELS = {
+  "image/jpeg": "JPEG",
+  "image/png": "PNG",
+  "image/gif": "GIF",
+  "image/webp": "WebP",
+};
+
+const formatLabel = (type) =>
+  TYPE_LABELS[type] ?? type.replace("image/", "").toUpperCase();
 
 /**
  * ImageUploader Component
@@ -21,7 +37,8 @@ import { Upload, X, ImagePlus, Trash2 } from "lucide-react";
  * @param {string} helpText - Helper text displayed below the uploader
  * @param {string} className - Additional CSS classes for the container
  * @param {boolean} showRemoveButton - Whether to show the remove button when an image exists
- * @param {string} removeButtonText - Text for the remove button
+ * @param {string} removeButtonText - Text for the remove button (default:
+ *   the translated "Remove")
  */
 const ImageUploader = ({
   currentImage = null,
@@ -38,10 +55,14 @@ const ImageUploader = ({
   helpText = "",
   className = "",
   showRemoveButton = true,
-  removeButtonText = "Remove",
+  // Resolved with t() below, not as a default here: a module-scope default
+  // would freeze the language the module was first loaded in.
+  removeButtonText,
   previewShape,
   previewSize,
 }) => {
+  const { t } = useTranslation();
+
   // ============ State ============
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -86,27 +107,29 @@ const ImageUploader = ({
   // ============ Validation ============
   const validateFile = useCallback(
     (file) => {
-      // Check file type
-      if (!file.type.startsWith("image/")) {
-        return "Please select an image file";
-      }
-
-      if (acceptedTypes.length > 0 && !acceptedTypes.includes(file.type)) {
-        const typeNames = acceptedTypes
-          .map((t) => t.replace("image/", "").toUpperCase())
-          .join(", ");
-        return `Accepted formats: ${typeNames}`;
+      // Check file type. Naming the accepted formats beats a generic "not
+      // an image": an Illustrator or HEIC file IS an image to the person who
+      // picked it, and every file that fails a bare `image/*` test fails the
+      // list too. The generic message survives only for the documented
+      // acceptedTypes=[] contract, where there is no list to name.
+      if (acceptedTypes.length > 0) {
+        if (!acceptedTypes.includes(file.type)) {
+          const typeNames = acceptedTypes.map(formatLabel).join(", ");
+          return t("imageUploader.errorAcceptedFormats", { formats: typeNames });
+        }
+      } else if (!file.type.startsWith("image/")) {
+        return t("imageUploader.errorNotAnImage");
       }
 
       // Check file size
       const maxSizeBytes = maxSizeMB * 1024 * 1024;
       if (file.size > maxSizeBytes) {
-        return `Image must be less than ${maxSizeMB}MB`;
+        return t("imageUploader.errorTooLarge", { maxSize: maxSizeMB });
       }
 
       return null;
     },
-    [acceptedTypes, maxSizeMB],
+    [acceptedTypes, maxSizeMB, t],
   );
 
   // ============ File Handling ============
@@ -238,7 +261,11 @@ const ImageUploader = ({
         <div
           role="button"
           tabIndex={disabled ? -1 : 0}
-          aria-label={hasImage ? "Change image" : "Upload image"}
+          aria-label={
+            hasImage
+              ? t("imageUploader.changeImage")
+              : t("imageUploader.uploadImage")
+          }
           aria-disabled={disabled}
           onClick={handleClick}
           onKeyDown={(e) => {
@@ -278,7 +305,7 @@ const ImageUploader = ({
             ) : hasImage ? (
               <img
                 src={displayImage}
-                alt="Preview"
+                alt={t("imageUploader.previewAlt")}
                 className={`w-full h-full object-cover ${shapeClasses[finalShape]}`}
                 onError={() => setImageError(true)}
               />
@@ -341,19 +368,25 @@ const ImageUploader = ({
           {/* Upload Instructions */}
           <div className="text-sm text-base-content/70">
             {isDragging ? (
-              <span className="text-primary font-medium">Drop image here</span>
-            ) : (
-              <span>
-                Drag & drop or{" "}
-                <button
-                  type="button"
-                  onClick={handleClick}
-                  disabled={disabled || loading}
-                  className="text-primary hover:underline focus:outline-none focus:underline disabled:opacity-50"
-                >
-                  click to upload
-                </button>
+              <span className="text-primary font-medium">
+                {t("imageUploader.dropHere")}
               </span>
+            ) : (
+              /*
+                One sentence, one key. It used to be "Drag & drop or" plus a
+                separate "click to upload" button, which is exactly the
+                fragment assembly the i18n conventions rule out - German puts
+                the verb elsewhere. The whole line is the button now, so the
+                click target and the keyboard stop are unchanged.
+              */
+              <button
+                type="button"
+                onClick={handleClick}
+                disabled={disabled || loading}
+                className="text-primary hover:underline focus:outline-none focus:underline disabled:opacity-50"
+              >
+                {t("imageUploader.dragAndDrop")}
+              </button>
             )}
           </div>
 
@@ -364,8 +397,8 @@ const ImageUploader = ({
           {!helpText && !error && (
             <p className="form-helper-text">
               {hasNewImage
-                ? "New image selected. Save to upload."
-                : `Max ${maxSizeMB}MB. Square images recommended.`}
+                ? t("imageUploader.newImageSelected")
+                : t("imageUploader.maxSizeHint", { maxSize: maxSizeMB })}
             </p>
           )}
 
@@ -381,7 +414,7 @@ const ImageUploader = ({
               className="btn btn-outline btn-error btn-sm gap-1"
             >
               <Trash2 size={14} />
-              {removeButtonText}
+              {removeButtonText ?? t("imageUploader.remove")}
             </button>
           )}
         </div>

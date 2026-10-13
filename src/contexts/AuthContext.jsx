@@ -11,6 +11,8 @@ import socketService from "../services/socketService";
 import { userService } from "../services/userService";
 import { conversationsQueryKey } from "../hooks/useChatQueries";
 import { setUserTimezone } from "../utils/dateHelpers";
+import { getDisplayName } from "../utils/userHelpers";
+import { normalizeNameForMatch } from "../utils/describeEvent";
 
 const AuthContext = createContext(null);
 
@@ -46,6 +48,15 @@ export const AuthProvider = ({ children }) => {
   const [blockedRelationshipIds, setBlockedRelationshipIds] = useState(
     () => new Set(),
   );
+  // Normalized names for the same people. Some stored chat events are old
+  // prose with a name but no id ("... by Anna Kowalski"); once that person
+  // has left the team the message is in, there is no roster left to resolve
+  // an id from, so id-matching alone misses them. This is the name-based
+  // fallback, matching how `describeEvent.js` already recognises the viewer
+  // in the same id-less formats.
+  const [blockedRelationshipNames, setBlockedRelationshipNames] = useState(
+    () => new Set(),
+  );
 
   const userId = user?.id ?? null;
 
@@ -55,12 +66,24 @@ export const AuthProvider = ({ children }) => {
   const refreshBlocks = useCallback(async () => {
     if (!userId) {
       setBlockedRelationshipIds(new Set());
+      setBlockedRelationshipNames(new Set());
       return;
     }
     try {
       const response = await userService.getBlockRelationships(userId);
       const ids = Array.isArray(response?.data?.ids) ? response.data.ids : [];
+      const people = Array.isArray(response?.data?.people)
+        ? response.data.people
+        : [];
       setBlockedRelationshipIds(new Set(ids.map((id) => String(id))));
+      setBlockedRelationshipNames(
+        new Set(
+          people
+            .map((person) => getDisplayName(person))
+            .filter((name) => name && name !== "Unknown")
+            .map(normalizeNameForMatch),
+        ),
+      );
     } catch (err) {
       console.error("Failed to load block relationships:", err);
     }
@@ -182,12 +205,13 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       console.error("Registration error:", err);
-      setError(
-        err.response?.data?.message || "Registration failed. Please try again.",
-      );
+      // The result carries the backend's code, not a sentence: the form words it
+      // in the reader's language (utils/authErrorText.js).
+      const errorCode = err.response?.data?.code ?? null;
+      setError(errorCode || "REGISTRATION_FAILED");
       return {
         success: false,
-        message: err.response?.data?.message || "Registration failed",
+        errorCode,
         errors: err.response?.data?.errors,
       };
     } finally {
@@ -222,13 +246,11 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Login failed. Please check your credentials.",
-      );
+      const errorCode = err.response?.data?.code ?? null;
+      setError(errorCode || "LOGIN_FAILED");
       return {
         success: false,
-        message: err.response?.data?.message || "Login failed",
+        errorCode,
       };
     } finally {
       setLoading(false);
@@ -287,6 +309,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateUser,
         blockedRelationshipIds,
+        blockedRelationshipNames,
         refreshBlocks,
       }}
     >

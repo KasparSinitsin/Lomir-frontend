@@ -1,3 +1,10 @@
+/**
+ * Modal variants - centered, right drawer, large, and custom header/footer -
+ * rendered side by side for visual comparison.
+ *
+ * Its only consumer is DesignSystem.jsx, which is deliberately not routed. See
+ * the note at the top of that file before wiring either of them up again.
+ */
 import React, { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";

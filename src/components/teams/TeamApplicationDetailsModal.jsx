@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../contexts/ToastContext";
 import {
   Calendar,
@@ -22,11 +23,11 @@ import InlineUserLink from "../users/InlineUserLink";
 import VacantRoleCard from "./VacantRoleCard";
 import TeamAvatar from "./TeamAvatar";
 import {
-  DEMO_TEAM_TOOLTIP,
   isSyntheticTeam,
 } from "../../utils/userHelpers";
 import Alert from "../common/Alert";
-import { format } from "date-fns";
+import { formatDateMedium } from "../../utils/dateHelpers";
+import { getTeamErrorText } from "../../utils/teamErrorText";
 import { useHydratedRole } from "../../hooks/useHydratedRole";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -169,6 +170,11 @@ const TeamApplicationDetailsModal = ({
   // ============ State ============
   const showToast = useToast();
   const loading = false;
+  // Declares the lazy `teams` namespace this file resolves `teams:` keys
+  // against. i18next inits with ns: ["common"] and useSuspense: false, so an
+  // undeclared namespace renders the raw key. "common" stays first, so
+  // unprefixed keys are unaffected.
+  const { t } = useTranslation(["common", "teams"]);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [isTeamDetailsOpen, setIsTeamDetailsOpen] = useState(false);
@@ -294,7 +300,7 @@ const TeamApplicationDetailsModal = ({
     isSynthetic:
       sourceTeam?.isSynthetic ?? sourceTeam?.is_synthetic ?? syntheticTeamFlag,
   };
-  const teamName = team.name || "Unknown Team";
+  const teamName = team.name || t("common:team.unknownName");
 
   useEffect(() => {
     if (!isOpen) {
@@ -444,13 +450,13 @@ const TeamApplicationDetailsModal = ({
       application?.date ||
       application?.applied_at;
 
-    if (!date) return "Unknown date";
+    if (!date) return t("teams:applicationDetails.unknownDate");
 
     try {
-      return format(new Date(date), "MMM d, yyyy");
+      return formatDateMedium(new Date(date));
     } catch (error) {
       console.error("Error formatting date:", error);
-      return "Unknown date";
+      return t("teams:applicationDetails.unknownDate");
     }
   };
 
@@ -484,7 +490,7 @@ const TeamApplicationDetailsModal = ({
     return {
       isRemote,
       locationText: isRemote
-        ? "Remote"
+        ? t("location.section.remote")
         : locationParts.length > 0
           ? locationParts.join(", ")
           : fallbackLocation,
@@ -532,11 +538,13 @@ const TeamApplicationDetailsModal = ({
       setActionLoading("cancel");
       setError(null);
       await onCancel(application.id);
-      showToast("Application cancelled successfully.", "success");
+      showToast(t("teams:applicationDetails.cancelledSuccess"), "success");
       setIsCancelDialogOpen(false);
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to cancel application");
+      // Close the confirmation so the error, shown in the modal behind it, is seen.
+      setIsCancelDialogOpen(false);
+      setError(getTeamErrorText(err, t, t("teams:applicationDetails.cancelFailed")));
     } finally {
       setActionLoading(null);
     }
@@ -553,7 +561,7 @@ const TeamApplicationDetailsModal = ({
 
       await onSendReminder(application.id);
     } catch (err) {
-      setError(err.message || "Failed to send reminder");
+      setError(err.message || t("teams:applicationDetails.reminderFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -629,18 +637,18 @@ const TeamApplicationDetailsModal = ({
           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 leading-[100%] mb-2">
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <Users size={20} className="shrink-0 text-primary" />
-              <span>Team</span>
+              <span>{t("teams:applicationDetails.titleTeamPart")}</span>
             </span>
             <span>{"&"}</span>
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <UserSearch size={20} className="shrink-0 text-primary" />
-              <span>Role Application</span>
+              <span>{t("teams:applicationDetails.titleRolePart")}</span>
             </span>
           </span>
         ) : !hasRoleApplication ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <Users size={20} className="shrink-0 text-primary" />
-            <span>Team Application</span>
+            <span>{t("teams:applicationDetails.titleTeam")}</span>
           </span>
         ) : (
           teamName
@@ -657,10 +665,10 @@ const TeamApplicationDetailsModal = ({
         />
         <span className="leading-[1.2]">
           {isInternalRoleApplication
-            ? "You applied to fill this role within your team"
+            ? t("teams:applicationDetails.subtitleInternalRole")
             : hasRoleApplication
-              ? "You applied to join a new Team and fill a Role"
-            : "You applied to join"}
+              ? t("teams:applicationDetails.subtitleCombined")
+            : t("teams:applicationDetails.subtitleTeam")}
         </span>
       </p>
     </div>
@@ -672,7 +680,7 @@ const TeamApplicationDetailsModal = ({
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {/* Received by (left) */}
       <InlineUserLink
-        label="Received by"
+        label={t("teams:applicationDetails.receivedBy")}
         user={owner}
         onOpenUser={handleUserClick}
         className="min-w-0 flex-[1_1_12rem] overflow-hidden"
@@ -687,7 +695,9 @@ const TeamApplicationDetailsModal = ({
           disabled={loading || actionLoading !== null}
           icon={<SendHorizontal size={16} />}
         >
-          {actionLoading === "reminder" ? "Sending..." : "Send Reminder"}
+          {actionLoading === "reminder"
+            ? t("teams:applicationDetails.sending")
+            : t("teams:applicationDetails.sendReminder")}
         </Button>
 
         <Button
@@ -697,7 +707,9 @@ const TeamApplicationDetailsModal = ({
           disabled={loading || actionLoading !== null}
           icon={<X size={16} />}
         >
-          {actionLoading === "cancel" ? "Canceling..." : "Cancel Application"}
+          {actionLoading === "cancel"
+            ? t("teams:applicationDetails.canceling")
+            : t("teams:applicationDetails.cancelApplication")}
         </Button>
       </div>
     </div>
@@ -736,7 +748,7 @@ const TeamApplicationDetailsModal = ({
             className="flex min-w-0 flex-1 items-start space-x-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleTeamClick}
           >
-            <Tooltip content="Click to view team details" wrapperClassName="avatar">
+            <Tooltip content={t("teams:teamCard.tooltips.clickTeamDetails")} wrapperClassName="avatar">
               <TeamAvatar
                 team={team}
                 sizeClass="w-12 h-12"
@@ -753,7 +765,7 @@ const TeamApplicationDetailsModal = ({
                 className="font-medium text-base-content leading-[120%] mb-[0.2em] truncate relative"
               >
                 <Tooltip
-                  content="Click to view team details"
+                  content={t("teams:teamCard.tooltips.clickTeamDetails")}
                   wrapperClassName="cursor-pointer hover:text-primary transition-colors"
                 >
                   <span>{teamName}</span>
@@ -780,7 +792,7 @@ const TeamApplicationDetailsModal = ({
                 )}
                 {showTeamMemberCapacity && (
                   <Tooltip
-                    content="Team members"
+                    content={t("teams:applicationDetails.teamMembers")}
                     wrapperClassName="flex shrink-0 items-center gap-1 text-base-content/70"
                   >
                     <Users size={10} className="shrink-0 text-primary" />
@@ -806,16 +818,16 @@ const TeamApplicationDetailsModal = ({
                 )}
                 {applicantAlreadyTeamMember && (
                   <Tooltip
-                    content="You are already a member of this team"
+                    content={t("teams:applicationDetails.alreadyMember")}
                     wrapperClassName="flex min-w-0 overflow-hidden items-center gap-0.5 text-base-content/70"
                   >
                     <User size={10} className="flex-shrink-0 text-success" />
-                    <span className="leading-[1.05] whitespace-nowrap">Team Member</span>
+                    <span className="leading-[1.05] whitespace-nowrap">{t("teams:applicationDetails.teamMember")}</span>
                   </Tooltip>
                 )}
                 {isSyntheticTeam(team) && (
                   <Tooltip
-                    content={DEMO_TEAM_TOOLTIP}
+                    content={t("demo.teamTooltip")}
                     wrapperClassName="flex shrink-0 items-center gap-0.5 text-base-content/50"
                   >
                     <FlaskConical size={10} className="flex-shrink-0" />
@@ -847,7 +859,7 @@ const TeamApplicationDetailsModal = ({
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-1 flex items-center">
               <SendHorizontal size={12} className="text-info mr-1" />
-              Your application message:
+              {t("teams:applicationDetails.yourMessage")}
             </p>
             <div className="w-fit max-w-full bg-base-200 rounded-lg rounded-bl-none p-3">
               <p className="text-sm text-base-content/90 leading-relaxed">
@@ -890,10 +902,10 @@ const TeamApplicationDetailsModal = ({
           <div className="mb-5">
             <p className="text-xs text-base-content/60 mb-0.5 flex items-center">
               <SendHorizontal size={12} className="text-info mr-1" />
-              Your application message:
+              {t("teams:applicationDetails.yourMessage")}
             </p>
             <p className="text-sm text-base-content/50 italic leading-relaxed">
-              No message provided.
+              {t("teams:applicationDetails.noMessage")}
             </p>
           </div>
         )}
@@ -903,17 +915,18 @@ const TeamApplicationDetailsModal = ({
         isOpen={isCancelDialogOpen}
         onClose={closeCancelApplicationDialog}
         onConfirm={confirmCancelApplication}
-        title="Cancel Application"
+        title={t("teams:applicationDetails.cancelApplication")}
         loading={actionLoading === "cancel"}
-        confirmLabel="Cancel Application"
-        loadingLabel="Canceling..."
+        confirmLabel={t("teams:applicationDetails.cancelApplication")}
+        loadingLabel={t("teams:applicationDetails.canceling")}
         confirmVariant="error"
         confirmIcon={<Trash2 size={16} />}
-        cancelLabel="Keep"
+        cancelLabel={t("teams:applicationDetails.keep")}
       >
         <p className="text-sm text-base-content/80">
-          Cancel your application to {team.name || "this team"}? The team will
-          no longer be able to review it.
+          {team.name
+            ? t("teams:applicationDetails.cancelBodyNamed", { teamName: team.name })
+            : t("teams:applicationDetails.cancelBodyUnnamed")}
         </p>
       </ConfirmModal>
 

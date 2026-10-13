@@ -1,0 +1,510 @@
+import { Link } from "react-router-dom";
+import { mailLink } from "./shared";
+import LegalLink from "../../components/common/LegalLink";
+
+/**
+ * The German legal texts. Same shape as en.jsx, checked by
+ * `npm run legal:check` - see scripts/legal-parity.mjs.
+ *
+ * ⚠️ Binding text, not UI copy. THIS German version is authoritative; en.jsx
+ * is its translation (Julia, 2026-10-12, replacing "equal weight" of
+ * 2026-09-17). Terms §14 says so to users.
+ * Change German first, then English, in the same commit, and update
+ * LEGAL_UPDATED in ./shared.jsx.
+ *
+ * All four pages are Julia's own text (2026-09-17 / 2026-09-18); the English
+ * was aligned to them sentence by sentence. Walked by Julia in the browser on
+ * 2026-09-25, both languages compared section by section.
+ */
+
+const contactLink = (
+  <Link to="/contact" className="link link-primary">
+    Kontaktseite
+  </Link>
+);
+
+// The legal notice names the contact form as the second, quick means of contact next to the e-mail address
+// (DDG § 5 Abs. 1 Nr. 2). It is open to visitors without an account.
+const contactFormLink = (
+  <Link to="/contact" className="link link-primary">
+    Kontaktformular
+  </Link>
+);
+
+const termsLink = (
+  <LegalLink to="/terms" className="link link-primary">
+    Nutzungsbedingungen
+  </LegalLink>
+);
+
+const privacyLink = (
+  <LegalLink to="/privacy" className="link link-primary">
+    Datenschutzerklärung
+  </LegalLink>
+);
+
+const content = {
+  about: {
+    title: "Über Lomir",
+    intro:
+      "Lomir ist eine kostenlose Team-Matching-App für Menschen, die Mitstreiter finden, Teams bilden und Nachrichten rund um gemeinsame Interessen, Schwerpunkte, Badges, Rollen und Standortpräferenzen austauschen möchten.",
+    sections: [
+      {
+        title: "Projektstatus",
+        paragraphs: [
+          "Lomir wird aktuell als nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Die App ist mit Datenschutz als Standard konzipiert: Neue Profile bleiben privat, bis Nutzer sie aktiv öffentlich machen.",
+          "Die App kann sich im Verlauf des Projekts weiterentwickeln. Ändern sich wesentliche Funktionen, überprüfen und aktualisieren wir die rechtlichen Hinweise und die Datenschutzerklärung, bevor die Änderungen gelten.",
+        ],
+      },
+      {
+        title: "Kontakt",
+        paragraphs: [
+          <>Fragen zu Lomir kannst du über die {contactLink} oder per E-Mail an {mailLink} senden.</>,
+        ],
+      },
+    ],
+  },
+  privacy: {
+    title: "Datenschutzerklärung",
+    intro:
+      "Diese Datenschutzerklärung erklärt, wie Lomir personenbezogene Daten verarbeitet. Sie ist für eine App mit Sitz in Deutschland verfasst und an der DSGVO, dem Bundesdatenschutzgesetz und den deutschen Regelungen zu technisch notwendiger Browser-Speicherung nach dem TDDDG ausgerichtet.",
+    sections: [
+      {
+        title: "1. Verantwortliche Stelle",
+        paragraphs: [
+          "Verantwortliche für die Datenverarbeitung bei Lomir ist:",
+          <>
+            Julia Baur
+            <br />
+            Walpodenstraße 16
+            <br />
+            55116 Mainz
+            <br />
+            Deutschland
+            <br />
+            E-Mail: {mailLink}
+          </>,
+          "Ein Datenschutzbeauftragter wurde nicht bestellt, da dies für das Projekt derzeit rechtlich nicht erforderlich ist.",
+        ],
+      },
+      {
+        title: "2. Was ist Lomir?",
+        paragraphs: [
+          "Lomir hilft Nutzern, Menschen, Teams und offene Rollen basierend auf Profilinformationen, Schwerpunkten, Badges, Standortpräferenzen und Teammitgliedschaften zu finden. Die App bietet zudem Direkt- und Team-Chats, Dateifreigabe, Benachrichtigungen, Kontaktformulare und Account-Verwaltung.",
+          "Profile sind standardmäßig privat. Öffentliche Profilinformationen werden nur in öffentlichen Suchergebnissen und Profilansichten angezeigt, wenn ein Nutzer seinen Profilstatus aktiv auf öffentlich ändert.",
+        ],
+      },
+      {
+        title: "3. Mindestalter",
+        paragraphs: [
+          "Lomir ist nicht für Nutzer unter 16 Jahren bestimmt. Bei der Registrierung musst du separat bestätigen, dass du mindestens 16 Jahre alt bist.",
+          <>Lomir sammelt wissentlich keine personenbezogenen Daten von Nutzern unter 16 Jahren. Falls du glaubst, dass eine Person unter 16 Jahren einen Account erstellt hat, kontaktiere uns bitte unter {mailLink}, damit wir den Account prüfen und ggf. löschen können.</>,
+        ],
+      },
+      {
+        title: "4. Von uns verarbeitete Daten",
+        items: [
+          "Account-Daten: Benutzername, E-Mail-Adresse, Passwort-Hash, E-Mail-Bestätigungsstatus, Zeitstempel und Account-Einstellungen.",
+          "Rechtliche Bestätigungsdaten: Zeitstempel und Dokumentenversionen für akzeptierte Nutzungsbedingungen, die zur Kenntnis genommene Datenschutzerklärung und die separate Bestätigung, dass du mindestens 16 Jahre alt bist.",
+          "Profildaten: Optionaler Vor- und Nachname, Bio, Avatar, Schwerpunkte, Badges, optionale Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland und Land sowie der öffentliche/private Sichtbarkeitsstatus.",
+          "Team- und Rollendaten: Teamnamen, Beschreibungen, Avatare, Mitglieder, Rollen, Bewerbungen, Einladungen und Team-Standortpräferenzen.",
+          "Nachrichten und Benachrichtigungen: Direktnachrichten, Teamnachrichten, Erwähnungen, Tipp-/Lesebestätigungen, Systemnachrichten, Benachrichtigungsprotokolle und Nachrichten-Metadaten.",
+          "Uploads: Profil-Avatare, Team-Avatare, Chat-Bilder, Chat-Dateien und Anhangsdateien aus dem Kontaktformular.",
+          "Standortdaten: Postleitzahl, Stadt, Bezirk, Bundesland, Land und Koordinaten, die aus den von dir angegebenen Standortdaten abgeleitet werden. Lomir fragt keine Straßenadresse ab. Postleitzahl und andere Standortdetails werden als ungefähre Standortinformationen für Suche, entfernungsbasiertes Matching, Empfehlungen und die Anzeige von Profil-/Team-/Rollen-Standorten verwendet. Je nach Sichtbarkeitseinstellungen und Kontext können Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account. Öffentliche Suchergebnisse und Kartenansichten zeigen gerundete ungefähre Koordinaten, nicht die exakt gespeicherten Koordinaten.",
+          "Kontakt- und Meldedaten: Name, E-Mail-Adresse, Thema, Nachricht, optionale Anhangsdateien aus dem Kontaktformular, Vorgangs-IDs für Meldungen, Meldestatus, E-Mail-Weiterleitungsstatus und Anhangs-Metadaten für Meldungen von Missbrauch oder illegalen Inhalten.",
+          "Sicherheits- und technische Daten: IP-bezogene Anfragedaten, die von Hosting-Anbietern verarbeitet werden, Browser- und Geräte-Metadaten in Server-Logs, Rate-Limit-Daten, CAPTCHA-Überprüfungsdaten, Sitzungs- und Authentifizierungsdaten sowie Browser-Speicherung, die für den Betrieb der App erforderlich ist.",
+        ],
+      },
+      {
+        title: "5. Quellen der Daten",
+        paragraphs: [
+          "Die meisten personenbezogenen Daten, die Lomir verarbeitet, werden direkt von dir bereitgestellt, z. B. während der Registrierung, Profilbearbeitung, Teamerstellung, Nachrichtenversand, Bewerbungen, Einladungen, Uploads oder Kontaktanfragen.",
+          "Einige Daten können von der App generiert oder von anderen Nutzern im Rahmen der Zusammenarbeit bereitgestellt werden, z. B. Teammitgliedschaftsaufzeichnungen, Einladungen, Bewerbungen, Badge-Verleihungen, Nachrichten, Erwähnungen, Benachrichtigungen, Eigentumsübertragungen und Systemnachrichten.",
+          "Standortdetails können aus Postleitzahl, Stadt, Bezirk, Bundesland oder Land, die du angibst, unter Verwendung von OpenStreetMap/Nominatim abgeleitet werden.",
+        ],
+      },
+      {
+        title: "6. Zwecke und Rechtsgrundlagen",
+        items: [
+          "Account-Erstellung, Anmeldung, Profilverwaltung, optionales standortbasiertes Matching, Team-Matching, Chat, Benachrichtigungen und App-Betrieb: Art. 6 Abs. 1 lit. b DSGVO.",
+          "Annahme der Nutzungsbedingungen, Kenntnisnahme der Datenschutzerklärung und deren Dokumentation: Art. 6 Abs. 1 lit. b und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Bestätigung des Mindestalters: Art. 6 Abs. 1 lit. c in Verbindung mit Art. 8 DSGVO sowie Art. 6 Abs. 1 lit. f DSGVO.",
+          "Öffentliche Profilsichtbarkeit und optionale Profilinhalte, die Nutzer veröffentlichen (einschließlich optionaler ungefährer Standortdetails): Art. 6 Abs. 1 lit. a DSGVO und, wo relevant, Art. 6 Abs. 1 lit. b DSGVO.",
+          "Sicherheit, Missbrauchsprävention, Rate-Limiting, CAPTCHA-Prüfungen, Betrugsprävention, Debugging und Zuverlässigkeit des Dienstes: Art. 6 Abs. 1 lit. f DSGVO.",
+          "Datensicherung und Wiederherstellung nach einem Ausfall: Art. 6 Abs. 1 lit. f in Verbindung mit Art. 32 DSGVO.",
+          "Kontaktanfragen und Support-Kommunikation: Art. 6 Abs. 1 lit. b DSGVO, wo die Anfrage einen Account oder potenziellen Account betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO.",
+          "Rechtliche Compliance und Beweissicherung, falls erforderlich: Art. 6 Abs. 1 lit. c und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Anzeige der Kartenansicht und Auflösen von Standortangaben über OpenStreetMap: Art. 6 Abs. 1 lit. b DSGVO, soweit du die Funktion nutzt, und Art. 6 Abs. 1 lit. f DSGVO.",
+          "Erhalt von Team-Nachrichten und verliehenen Badges nach einer Account-Löschung, mit ersetztem Namen: Art. 6 Abs. 1 lit. f DSGVO.",
+        ],
+      },
+      {
+        title: "7. Berechtigte Interessen",
+        blocks: [
+          {
+            paragraph:
+              "Wo Lomir sich auf Art. 6 Abs. 1 lit. f DSGVO stützt, liegen die berechtigten Interessen in:",
+          },
+          {
+            list: [
+              "dem Betrieb einer sicheren und zuverlässigen App,",
+              "der Verhinderung von Missbrauch und Spam,",
+              "dem Schutz von Nutzern und dem Dienst,",
+              "dem Debugging von Fehlern,",
+              "der Durchsetzung der Regeln,",
+              "der Beweissicherung, falls erforderlich,",
+              "der Beantwortung von Support-Anfragen,",
+              "der Wiederherstellbarkeit der App nach einem Ausfall oder Datenverlust,",
+              "der Darstellung von Suchergebnissen auf einer Karte,",
+              "der Verständlichkeit von Team-Gesprächen und Auszeichnungen für die verbleibenden Mitglieder,",
+              "der Verteidigung oder Geltendmachung von Rechtsansprüchen.",
+            ],
+          },
+        ],
+      },
+      {
+        title: "8. Erforderliche und optionale Daten",
+        paragraphs: [
+          "Es besteht keine gesetzliche Verpflichtung, einen Lomir-Account zu erstellen. Account-Daten, rechtliche Bestätigungen, Altersbestätigung und sicherheitsrelevante Daten sind jedoch notwendig, um einen Account zu erstellen und zu verwalten sowie den Nutzungsvertrag abzuschließen oder zu erfüllen. Ohne diese Daten kann Lomir keinen Account bereitstellen.",
+          "Profildetails, Avatare, Schwerpunkte, Teams, Rollen, Bewerbungen, Nachrichten, Uploads und Standortdetails werden in der Regel freiwillig bereitgestellt. Einige davon sind jedoch für die jeweilige Funktion erforderlich. Falls optionale Daten nicht bereitgestellt werden, kann die entsprechende Funktion nicht verfügbar oder weniger nützlich sein.",
+          "Standortfelder wie Postleitzahl, Stadt und Land sind optional. Du kannst sie leer lassen oder später in deinen Profileinstellungen entfernen. Ohne Standortdaten können Suche in der Nähe, entfernungsbasiertes Matching und standortbasierte Empfehlungen weniger präzise oder nicht verfügbar sein.",
+        ],
+      },
+      {
+        title: "9. Öffentliche Sichtbarkeit",
+        paragraphs: [
+          "Lomir ist so konzipiert, dass Nutzer keine Profildetails versehentlich veröffentlichen. Neue Accounts bleiben nach der E-Mail-Bestätigung privat, es sei denn, du änderst die Einstellung.",
+          "Wenn dein Profil öffentlich ist, können alle Besucher von Lomir, auch ohne Account, Profildetails wie Benutzername, Name, Bio, Avatar, Schwerpunkte, Badges und ungefähre Standortdetails sehen, die du hinzugefügt hast. Ungefähre Standortdetails können Postleitzahl, Stadt, Bezirk, Bundesland oder Land umfassen. Wir bitten Suchmaschinen über die Datei robots.txt, die Suche und die Profilseiten nicht zu erfassen; ob sich jede Suchmaschine daran hält, können wir nicht garantieren.",
+          "Wenn dein Profil privat ist, wird es nicht in öffentlichen Suchergebnissen oder Profilansichten angezeigt. Teammitglieder und Gesprächsteilnehmer können jedoch weiterhin Informationen sehen, die für die Teamzusammenarbeit, Nachrichten, Bewerbungen, Einladungen, Badge-Kontext und sicherheitsrelevante Systemnachrichten erforderlich sind.",
+          "Du kannst die Sichtbarkeit deines Profils in den Einstellungen ändern. Wenn du dein Profil auf privat setzt, betrifft dies nur die zukünftige öffentliche Sichtbarkeit. Bereits von anderen Nutzern gesehene Informationen oder in Team-/Chat-Kontexten enthaltene Daten werden dadurch nicht entfernt.",
+        ],
+      },
+      {
+        title: "10. Empfänger und Weitergabe von Daten",
+        items: [
+          "Andere Lomir-Nutzer und, bei öffentlichen Profilen, auch Besucher ohne Account können personenbezogene Daten erhalten, wenn die App-Funktion dies erfordert, z. B. öffentliche Profilansichten, Suchergebnisse, Teamseiten, Bewerbungen, Einladungen, Nachrichten, Badge-Kontext und Benachrichtigungen.",
+          "Teammitglieder, Team-Eigentümer, Eingeladene, Bewerber und Gesprächsteilnehmer können Informationen erhalten, die für den jeweiligen Zusammenarbeitskontext erforderlich sind.",
+          "Die Betreiber des Lomir-Projekts können auf personenbezogene Daten zugreifen, soweit dies für den Betrieb der App, Support, Missbrauchsuntersuchungen, Fehlerbehebung, Sicherheitswartung oder die Einhaltung rechtlicher Verpflichtungen erforderlich ist.",
+          "Hosting-, Datenbank-, Upload-, E-Mail-, CAPTCHA-, Geocoding-, Karten- und Infrastruktur-Anbieter verarbeiten personenbezogene Daten, soweit dies für die Bereitstellung der App erforderlich ist. Je nach Anbieter und Kontext handeln sie entweder als Auftragsverarbeiter im Auftrag von Lomir oder als unabhängige Anbieter nach ihren eigenen Datenschutzbestimmungen.",
+          "E-Mail-Anbieter können E-Mail-Adressen, Nachrichteninhalte, E-Mail-Metadaten, Bestätigungs-E-Mails, Passwort-Zurücksetzungs-E-Mails und Kontaktformular-Nachrichten (einschließlich Anhänge) verarbeiten, soweit dies für die E-Mail-Zustellung oder Support-Kommunikation erforderlich ist.",
+          "Für das Auflösen von Standortangaben fragt das Lomir-Backend OpenStreetMap/Nominatim an; dabei wird die Standortangabe übermittelt, nicht deine IP-Adresse. Wenn du die Kartenansicht öffnest, lädt dein Browser Kartenkacheln direkt von OpenStreetMap; dabei erhält OpenStreetMap deine IP-Adresse, Browser- und Gerätedaten sowie Anfrage-Metadaten.",
+          "Behörden, Gerichte, Rechtsberater oder andere Dritte können Daten erhalten, soweit dies gesetzlich vorgeschrieben oder notwendig ist, um Rechte, Sicherheit, Nutzer oder den Dienst zu schützen.",
+        ],
+      },
+      {
+        title: "11. Matching, Empfehlungen und automatisierte Entscheidungen",
+        paragraphs: [
+          "Lomir berechnet Matching- und Überschneidungswerte aus Tags, Badges und Entfernungsinformationen, um Personen, Teams und Rollen zu sortieren oder zu empfehlen. Die Logik vergleicht gemeinsame Schwerpunkte, Badge-Kontexte, Rolleninformationen und ungefähre Entfernungen (falls verfügbar). Postleitzahl, Stadt, Bezirk, Bundesland, Land und abgeleitete Koordinaten können zur Berechnung ungefährer Entfernungen verwendet werden.",
+          "Diese Werte dienen nur als Hilfsfunktionen. Lomir verwendet keine automatisierte Entscheidungsfindung, die rechtliche Wirkungen oder ähnlich bedeutende Auswirkungen im Sinne von Art. 22 DSGVO hat.",
+        ],
+      },
+      {
+        title: "12. Browser-Speicherung, Cookies und ähnliche Technologien",
+        paragraphs: [
+          "Lomir verwendet ein technisch notwendiges, httpOnly-Session-Cookie, um dich nach der Anmeldung angemeldet zu halten. Dieses Cookie enthält Sitzungsauthentifizierungsdaten, ist nicht durch JavaScript lesbar und wird an das Lomir-Backend gesendet, um deine Anfragen und Echtzeit-Chat-Verbindungen zu authentifizieren. Lomir verwendet zudem technisch notwendige Browser-Speicherung wie sessionStorage, z. B. für den Status von In-App-Benachrichtigungen, und kurzlebige localStorage-Einträge, z. B. für eine Hinweismeldung nach der Registrierung, die beim nächsten Seitenaufruf wieder gelöscht wird.",
+          "Dieses Cookie und die Speicherung sind unbedingt erforderlich, um Authentifizierung, API-Zugriff, Echtzeit-Chat und Benachrichtigungsfunktionen bereitzustellen, und erfordern daher keine Einwilligung nach § 25 Abs. 2 TDDDG. Lomir verwendet derzeit keine Werbe-Cookies, Marketing-Tracker oder Analysetools Dritter.",
+          "Bei der Registrierung und im Kontaktformular setzt Lomir Cloudflare Turnstile ein. Cloudflare verarbeitet dabei technische Daten, um zu überprüfen, dass eine Anfrage von einem Menschen stammt. Dies dient der Missbrauchsprävention.",
+        ],
+      },
+      {
+        title: "13. Dienste Dritter",
+        items: [
+          "Vercel hostet und liefert das Frontend und leitet API- und Echtzeit-Anfragen der App an das Backend weiter (damit Frontend und Backend eine Adresse teilen). Vercel kann daher IP-Adressen, Browser- und Gerätedaten, Anfrage- und API-Metadaten, Sitzungsauthentifizierungsdaten während der Übertragung, Bereitstellungsdaten und technische Logs verarbeiten, die für die Bereitstellung, Weiterleitung und Sicherung der App erforderlich sind.",
+          "Render hostet die Backend-API. Render kann IP-Adressen, Browser- und Gerätedaten, API-Anfrage-Metadaten, Server-Logs, Fehlerinformationen und Daten verarbeiten, die an das Backend gesendet oder von diesem empfangen werden.",
+          "Neon, jetzt Teil von Databricks, stellt die PostgreSQL-Datenbank bereit. In der Datenbank gespeicherte App-Daten können Account-Daten, Profildaten, Team- und Rollendaten, Nachrichten, Benachrichtigungen, Aufzeichnungen rechtlicher Bestätigungen, Standortdaten und zugehörige Metadaten umfassen.",
+          "ImageKit speichert, transformiert, optimiert und liefert hochgeladene Medien und Dateien, einschließlich Profil-Avatare, Team-Avatare, Chat-Bilder, Chat-Dateien und zugehörige Liefer-Logs oder Metadaten.",
+          "Brevo (betrieben von Sendinblue SAS, Frankreich) wird zum Versand von Transaktions-E-Mails der App verwendet – z. B. Account-Bestätigung, Passwort-Zurücksetzung, Benachrichtigungen über Account-Änderungen sowie Nachrichten aus dem Kontaktformular und Meldungen von Missbrauch oder illegalen Inhalten. Brevo kann E-Mail-Adressen, E-Mail-Inhalte, E-Mail-Metadaten und Anhangsdateien aus dem Kontaktformular im Rahmen der E-Mail-Zustellung verarbeiten. Kontaktformular- und Meldenachrichten werden zusätzlich im Google/Gmail-Postfach der Lomir-Betreiber empfangen; Google kann diese E-Mail-Inhalte und Metadaten als Postfachbetreiber verarbeiten.",
+          "Cloudflare Turnstile wird für CAPTCHA-Prüfungen bei der Registrierung und im Kontaktformular verwendet. Cloudflare kann technische Daten wie IP-Adresse, Browser- und Geräteinformationen, Challenge-Daten und Überprüfungstokens verarbeiten, um Missbrauch zu erkennen und zu bestätigen, dass eine Anfrage wahrscheinlich von einem Menschen stammt.",
+          "OpenStreetMap/Nominatim wird über das Lomir-Backend verwendet, um von Nutzern bereitgestellte Standortinformationen wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land aufzulösen. Wenn du die Kartenansicht öffnest, lädt dein Browser Kartenkacheln direkt von den Kartenservern von OpenStreetMap; diese erhalten dabei deine IP-Adresse, Browser- und Gerätedaten und Anfrage-Metadaten.",
+        ],
+      },
+      {
+        title: "14. Internationale Datenübermittlungen",
+        blocks: [
+          {
+            paragraph:
+              "Einige Anbieter haben ihren Sitz außerhalb des Europäischen Wirtschaftsraums oder können Daten in den USA, dem Vereinigten Königreich, Indien oder anderen Ländern verarbeiten, insbesondere wenn Infrastruktur, Support, Sicherheit, E-Mail-Zustellung, Inhaltsbereitstellung oder globale Netzwerkdienste international bereitgestellt werden.",
+          },
+          {
+            paragraph:
+              "Falls personenbezogene Daten in ein Land übermittelt werden, für das kein EU-Angemessenheitsbeschluss vorliegt, stützt sich Lomir auf die verfügbaren Übermittlungsmechanismen und Garantien, die der jeweilige Anbieter anbietet. Dazu können gehören:",
+          },
+          {
+            list: [
+              "EU-US Data Privacy Framework,",
+              "UK-Erweiterung des EU-US Data Privacy Framework,",
+              "Schweiz-US Data Privacy Framework,",
+              "EU-Standardvertragsklauseln,",
+              "Datenverarbeitungsvereinbarungen,",
+              "ergänzende technische und organisatorische Maßnahmen.",
+            ],
+          },
+          {
+            paragraph:
+              "Vercel, Render, Databricks/Neon, Cloudflare, Brevo und ImageKit veröffentlichen Informationen zur Datenverarbeitung, Übermittlungsgarantien oder Unterauftragsverarbeiter in ihren rechtlichen oder Vertrauensdokumentationen. Brevo, das den E-Mail-Versand abwickelt, hat seinen Sitz in der EU. Google/Gmail und OpenStreetMap-bezogene Dienste verarbeiten Daten nach ihren eigenen Datenschutzbestimmungen, soweit sie als unabhängige Anbieter oder Betreiber öffentlicher Infrastruktur agieren.",
+          },
+          {
+            paragraph: (
+              <>Nutzer können Lomir unter {mailLink} kontaktieren, um weitere Informationen zu den Garantien in Bezug auf einen bestimmten Anbieter anzufordern.</>
+            ),
+          },
+        ],
+      },
+      {
+        title: "15. Speicherdauern",
+        items: [
+          "Account- und Profildaten werden gespeichert, solange der Account existiert. Wenn du deinen Account löschst, werden dein Profil, die Badges, die dir verliehen wurden, deine Teammitgliedschaften, Bewerbungen und Einladungen sowie alle Direktnachrichten, an denen du beteiligt bist, sofort nach Bestätigung gelöscht. Bestehen bleiben deine Nachrichten in Team-Chats und die Badges, die du anderen verliehen hast; dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt.",
+          "Wenn ein Team gelöscht wird, dessen einziges Mitglied der Eigentümer ist, werden das Team, sein Chat, Einladungen, Bewerbungen, Badges, Benachrichtigungen und Team-Avatar sofort gelöscht. Wenn ein Team mit weiteren Mitgliedern gelöscht wird, wird es zunächst archiviert, damit die verbleibenden Mitglieder die Löschbenachrichtigung sehen und den Teamverlauf einsehen können. Es wird dauerhaft gelöscht, wenn das letzte Mitglied das Team verlässt oder nach der konfigurierten Archivierungsfrist, derzeit standardmäßig 14 Tage.",
+          "Aufzeichnungen rechtlicher Bestätigungen werden gespeichert, solange der Account existiert, und mit ihm gelöscht.",
+          "Nicht bestätigte Accounts werden zur Löschung vorgesehen, nachdem der Bestätigungslink abgelaufen ist, mit einer Pufferzeit von einer Stunde. Die Bereinigung erfolgt periodisch und einmalig beim Serverstart.",
+          "Passwort-Zurücksetzungstokens laufen nach einer Stunde ab und werden durch die geplante Bereinigung gelöscht.",
+          "Chat-Dateien und Bild-Uploads laufen nach 60 Tagen ab und werden durch die geplante Bereinigung entfernt, soweit möglich. Nachrichtenaufzeichnungen können mit gelöschten Dateireferenzen erhalten bleiben.",
+          "Avatare und Team-Avatare werden gespeichert, bis sie ersetzt, entfernt oder mit dem jeweiligen Account oder Team gelöscht werden, soweit technisch möglich.",
+          "Kontaktformular-Nachrichten, Meldungen von Missbrauch oder illegalen Inhalten, Meldestatus-Aufzeichnungen und zugehörige E-Mails werden so lange aufbewahrt, wie es erforderlich ist, um die Anfrage zu beantworten, die Meldung zu prüfen, den Bearbeitungsprozess zu dokumentieren und ggf. rechtlichen Verpflichtungen nachzukommen oder Ansprüchen zu verteidigen.",
+          "Technische Logs werden nur so lange aufbewahrt, wie es für Sicherheit, Fehlerbehebung und Hosting-Betrieb erforderlich ist, abhängig von den Einstellungen des jeweiligen Anbieters.",
+          "Sicherungskopien: Zum Schutz vor Datenverlust sichern wir die Datenbank regelmäßig auf den Rechnern der Betreiber. Diese Sicherungen sind verschlüsselt, dienen nur der Wiederherstellung nach einem Ausfall oder Fehler und werden nach 30 Tagen automatisch gelöscht. Der Datenbankanbieter hält zusätzlich eigene Sicherungen nach seinen Bedingungen vor. Gelöschte Daten können daher noch einige Zeit in Sicherungen enthalten sein, in unseren eigenen bis zu 30 Tage. Stellen wir eine Sicherung wieder her, löschen wir Accounts und Teams erneut, die nach dem Zeitpunkt der Sicherung gelöscht wurden. Dafür bewahren wir nach jeder Löschung eine kurze interne Notiz mit der Nummer des Accounts oder Teams und den Zeitpunkten auf, ohne Namen oder E-Mail-Adresse, und löschen sie, sobald keine Sicherung mehr eingespielt werden kann. Kleinere Änderungen aus diesem Zeitraum, etwa eine einzeln gelöschte Nachricht, können dabei zurückkehren; die Betroffenen informieren wir darüber.",
+        ],
+      },
+      {
+        title: "16. Account-Löschung",
+        paragraphs: [
+          <>Du kannst deinen Account aus der App heraus löschen. Nach der Bestätigung werden dein Account und alle Direktnachrichten, an denen du beteiligt bist, sofort gelöscht, auch für die jeweils andere Person. Nachrichten, die du in Team-Chats geschrieben hast, und Badges, die du anderen verliehen hast, bleiben bestehen, damit Gespräche und Auszeichnungen für die anderen verständlich bleiben. Dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt, ebenso in Systemnachrichten, etwa zu Eigentumsübertragungen oder Rollen. Möchtest du einzelne Team-Nachrichten entfernen, kannst du sie vor der Löschung im Chat löschen oder uns später über die {contactLink} darum bitten.</>,
+          <>Erwähnungen mit @ zeigen danach „Ehemaliger Lomir-Nutzer“ statt deines Namens. Was andere Nutzer frei in ihre Nachrichten geschrieben haben, bleibt dagegen unverändert, auch wenn dein Name darin steht. Möchtest du, dass eine solche Stelle entfernt wird, wende dich über die {contactLink} an uns.</>,
+          "Hochgeladene Avatare sowie Bilder und Dateien aus deinen Direktnachrichten löschen wir unmittelbar nach der Account-Löschung aus ImageKit. Gelingt das nicht sofort, holen wir es bei der täglichen Bereinigung nach. Aus unseren Sicherungskopien der Datenbank verschwinden deine Daten nach 30 Tagen (siehe 15. Speicherdauern).",
+        ],
+      },
+      {
+        title: "17. Deine Rechte",
+        blocks: [
+          {
+            paragraph: (
+              <>Du kannst Lomir unter {mailLink} kontaktieren, um folgende Rechte geltend zu machen:</>
+            ),
+          },
+          {
+            list: [
+              "Auskunft über deine gespeicherten Daten,",
+              "Berichtigung unrichtiger Daten,",
+              "Löschung deiner Daten,",
+              "Einschränkung der Verarbeitung,",
+              "Datenübertragbarkeit,",
+              "Widerspruch gegen die Verarbeitung auf Basis berechtigter Interessen,",
+              "Widerruf einer erteilten Einwilligung für die Zukunft.",
+            ],
+          },
+          {
+            paragraph:
+              "Ein Widerruf der Einwilligung berührt nicht die Rechtmäßigkeit der Verarbeitung, die auf der Einwilligung vor dem Widerruf beruhte. Beispiel: Du kannst ein öffentliches Profil später auf privat setzen, aber dies hebt nicht die Sichtbarkeit auf, die bereits vor der Änderung bestand.",
+          },
+          {
+            paragraph: (
+              <><strong>Widerspruchsrecht:</strong> Soweit wir Daten auf Grundlage berechtigter Interessen (Art. 6 Abs. 1 lit. f DSGVO) verarbeiten, kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben, jederzeit widersprechen (Art. 21 DSGVO). Wir verarbeiten die Daten dann nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe nachweisen, die deine Interessen überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen.</>
+            ),
+          },
+          {
+            paragraph: (
+              <>Du hast zudem das Recht, Beschwerde bei einer Datenschutzaufsichtsbehörde einzureichen. In Rheinland-Pfalz ist dies der <a href="https://www.datenschutz.rlp.de" target="_blank" rel="noopener noreferrer" className="link link-primary">Landesbeauftragte für den Datenschutz und die Informationsfreiheit Rheinland-Pfalz</a>. Du kannst dich auch an eine andere zuständige Aufsichtsbehörde wenden.</>
+            ),
+          },
+        ],
+      },
+      {
+        title: "18. Sensible Daten",
+        paragraphs: [
+          "Bitte gib keine besonderen Kategorien personenbezogener Daten, vertrauliche Informationen oder Geheimnisse Dritter in dein Profil, Teams, Nachrichten, Uploads oder das Kontaktformular ein, es sei denn, dies ist absolut notwendig und du hast das Recht, diese Daten weiterzugeben.",
+        ],
+      },
+      {
+        title: "19. Aktualisierungen und weitere Verarbeitung",
+        paragraphs: [
+          "Diese Datenschutzerklärung kann aktualisiert werden, wenn sich Lomir, die Anbieter oder die rechtlichen Anforderungen ändern. Wesentliche Aktualisierungen veröffentlichen wir, bevor sie auf neue Verarbeitungsaktivitäten angewendet werden.",
+          "Falls Lomir beabsichtigt, personenbezogene Daten für einen neuen Zweck zu verarbeiten, der nicht mit dem Zweck vereinbar ist, für den die Daten erhoben wurden, werden die Nutzer vor dieser weiteren Verarbeitung informiert, sofern dies gesetzlich erforderlich ist.",
+        ],
+      },
+    ],
+  },
+  terms: {
+    title: "Nutzungsbedingungen",
+    intro:
+      "Diese Nutzungsbedingungen regeln die Nutzung von Lomir. Durch das Erstellen eines Accounts oder die Nutzung der App stimmst du diesen Bedingungen zu.",
+    sections: [
+      {
+        title: "1. Anbieter",
+        paragraphs: [
+          <>Lomir wird bereitgestellt von Julia Baur, Walpodenstraße 16, 55116 Mainz, Deutschland. Kontakt: {mailLink}.</>,
+        ],
+      },
+      {
+        title: "2. Dienstleistung",
+        paragraphs: [
+          "Lomir ist eine kostenlose, nicht-kommerzielle App für Team-Matching und Zusammenarbeit. Nutzer können Profile erstellen, Teams und offene Rollen finden, Teams verwalten, Nachrichten austauschen, Avatare oder Chat-Dateien hochladen sowie das Lomir-Team kontaktieren.",
+          "Die App wird als Portfolio- und Lernprojekt bereitgestellt. Sie kann sich ändern, unterbrochen oder eingestellt werden, insbesondere während der aktiven Entwicklung.",
+        ],
+      },
+      {
+        title: "3. Berechtigung",
+        paragraphs: [
+          "Du darfst nur dann einen Account erstellen und Lomir nutzen, wenn du mindestens 16 Jahre alt bist. Du musst korrekte Account-Daten angeben und deine Anmeldedaten sicher aufbewahren.",
+        ],
+      },
+      {
+        title: "4. Account-Regeln",
+        items: [
+          "Erstelle keine Accounts für andere Personen ohne deren Erlaubnis.",
+          "Gib keine Passwörter, Anmeldelinks, Bestätigungscodes oder andere Account-Daten weiter.",
+          "Nutze Lomir nicht, um andere zu belästigen, zu täuschen, Spam zu versenden, zu bedrohen oder rechtswidrig zu diskriminieren.",
+          "Lade keine Malware, illegale Inhalte, vertrauliche Informationen Dritter oder Inhalte hoch, die Rechte an geistigem Eigentum verletzen.",
+          "Versuche nicht, Sicherheitsvorkehrungen zu umgehen, private Daten abzugreifen oder ohne Autorisierung auf Accounts, Teams, Nachrichten oder API-Endpunkte zuzugreifen.",
+        ],
+      },
+      {
+        title: "5. Profile, Teams und Sichtbarkeit",
+        paragraphs: [
+          "Dein Profil ist standardmäßig privat. Du entscheidest, ob du es öffentlich machst. Öffentliche Profilinhalte sind für alle Besucher von Lomir sichtbar, auch ohne Account, und können in Suchergebnissen, auf Profilseiten und Profilkarten, in der Kartenansicht, in Listen oder Übersichten angezeigt werden.",
+          "Fügst du Standortdaten hinzu, können diese für Matching und Empfehlungen genutzt werden. Je nach Sichtbarkeitseinstellungen und Kontext können ungefähre Standortangaben wie Postleitzahl, Stadt, Bezirk, Bundesland oder Land für andere sichtbar sein, bei einem öffentlichen Profil auch für Besucher ohne Account.",
+          "Die Sichtbarkeit von Teams und Rollen hängt von den Team-Einstellungen und dem Mitgliedschaftskontext ab. Selbst wenn dein Profil privat ist, können Informationen, die für Teams, Bewerbungen, Einladungen, Nachrichten oder Benachrichtigungen erforderlich sind, den relevanten Teilnehmern angezeigt werden.",
+        ],
+      },
+      {
+        title: "6. Nutzerinhalte",
+        paragraphs: [
+          "Du behältst die Rechte an den Inhalten und Dateien, die du bei Lomir hochlädst oder dort erstellst. Indem du Inhalte hochlädst oder erstellst, räumst du Lomir ein begrenztes, nicht-ausschließliches Recht ein, diese Inhalte zu speichern, anzuzeigen, zu übertragen und zu verarbeiten, soweit dies für den Betrieb der App erforderlich ist. Das gilt auch für die Speicherung durch von uns beauftragte Dienstleister, etwa für Hosting und Medien. Das Recht endet, wenn du die Inhalte oder deinen Account löschst, soweit Inhalte in Team-Chats oder als verliehene Badges bestehen bleiben (siehe 9. Account-Löschung).",
+          "Du bist für die von dir bereitgestellten Inhalte verantwortlich. Gib keine sensiblen persönlichen Daten, vertrauliche Informationen oder Daten über andere Personen ein, es sei denn, du hast eine rechtliche Grundlage und deren Erlaubnis, falls erforderlich.",
+        ],
+      },
+      {
+        title: "7. Meldung von illegalen Inhalten und Missbrauch",
+        paragraphs: [
+          <>Falls du der Meinung bist, dass Inhalte, ein Account, ein Team, eine Nachricht oder ein Upload auf Lomir rechtswidrig, missbräuchlich, belästigend, Spam, Malware, rechtsverletzend, die Privatsphäre verletzend oder sonst gegen diese Nutzungsbedingungen verstößt, melde dies bitte über die {contactLink} oder per E-Mail an {mailLink}.</>,
+          "Meldungen sollten ausreichend Informationen enthalten, um das Problem zu lokalisieren und zu prüfen, z. B. Benutzernamen, Teamnamen, Nachrichtenkontext, Links, Screenshots, den Grund der Meldung und eine Kontakt-E-Mail. Bitte reiche eine Meldung nur ein, wenn du nach bestem Wissen überzeugt bist, dass deine Angaben richtig und vollständig sind.",
+          "Meldungen, die über das Kontaktformular eingereicht werden, werden mit einer Vorgangs-ID aufgezeichnet, damit Lomir sie auch dann empfangen und nachverfolgen kann, wenn die E-Mail-Weiterleitung vorübergehend nicht verfügbar ist.",
+          "Wir bestätigen den Eingang einer Meldung und prüfen sie zeitnah, sorgfältig und objektiv. Die Prüfung erfolgt persönlich, ohne automatisierte Entscheidung. Anschließend teilen wir dir das Ergebnis mit und nennen dir die Möglichkeiten, dagegen vorzugehen.",
+          "Lomir kann gemeldete Inhalte oder Accounts prüfen und Inhalte einschränken, entfernen oder löschen; Accounts sperren oder löschen; betroffene Nutzer kontaktieren; Informationen speichern, falls erforderlich; oder Angelegenheiten an zuständige Behörden melden, falls dies gesetzlich vorgeschrieben oder notwendig ist, um Nutzer, die App oder Dritte zu schützen.",
+          <>Falls dein Inhalt oder Account eingeschränkt wurde und du der Meinung bist, dass dies ein Fehler war, kannst du Lomir über die {contactLink} oder per E-Mail an {mailLink} kontaktieren.</>,
+        ],
+      },
+      {
+        title: "8. Nachrichten und Uploads",
+        paragraphs: [
+          "Nachrichten sind für die relevanten Direktnachrichten-Teilnehmer oder Teammitglieder sichtbar. Hochgeladene Chat-Dateien und Bilder sind für die temporäre Zusammenarbeit gedacht und laufen derzeit nach 60 Tagen ab.",
+          "Anhänge aus dem Kontaktformular werden per E-Mail an das Lomir-Postfach gesendet. Sende keine sensiblen oder vertraulichen Materialien über das Kontaktformular, es sei denn, dies ist für deine Anfrage erforderlich.",
+        ],
+      },
+      {
+        title: "9. Account-Löschung",
+        paragraphs: [
+          <>Du kannst deinen Account in der App löschen. Die Löschung ist endgültig: Dein Profil und alle Direktnachrichten, an denen du beteiligt bist, werden sofort nach Bestätigung gelöscht. Nachrichten, die du in Team-Chats geschrieben hast, und Badges, die du anderen verliehen hast, bleiben bestehen; dein Name wird dort durch „Ehemaliger Lomir-Nutzer“ ersetzt. Einzelheiten stehen in der {privacyLink}.</>,
+        ],
+      },
+      {
+        title: "10. Verfügbarkeit und Änderungen",
+        paragraphs: [
+          "Lomir wird kostenlos und ohne Garantie auf unterbrechungsfreie Verfügbarkeit bereitgestellt. Funktionen können geändert, eingeschränkt oder entfernt werden. Wartungsarbeiten, Hosting-Beschränkungen, Anbieterausfälle, Sicherheitsvorfälle oder Projektänderungen können die App beeinflussen.",
+          "Diese Nutzungsbedingungen können wir ändern, wenn sich Lomir, die rechtlichen Anforderungen oder die eingesetzten Dienste ändern. Über wesentliche Änderungen informieren wir dich rechtzeitig vorher per E-Mail oder in der App. Bist du mit einer Änderung nicht einverstanden, kannst du deinen Account jederzeit löschen. Für neue Accounts gilt die jeweils aktuelle Fassung.",
+        ],
+      },
+      {
+        title: "11. Sperrung und Entfernung",
+        paragraphs: [
+          "Accounts oder Inhalte können eingeschränkt, entfernt oder gelöscht werden, wenn sie gegen diese Nutzungsbedingungen verstoßen, andere Nutzer schädigen, rechtliche Risiken darstellen, die Sicherheit der App gefährden oder gesetzlich entfernt werden müssen.",
+          "Wenn wir Inhalte oder einen Account einschränken, entfernen oder sperren, teilen wir der betroffenen Person die Maßnahme und die Gründe dafür mit und nennen ihr die Möglichkeiten, sich dagegen zu wehren, etwa über die Kontaktseite oder auf dem Rechtsweg. Das gilt, soweit uns ihre Kontaktdaten bekannt sind und keine gesetzlichen Gründe entgegenstehen.",
+        ],
+      },
+      {
+        title: "12. Haftung",
+        paragraphs: [
+          "Nichts in diesen Nutzungsbedingungen schränkt die Haftung für Vorsatz, grobe Fahrlässigkeit, Verletzung von Leben, Körper oder Gesundheit oder eine andere Haftung ein, die nach geltendem Recht nicht eingeschränkt werden kann.",
+          "Für die kostenlose Nutzung von Lomir ist die Haftung für einfache Fahrlässigkeit auf die Verletzung wesentlicher vertraglicher Pflichten und auf typische, vorhersehbare Schäden beschränkt, sofern das zwingende Recht nichts anderes vorsieht.",
+        ],
+      },
+      {
+        title: "13. Datenschutz",
+        paragraphs: [
+          <>Informationen zur Verarbeitung personenbezogener Daten findest du in der {privacyLink}.</>,
+        ],
+      },
+      {
+        title: "14. Anwendbares Recht",
+        paragraphs: [
+          "Es gilt deutsches Recht, vorbehaltlich zwingender Verbraucherschutzvorschriften des Landes, in dem du deinen gewöhnlichen Aufenthalt hast.",
+          "Die Nutzungsbedingungen, die Datenschutzerklärung und das Impressum liegen auf Deutsch und Englisch vor. Maßgeblich ist die deutsche Fassung; die englische Fassung ist eine Übersetzung.",
+        ],
+      },
+      {
+        title: "15. Kontakt",
+        paragraphs: [
+          <>Fragen zu diesen Nutzungsbedingungen kannst du über die {contactLink} oder per E-Mail an {mailLink} senden.</>,
+        ],
+      },
+    ],
+  },
+  legalNotice: {
+    title: "Impressum",
+    intro:
+      "Angaben gemäß § 18 Abs. 1 des Medienstaatsvertrags (MStV) und, soweit anwendbar, § 5 des Digitale-Dienste-Gesetzes (DDG).",
+    sections: [
+      {
+        title: "Anbieter",
+        paragraphs: [
+          <>
+            Julia Baur
+            <br />
+            Walpodenstraße 16
+            <br />
+            55116 Mainz
+            <br />
+            Deutschland
+          </>,
+        ],
+      },
+      {
+        title: "Kontakt",
+        paragraphs: [<>E-Mail: {mailLink}</>, <>Online: {contactFormLink}</>],
+      },
+      {
+        title: "Zentrale Kontaktstelle (Digital Services Act)",
+        paragraphs: [
+          "Zentrale Kontaktstelle für Nutzer von Lomir sowie für Behörden der Mitgliedstaaten, die Europäische Kommission und das Europäische Gremium für digitale Dienste nach Art. 11 und 12 der Verordnung (EU) 2022/2065 (Digital Services Act) ist Julia Baur. Sie ist über die oben genannte E-Mail-Adresse und das Kontaktformular elektronisch erreichbar. Anfragen werden persönlich bearbeitet und können auf Deutsch oder Englisch gestellt werden.",
+        ],
+      },
+      {
+        title: "Journalistisch-redaktionelle Inhalte",
+        paragraphs: [
+          "Lomir bietet derzeit keine journalistisch-redaktionellen Inhalte im Sinne von § 18 Abs. 2 MStV an. Daher wird keine verantwortliche Person nach § 18 Abs. 2 MStV benannt. Sollten in Zukunft solche Inhalte angeboten werden, wird dieses Impressum entsprechend aktualisiert.",
+        ],
+      },
+      {
+        title: "Art des Projekts",
+        paragraphs: [
+          "Lomir wird derzeit als kostenloses, nicht-kommerzielles Portfolio- und Lernprojekt betrieben. Ändert sich der rechtliche oder kommerzielle Status der App, wird dieses Impressum entsprechend aktualisiert.",
+        ],
+      },
+      {
+        title: "Verbraucherstreitbeilegung",
+        paragraphs: [
+          "Wir sind weder bereit noch verpflichtet, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+        ],
+      },
+      {
+        title: "Haftung für Inhalte",
+        paragraphs: [
+          <>Wir bemühen uns, unsere eigenen Inhalte korrekt und aktuell zu halten. Inhalte, die Nutzer selbst einstellen, etwa Profile, Teambeschreibungen und Chatnachrichten, stammen von den jeweiligen Nutzern. Wir prüfen sie nicht vorab und sind dazu auch nicht verpflichtet (Art. 8 DSA). Erfahren wir von rechtswidrigen Inhalten, entfernen wir sie unverzüglich oder sperren den Zugang (Art. 6 DSA); Inhalte, die gegen unsere Nutzungsbedingungen verstoßen, können wir ebenfalls entfernen. Dafür sind wir auf die Mitwirkung unserer Nutzer angewiesen: Wenn dir rechtswidrige, diskriminierende oder missbräuchliche Inhalte oder ein Missbrauch der App-Funktionen auffallen, melde sie bitte über die {contactLink} oder per E-Mail an {mailLink}. Wie wir Meldungen bearbeiten, steht in den {termsLink} unter „7. Meldung von illegalen Inhalten und Missbrauch“.</>,
+        ],
+      },
+      {
+        title: "Externe Links",
+        paragraphs: [
+          "Lomir kann Links zu externen Websites oder Diensten enthalten. Wir haben keine Kontrolle über deren Inhalte und übernehmen keine Verantwortung für die Inhalte Dritter. Externe Links, die wir selbst setzen, prüfen wir beim Hinzufügen. Links in Inhalten von Nutzern, etwa in Chatnachrichten, prüfen wir nicht vorab. Werden uns rechtswidrige Inhalte bekannt, entfernen wir den entsprechenden Link, soweit möglich.",
+        ],
+      },
+      {
+        title: "Urheberrecht",
+        paragraphs: [
+          "Inhalte und Assets, die für Lomir erstellt wurden, unterliegen dem geltenden Urheberrecht. Von Nutzern eingereichte Inhalte bleiben in der Verantwortung des jeweiligen Nutzers. Jede Nutzung, die über die Grenzen des geltenden Rechts hinausgeht, erfordert die Erlaubnis des jeweiligen Rechteinhabers.",
+        ],
+      },
+    ],
+  },
+};
+
+export default content;

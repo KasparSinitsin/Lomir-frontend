@@ -209,6 +209,22 @@ export const userService = {
       api.get(`/api/users/${userId}/block-relationships`),
     ),
 
+  /**
+   * Resolves mention ids to the names those people display under TODAY.
+   *
+   * ⚠️ The response carries `requested` as well as `people`, and both matter:
+   * an id that was requested but is missing from `people` is a deleted
+   * account, while an id that is not in `requested` at all (non-numeric, or
+   * past the server's cap) was never looked up and must keep its stored name.
+   * Collapsing the two would render living people as "Former Lomir User".
+   * @param {Array<string|number>} ids
+   * @returns {Promise<object>}
+   */
+  resolveDisplayNames: (ids) =>
+    call("resolving display names", () =>
+      api.post("/api/users/resolve-names", { ids }),
+    ),
+
   changePassword: (currentPassword, newPassword) =>
     call("changing password", () =>
       api.put(

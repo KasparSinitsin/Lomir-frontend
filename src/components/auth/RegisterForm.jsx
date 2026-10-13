@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
+import { getAuthErrorCode, getAuthErrorText } from "../../utils/authErrorText";
 import { useAuth } from "../../contexts/AuthContext";
-import { UI_TEXT } from "../../constants/uiText";
 import TagInput from "../tags/TagInput";
 import Card from "../common/Card";
+import LegalLink from "../common/LegalLink";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import FormSectionDivider from "../common/FormSectionDivider";
@@ -12,23 +14,24 @@ import {
   MailCheck,
   KeyRound,
   User,
-  Camera,
   Eye,
   EyeOff,
 } from "lucide-react";
-import ImageUploader from "../common/ImageUploader";
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
-import { useLocationAutoFill } from "../../hooks/useLocationAutoFill";
+import CommunicationSection from "../common/CommunicationSection";
+import { LANGUAGE_FEATURE_VISIBLE, getLanguageForCountry } from "../../constants/languages";
+import { readStoredLanguage, resolveLanguage } from "../../utils/languageUtils";
+import {
+  useLocationAutoFill,
+  describeLocationBlock,
+} from "../../hooks/useLocationAutoFill";
 import VisibilityToggle from "../common/VisibilityToggle";
 import TurnstileWidget from "../common/TurnstileWidget";
-import {
-  AVATAR_UPLOAD_NOTICE,
-  PROFILE_VISIBILITY_NOTICE,
-  USER_LOCATION_PRIVACY_NOTICE,
-} from "../../constants/privacyText";
+import { hasLetter, hasNumber } from "../../utils/passwordRules";
 
 const RegisterForm = () => {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { register } = useAuth();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
@@ -44,16 +47,18 @@ const RegisterForm = () => {
     postal_code: "",
     city: "",
     country: "",
+    // Carries a logged-out visitor's choice into the account: someone who
+    // read the site in German should not be flipped back to English by the
+    // country rule the moment they register. Falls back to the browser.
+    preferred_language: resolveLanguage(),
     isPublic: false,
     acceptedLegal: false,
     confirmedAge16: false,
-    profile_image: null,
     selectedTags: [],
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState(null);
   const turnstileRef = useRef(null);
@@ -73,7 +78,11 @@ const RegisterForm = () => {
   const formAlertClassName =
     "field-error-animate shadow-[0_4px_10px_rgba(0,0,0,0.12),0_12px_30px_rgba(0,0,0,0.18),0_28px_56px_rgba(0,0,0,0.14)]";
 
-  const { getSuggestedUpdates } = useLocationAutoFill({
+  const {
+    getSuggestedUpdates,
+    markFieldAsEdited,
+    locationMismatch,
+  } = useLocationAutoFill({
     postalCode: formData.postal_code || "",
     city: formData.city || "",
     country: formData.country || "",
@@ -98,46 +107,44 @@ const RegisterForm = () => {
     const newErrors = {};
 
     if (!formData.username) {
-      newErrors.username = ["Please enter a username."];
+      newErrors.username = [t("auth:register.errors.usernameRequired")];
     } else {
       const usernameErrors = getUsernameValidationErrors(formData.username);
       if (usernameErrors.length > 0) newErrors.username = usernameErrors;
     }
 
     if (!formData.email) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("auth:register.errors.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address (e.g. your@email.com).";
+      newErrors.email = t("auth:register.errors.emailInvalid");
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("auth:register.errors.passwordRequired");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = t("auth:register.errors.passwordLength");
     } else if (
-      !/[A-Za-z]/.test(formData.password) ||
-      !/\d/.test(formData.password)
+      !hasLetter(formData.password) ||
+      !hasNumber(formData.password)
     ) {
       newErrors.password =
-        "Password must contain at least one letter and one number";
+        t("auth:register.errors.passwordLetterNumber");
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t("auth:register.errors.passwordsMismatch");
     }
 
     if (hasTurnstile && !turnstileToken) {
-      newErrors.turnstile = "Please complete the CAPTCHA verification";
+      newErrors.turnstile = t("auth:register.errors.turnstile");
     }
 
     if (!formData.acceptedLegal) {
-      newErrors.acceptedLegal =
-        "Please agree to the Terms of Service and acknowledge the Privacy Policy to create an account.";
+      newErrors.acceptedLegal = t("auth:register.errors.acceptedLegal");
     }
 
     if (!formData.confirmedAge16) {
-      newErrors.confirmedAge16 =
-        "Please confirm that you are at least 16 years old to create an account.";
+      newErrors.confirmedAge16 = t("auth:register.errors.confirmedAge16");
     }
 
     return newErrors;
@@ -174,17 +181,15 @@ const RegisterForm = () => {
     const usernameErrors = [];
 
     if (username.length < 3) {
-      usernameErrors.push("Username must be at least 3 characters.");
+      usernameErrors.push(t("auth:register.errors.usernameTooShort"));
     }
 
     if (username.length > 30) {
-      usernameErrors.push("Username must be no longer than 30 characters.");
+      usernameErrors.push(t("auth:register.errors.usernameTooLong"));
     }
 
     if (!/^[a-zA-Z0-9]*$/.test(username)) {
-      usernameErrors.push(
-        "Username can only contain letters and numbers — no spaces or special characters.",
-      );
+      usernameErrors.push(t("auth:register.errors.usernameCharacters"));
     }
 
     return usernameErrors;
@@ -214,7 +219,9 @@ const RegisterForm = () => {
       if (available === false) {
         setErrors((prev) => ({
           ...prev,
-          username: [message || "This username is already taken."],
+          username: [
+            message || t("auth:register.errors.usernameTaken"),
+          ],
         }));
         return false;
       }
@@ -245,7 +252,10 @@ const RegisterForm = () => {
       }
 
       const available = Boolean(response.data.available);
-      const message = response.data.message || "This username is already taken.";
+      // `authController` answers a taken username with "This username is already
+      // taken.", which used to win over the translation. `available` carries the
+      // whole answer, so the wording belongs here.
+      const message = t("auth:register.errors.usernameTaken");
 
       lastUsernameAvailabilityRef.current = {
         username,
@@ -287,15 +297,15 @@ const RegisterForm = () => {
     const passwordValidationErrors = [];
 
     if (password.length < 8) {
-      passwordValidationErrors.push("Password must be at least 8 characters");
+      passwordValidationErrors.push(t("auth:register.errors.passwordLength"));
     }
 
-    if (!/[A-Za-z]/.test(password)) {
-      passwordValidationErrors.push("Must contain at least one letter");
+    if (!hasLetter(password)) {
+      passwordValidationErrors.push(t("auth:register.errors.passwordLetter"));
     }
 
-    if (!/\d/.test(password)) {
-      passwordValidationErrors.push("Must contain at least one number");
+    if (!hasNumber(password)) {
+      passwordValidationErrors.push(t("auth:register.errors.passwordNumber"));
     }
 
     return passwordValidationErrors;
@@ -324,7 +334,7 @@ const RegisterForm = () => {
       const nextErrors = { ...prev };
 
       if (formData.password !== formData.confirmPassword) {
-        nextErrors.confirmPassword = "Passwords do not match";
+        nextErrors.confirmPassword = t("auth:register.errors.passwordsMismatch");
       } else {
         delete nextErrors.confirmPassword;
       }
@@ -350,6 +360,30 @@ const RegisterForm = () => {
     }));
   };
 
+  // The language follows the country until the visitor picks one themselves -
+  // selecting Austria should offer German without a second click. Any explicit
+  // choice ends that, including one made while browsing logged out: nothing
+  // may quietly overwrite what someone chose. Same rule LocationInput applies
+  // to city and country, and wired the same way rather than assumed.
+  const languageTouchedRef = useRef(Boolean(readStoredLanguage()));
+
+  const handleLanguageChange = (e) => {
+    languageTouchedRef.current = true;
+    handleChange(e);
+  };
+
+  useEffect(() => {
+    if (languageTouchedRef.current || !formData.country) return;
+
+    const fromCountry = getLanguageForCountry(formData.country);
+
+    setFormData((prev) =>
+      prev.preferred_language === fromCountry
+        ? prev
+        : { ...prev, preferred_language: fromCountry },
+    );
+  }, [formData.country]);
+
   const handleTagsChange = (tags) => {
     const normalized = (tags || [])
       .map((t) => (typeof t === "object" ? t.id : t))
@@ -362,30 +396,17 @@ const RegisterForm = () => {
     }));
   };
 
-  const getUserInitialsFromForm = () => {
-    const first = formData.first_name?.charAt(0) || "";
-    const last = formData.last_name?.charAt(0) || "";
-    if (first || last) return (first + last).toUpperCase();
-    return formData.username?.charAt(0)?.toUpperCase() || "?";
-  };
-
   const resetTurnstile = () => {
     turnstileRef.current?.reset();
     setTurnstileToken(null);
   };
 
-  const isUsernameConflictMessage = (message = "") =>
-    message.toLowerCase().includes("username already exists") ||
-    message.toLowerCase().includes("username is already taken");
-
-  const getAvailabilityErrorClass = (message = "") => {
-    const normalizedMessage = message.toLowerCase();
-
-    return normalizedMessage.includes("already registered") ||
-      normalizedMessage.includes("already taken")
+  // The "taken" sentence is the translated one, so compare with it rather than
+  // searching an English phrase (which never matched in German).
+  const getAvailabilityErrorClass = (message = "") =>
+    message === t("auth:register.errors.usernameTaken")
       ? " field-error-animate"
       : "";
-  };
 
   const getAccountCreationErrorMessages = (fieldMessages) => [
     ...new Set(Object.values(fieldMessages).flat().filter(Boolean)),
@@ -395,10 +416,10 @@ const RegisterForm = () => {
     const messages = getAccountCreationErrorMessages(fieldMessages);
 
     if (messages.length === 0) {
-      return "Account could not be created. Please check the highlighted fields.";
+      return t("auth:register.errors.creationDefault");
     }
 
-    return `Account could not be created. Please fix: ${messages.join("; ")}`;
+    return `${t("auth:register.errors.creationFix")} ${messages.join("; ")}`;
   };
 
   const getApiErrorMessages = (errorSource) => {
@@ -414,7 +435,9 @@ const RegisterForm = () => {
           const field = error.path || error.param || error.field;
           const message = error.msg || error.message;
 
-          if (field && message) return `${field}: ${message}`;
+          if (field && message) {
+            return t("auth:register.errors.fieldApi", { field, message });
+          }
           return message || field || null;
         })
         .filter(Boolean);
@@ -427,12 +450,8 @@ const RegisterForm = () => {
     return [];
   };
 
-  const getApiErrorMessage = (errorSource, fallback = "Registration failed.") =>
-    errorSource?.response?.data?.message || errorSource?.message || fallback;
-
   const buildRegistrationErrorState = (errorSource) => {
     const apiMessages = getApiErrorMessages(errorSource);
-    const message = getApiErrorMessage(errorSource);
 
     if (apiMessages.length > 0) {
       return {
@@ -441,23 +460,45 @@ const RegisterForm = () => {
       };
     }
 
-    if (isUsernameConflictMessage(message)) {
-      const formMessages = ["This username is already taken."];
+    if (getAuthErrorCode(errorSource) === "USERNAME_TAKEN") {
+      const formMessages = [t("auth:register.errors.usernameTaken")];
 
       return {
-        username: ["This username is already taken."],
+        username: [t("auth:register.errors.usernameTaken")],
         form: getAccountCreationErrorMessage({
-          username: "This username is already taken.",
+          username: t("auth:register.errors.usernameTaken"),
         }),
         formMessages,
       };
     }
 
-    return { form: message };
+    return {
+      form: getAuthErrorText(
+        errorSource,
+        t,
+        t("auth:register.errors.registrationFailed"),
+      ),
+    };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // The location fields disagree, or one of them could not be confirmed. What
+    // that means per case - which value goes, what the user is told - lives in
+    // describeLocationBlock so the five forms cannot drift apart.
+    if (locationMismatch?.blocksSubmit) {
+      const { clearField, message } = describeLocationBlock(locationMismatch);
+
+      if (clearField) {
+        // This form keeps its location fields in snake_case.
+        const fieldName = clearField === "postalCode" ? "postal_code" : clearField;
+        setFormData((prev) => ({ ...prev, [fieldName]: "" }));
+      }
+
+      setErrors((prev) => ({ ...prev, form: message }));
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -477,7 +518,8 @@ const RegisterForm = () => {
         cachedUsernameAvailability.available === false
       ) {
         blockingErrors.username = [
-          cachedUsernameAvailability.message || "This username is already taken.",
+          cachedUsernameAvailability.message ||
+            t("auth:register.errors.usernameTaken"),
         ];
       }
 
@@ -502,10 +544,10 @@ const RegisterForm = () => {
               .map((id) => ({ tag_id: id }))
           : [];
 
-      // Send registration as multipart/form-data so the avatar is uploaded
-      // to ImageKit server-side, only after the account is actually created.
-      // This avoids exposing the image (and an ImageKit auth token) from the
-      // browser before a valid registration exists.
+      // Sent as multipart/form-data, which the backend route parses. There is
+      // no picture here on purpose (STATUS item 59): an avatar is uploaded from
+      // the profile after the e-mail confirmation, so an account that is never
+      // confirmed leaves no file in ImageKit.
       const registrationData = new FormData();
       registrationData.append("username", trimmedUsername);
       registrationData.append("email", trimmedEmail);
@@ -516,6 +558,12 @@ const RegisterForm = () => {
       registrationData.append("postal_code", formData.postal_code);
       registrationData.append("city", formData.city);
       registrationData.append("country", formData.country);
+      // Only sent while the picker is on screen. Storing a language nobody was
+      // shown would make the guess an explicit choice and outrank the country
+      // rule for good.
+      if (LANGUAGE_FEATURE_VISIBLE) {
+        registrationData.append("preferred_language", formData.preferred_language);
+      }
       registrationData.append("accepted_terms", "true");
       registrationData.append("accepted_privacy", "true");
       registrationData.append("confirmed_age_16", "true");
@@ -523,10 +571,6 @@ const RegisterForm = () => {
 
       if (hasTurnstile) {
         registrationData.append("turnstile_token", turnstileToken);
-      }
-
-      if (formData.profile_image) {
-        registrationData.append("avatar", formData.profile_image);
       }
 
       const result = await register(registrationData);
@@ -537,7 +581,7 @@ const RegisterForm = () => {
         } else {
           localStorage.setItem(
             "registrationMessage",
-            "Profile created successfully!",
+            t("auth:register.successProfileCreated"),
           );
           navigate("/profile");
         }
@@ -570,9 +614,7 @@ const RegisterForm = () => {
       });
 
       setResendStatus("sent");
-      setResendMessage(
-        "If a verification email can be sent for this address, it will arrive shortly.",
-      );
+      setResendMessage(t("auth:register.resendSuccess"));
 
       setResendCooldown(30);
       const timer = setInterval(() => {
@@ -588,8 +630,7 @@ const RegisterForm = () => {
     } catch (error) {
       setResendStatus("error");
       setResendMessage(
-        error.response?.data?.message ||
-          "Failed to resend email. Please try again.",
+        getAuthErrorText(error, t, t("auth:register.resendFailure")),
       );
     }
   };
@@ -624,7 +665,7 @@ const RegisterForm = () => {
           {formErrorMessages.length > 0 ? (
             <div className="text-left">
               <p className="font-medium">
-                Account could not be created. Please fix:
+                {t("auth:register.errors.creationFix")}
               </p>
               <ul className="mt-2 list-disc space-y-0.5 pl-5">
                 {formErrorMessages.map((message) => (
@@ -647,16 +688,17 @@ const RegisterForm = () => {
           <div className="card-body items-center text-center">
             <MailCheck className="w-16 h-16 text-success mb-4" />
             <h2 className="card-title text-2xl font-bold mb-2">
-              Check your email
+              {t("auth:register.successTitle")}
             </h2>
             <p className="text-base-content/70 mb-4">
-              If this address can be used for registration, a verification link
-              will be sent to{" "}
-              <span className="font-medium">{formData.email}</span>
+              {t("auth:register.successMessage", { email: formData.email })}
             </p>
             <p className="text-sm text-base-content/60 mb-6">
-              Please click the link in the email to verify your account. The link
-              will expire in <strong>24 hours</strong>.
+              {/* The text carries <strong>; t() would print the tags as characters. */}
+              <Trans
+                i18nKey="auth:register.successHelp"
+                components={{ strong: <strong /> }}
+              />
             </p>
 
             {resendMessage && (
@@ -670,7 +712,7 @@ const RegisterForm = () => {
 
             <div className="flex flex-col gap-2 w-full">
               <Link to="/login" className="btn btn-primary w-fit self-center px-6">
-                Go to Login
+                {t("auth:common.goToLogin")}
               </Link>
 
               <button
@@ -682,12 +724,14 @@ const RegisterForm = () => {
                 {resendStatus === "sending" ? (
                   <>
                     <span className="loading loading-spinner loading-sm"></span>
-                    Sending...
+                    {t("auth:common.sending")}
                   </>
                 ) : resendCooldown > 0 ? (
-                  `Resend available in ${resendCooldown}s`
+                  t("auth:register.resendCooldown", {
+                    seconds: resendCooldown,
+                  })
                 ) : (
-                  "Resend verification email"
+                  t("auth:register.resendButton")
                 )}
               </button>
             </div>
@@ -702,10 +746,10 @@ const RegisterForm = () => {
       <Card className="w-full">
         <div className="card-body">
           <h2 className="card-title text-2xl font-bold text-center justify-center mb-4 text-success">
-            Create Account
+            {t("auth:register.title")}
           </h2>
           <p className="text-center text-base-content/70 mb-6">
-            Join Lomir and start building teams
+            {t("auth:register.subtitle")}
           </p>
 
           {renderFormAlert(`mb-4 ${formAlertClassName}`)}
@@ -713,18 +757,22 @@ const RegisterForm = () => {
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Account Information */}
             <section className="space-y-4">
-              <FormSectionDivider text="Account Information" icon={KeyRound} />
+              <FormSectionDivider
+                text={t("auth:register.sections.account")}
+                icon={KeyRound}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
-                      Username <span className="text-error">*</span>
+                      {t("auth:register.fields.username")}{" "}
+                      <span className="text-error">*</span>
                     </span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Choose a username"
+                    placeholder={t("auth:register.fields.usernamePlaceholder")}
                     className={`input input-bordered w-full ${
                       usernameErrorMessages.length > 0 ? "input-error" : ""
                     }`}
@@ -737,7 +785,7 @@ const RegisterForm = () => {
                   />
                   {usernameErrorMessages.length === 0 && (
                     <p className="form-helper-text mt-2 px-1">
-                      3–30 characters, letters and numbers only (no spaces).
+                      {t("auth:register.fields.usernameHelp")}
                     </p>
                   )}
                   {usernameErrorMessages.length > 0 && (
@@ -759,12 +807,13 @@ const RegisterForm = () => {
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
-                      Email <span className="text-error">*</span>
+                      {t("auth:common.email")}{" "}
+                      <span className="text-error">*</span>
                     </span>
                   </label>
                   <input
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder={t("auth:register.fields.emailPlaceholder")}
                     className={`input input-bordered w-full ${
                       errors.email ? "input-error" : ""
                     }`}
@@ -789,13 +838,14 @@ const RegisterForm = () => {
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
-                      Password <span className="text-error">*</span>
+                      {t("auth:common.password")}{" "}
+                      <span className="text-error">*</span>
                     </span>
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Min. 8 characters, with letters and numbers"
+                      placeholder={t("auth:register.fields.passwordPlaceholder")}
                       className={`input input-bordered w-full pr-12 ${
                         passwordErrorMessages.length > 0 ? "input-error" : ""
                       }`}
@@ -810,7 +860,11 @@ const RegisterForm = () => {
                       className="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 transition-colors hover:text-base-content"
                       onClick={() => setShowPassword((prev) => !prev)}
                       onMouseDown={(e) => e.preventDefault()}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword
+                          ? t("auth:common.hidePassword")
+                          : t("auth:common.showPassword")
+                      }
                       aria-pressed={showPassword}
                     >
                       {showPassword ? (
@@ -822,8 +876,7 @@ const RegisterForm = () => {
                   </div>
                   {passwordErrorMessages.length === 0 && (
                     <p className="form-helper-text mt-2 px-1">
-                      At least 8 characters with at least one letter and one
-                      number.
+                      {t("auth:register.fields.passwordHelp")}
                     </p>
                   )}
                   {passwordErrorMessages.length > 0 && (
@@ -840,13 +893,16 @@ const RegisterForm = () => {
                 <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">
-                      Confirm Password <span className="text-error">*</span>
+                      {t("auth:common.confirmPassword")}{" "}
+                      <span className="text-error">*</span>
                     </span>
                   </label>
                   <div className="relative">
                     <input
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
+                      placeholder={t(
+                        "auth:register.fields.confirmPasswordPlaceholder",
+                      )}
                       className={`input input-bordered w-full pr-12 ${
                         errors.confirmPassword ? "input-error" : ""
                       }`}
@@ -862,7 +918,9 @@ const RegisterForm = () => {
                       onClick={() => setShowConfirmPassword((prev) => !prev)}
                       onMouseDown={(e) => e.preventDefault()}
                       aria-label={
-                        showConfirmPassword ? "Hide password" : "Show password"
+                        showConfirmPassword
+                          ? t("auth:common.hidePassword")
+                          : t("auth:common.showPassword")
                       }
                       aria-pressed={showConfirmPassword}
                     >
@@ -884,16 +942,21 @@ const RegisterForm = () => {
 
             {/* Profile Details */}
             <section className="space-y-4">
-              <FormSectionDivider text="Profile Details" icon={User} />
+              <FormSectionDivider
+                text={t("auth:register.sections.profile")}
+                icon={User}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">First Name</span>
+                  <span className="label-text">
+                    {t("auth:register.fields.firstName")}
+                  </span>
                   </label>
                   <input
                     type="text"
-                    placeholder="First Name"
+                    placeholder={t("auth:register.fields.firstName")}
                     className="input input-bordered w-full"
                     value={formData.first_name}
                     onChange={handleChange}
@@ -903,11 +966,13 @@ const RegisterForm = () => {
 
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">Last Name</span>
+                  <span className="label-text">
+                    {t("auth:register.fields.lastName")}
+                  </span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Last Name"
+                    placeholder={t("auth:register.fields.lastName")}
                     className="input input-bordered w-full"
                     value={formData.last_name}
                     onChange={handleChange}
@@ -918,11 +983,13 @@ const RegisterForm = () => {
 
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">Bio</span>
+                  <span className="label-text">
+                    {t("auth:register.fields.bio")}
+                  </span>
                 </label>
                 <textarea
                   className="textarea textarea-bordered w-full"
-                  placeholder="Tell us a bit about yourself..."
+                  placeholder={t("auth:register.fields.bioPlaceholder")}
                   value={formData.bio}
                   onChange={handleChange}
                   name="bio"
@@ -935,15 +1002,17 @@ const RegisterForm = () => {
                   name="isPublic"
                   checked={formData.isPublic}
                   onChange={handleChange}
-                  label="Profile Visibility"
+                  label={t("auth:register.fields.profileVisibility")}
                   entityType="profile"
-                  visibleLabel="Public Profile"
-                  hiddenLabel="Private Profile"
-                  hiddenDescription="Your profile will be private until you verify your email."
+                  visibleLabel={t("auth:register.fields.publicProfile")}
+                  hiddenLabel={t("auth:register.fields.privateProfile")}
+                  hiddenDescription={t(
+                    "auth:register.fields.privateDuringRegistration",
+                  )}
                   disabled={true}
                 />
                 <p className="form-helper-text mt-2 px-1">
-                  Profile visibility is locked to private during registration. Once you verify your email and log in, you can make your profile public in your settings.
+                  {t("auth:register.fields.visibilityLocked")}
                 </p>
               </div>
             </section>
@@ -951,6 +1020,8 @@ const RegisterForm = () => {
             {/* Location */}
             <section>
               <LocationInput
+                onFieldEdited={markFieldAsEdited}
+                mismatch={locationMismatch}
                 formData={{
                   postal_code: formData.postal_code,
                   city: formData.city,
@@ -965,54 +1036,38 @@ const RegisterForm = () => {
                 disabled={isSubmitting}
                 showRemoteToggle={false}
                 showDivider={true}
-                dividerText="Location"
-                privacyNotice={USER_LOCATION_PRIVACY_NOTICE}
+                dividerText={t("auth:register.sections.location")}
+                privacyNotice={t("common:privacy.userLocation")}
               />
             </section>
 
-            {/* Profile Picture */}
-            <section className="space-y-4">
-              <FormSectionDivider text="Profile Picture" icon={Camera} />
-
-              <div className="flex justify-center">
-                <div className="w-full max-w-md">
-                  <ImageUploader
-                    currentImage={imagePreview}
-                    onImageSelect={(file, previewUrl) => {
-                      setFormData((prev) => ({ ...prev, profile_image: file }));
-                      setImagePreview(previewUrl);
-                    }}
-                    onImageRemove={() => {
-                      setFormData((prev) => ({ ...prev, profile_image: null }));
-                      setImagePreview(null);
-                    }}
-                    size="mdPlus"
-                    shape="circle"
-                    fallbackText={getUserInitialsFromForm()}
-                    helpText={AVATAR_UPLOAD_NOTICE}
-                  />
-                </div>
-              </div>
-            </section>
+            {/* Communication - under Location, because that is where the
+                default comes from when nothing has been chosen. */}
+            <CommunicationSection
+              value={formData.preferred_language}
+              onChange={handleLanguageChange}
+              name="preferred_language"
+              disabled={isSubmitting}
+            />
 
             {/* Focus Areas */}
             <section className="space-y-4">
               <FormSectionDivider
-                text={UI_TEXT.focusAreas.registerTitle}
+                text={t("auth:register.sections.focusAreas")}
                 icon={Tag}
               />
 
               <div className="form-control w-full">
                 <label className="label whitespace-normal">
                   <span className="label-text">
-                    Select focus areas matching your interests and skills
+                    {t("auth:register.fields.focusAreasLabel")}
                   </span>
                 </label>
 
                 <TagInput
                   selectedTags={formData.selectedTags}
                   onTagsChange={handleTagsChange}
-                  placeholder="Click a popular focus area or start typing to search"
+                  placeholder={t("auth:register.fields.focusAreasPlaceholder")}
                 />
               </div>
             </section>
@@ -1035,14 +1090,15 @@ const RegisterForm = () => {
                     disabled={isSubmitting}
                   />
                   <span className="label-text leading-relaxed">
-                    I agree to the{" "}
-                    <Link to="/terms" className="link link-primary">
-                      Terms of Service
-                    </Link>{" "}
-                    and acknowledge the{" "}
-                    <Link to="/privacy" className="link link-primary">
-                      Privacy Policy
-                    </Link>
+                    {t("auth:register.legal.agreePrefix")}{" "}
+                    <LegalLink to="/terms" className="link link-primary">
+                      {t("auth:register.legal.terms")}
+                    </LegalLink>{" "}
+                    {t("auth:register.legal.andAcknowledge")}{" "}
+                    <LegalLink to="/privacy" className="link link-primary">
+                      {t("auth:register.legal.privacy")}
+                    </LegalLink>
+                    {t("auth:register.legal.afterPrivacy")}
                     .
                   </span>
                 </label>
@@ -1066,7 +1122,7 @@ const RegisterForm = () => {
                     disabled={isSubmitting}
                   />
                   <span className="label-text leading-relaxed">
-                    I confirm that I am at least 16 years old.
+                    {t("auth:register.legal.age")}
                   </span>
                 </label>
                 {errors.confirmedAge16 && (
@@ -1085,18 +1141,26 @@ const RegisterForm = () => {
                 {isSubmitting ? (
                   <>
                     <span className="loading loading-spinner loading-sm"></span>
-                    Creating Account...
+                    {t("auth:register.submit.submitting")}
                   </>
                 ) : (
-                  "Create Account"
+                  t("auth:register.submit.idle")
                 )}
               </Button>
+              {/* What the click does: the account is only complete after the
+                  link in the verification e-mail. The button label is passed
+                  in, so the sentence always names the button as it reads. */}
+              <p className="-mt-2 text-left text-sm text-base-content/70">
+                {t("auth:register.submit.hint", {
+                  button: t("auth:register.submit.idle"),
+                })}
+              </p>
 
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <p className="text-left text-sm sm:pt-1">
-                  Already have an account?{" "}
+                  {t("auth:register.alreadyHaveAccount")}{" "}
                   <Link to="/login" className="link link-primary">
-                    Login
+                    {t("auth:common.login")}
                   </Link>
                 </p>
 

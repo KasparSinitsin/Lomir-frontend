@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Award,
@@ -26,12 +27,14 @@ import {
   UserX,
 } from 'lucide-react';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../../constants/badgeConstants';
+import { getBadgeName } from '../../utils/badgeLabels';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { messageService } from '../../services/messageService';
 import { useAuth } from '../../contexts/AuthContext';
 import useSocketEvents from '../../hooks/useSocketEvents';
 import { getEventPreview } from '../../utils/eventPreview';
 import { parseSystemMessage } from '../../utils/messageSystemParser';
+import { DEFAULT_ROLE_NAME } from '../../constants/roleDefaults';
 import {
   getMessageSenderDisplayName,
   getMessageConversationTarget,
@@ -39,6 +42,11 @@ import {
   isMessageForCurrentChatPath,
   isOwnMessage,
 } from '../../utils/messageNotificationUtils';
+import { hasMention, resolveMentionLabel, splitMentions } from '../../utils/mentions';
+import { useMentionNames } from '../../contexts/MentionNamesContext';
+import { collectEventPersonIds } from '../../utils/describeEvent';
+import { joinNameParts } from '../../utils/nameFormatters';
+import { normalizeNameForMatch } from '../../utils/describeEvent';
 
 const EVENT_PREVIEW_ICONS = {
   AlertTriangle,
@@ -74,39 +82,153 @@ const BADGE_CATEGORY_ICON = {
   'Personal Attributes': 'Heart',
 };
 
+// Styling only. The words live in the locale files: header labels in
+// getNotificationHeaderLabel, sentences in getNotificationToastText, the
+// byline in getToastByline — all literal t() calls, so i18n:check sees them.
+// member_removed has no entry: handleNotificationNew hands it to the removal
+// toast before this table is read.
 const NOTIFICATION_TOAST_TYPES = {
-  invitation_received:  { icon: 'Mail',         label: 'Team Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
-  role_invitation:      { icon: 'Mail',         label: 'Role Invitation',      color: '#ec4899', senderPrefix: 'Invited by ' },
-  invitation_accepted:  { icon: 'UserCheck',    label: 'Invitation Accepted',  color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Accepted by ' },
-  invitation_declined:  { icon: 'UserX',        label: 'Invitation Declined',  color: '#6b7280', senderPrefix: 'Declined by ' },
-  invitation_cancelled: { icon: 'CircleX',      label: 'Invitation Cancelled', color: '#6b7280', senderPrefix: 'Cancelled by ' },
-  application_received: { icon: 'Mail',         label: 'New Application',      color: '#ec4899', senderPrefix: 'Applied by ' },
-  application_approved: { icon: 'CheckCircle',  label: 'Application Approved', color: '#16a34a', senderColor: '#15803d', senderPrefix: 'Approved by ' },
-  role_application_deferred_invite: { icon: 'UserSearch', label: 'Role Offer', color: '#f59e0b', senderPrefix: 'Approved by ' },
-  application_rejected: { icon: 'CircleX',      label: 'Application Declined', color: '#6b7280', senderPrefix: 'Declined by ' },
-  member_removed:       { icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: 'Removed by ' },
-  member_removed_public:{ icon: 'UserMinus',    label: 'Removed from Team',    senderPrefix: null },
+  invitation_received:  { icon: 'Mail',         color: '#ec4899', byline: 'invitedBy' },
+  role_invitation:      { icon: 'Mail',         color: '#ec4899', byline: 'invitedBy' },
+  invitation_accepted:  { icon: 'UserCheck',    color: '#16a34a', senderColor: '#15803d', byline: 'acceptedBy' },
+  invitation_declined:  { icon: 'UserX',        color: '#6b7280', byline: 'declinedBy' },
+  invitation_cancelled: { icon: 'CircleX',      color: '#6b7280', byline: 'cancelledBy' },
+  application_received: { icon: 'Mail',         color: '#ec4899', byline: 'appliedBy' },
+  application_approved: { icon: 'CheckCircle',  color: '#16a34a', senderColor: '#15803d', byline: 'approvedBy' },
+  role_application_deferred_invite: { icon: 'UserSearch', color: '#f59e0b', byline: 'approvedBy' },
+  application_rejected: { icon: 'CircleX',      color: '#6b7280', byline: 'declinedBy' },
+};
+
+const getNotificationHeaderLabel = (t, type, { isRoleInvite, isRoleApplicationApproval }) => {
+  if (isRoleApplicationApproval) return t("messageNotifications.header.teamRoleApplicationApproved");
+  if (type === 'role_application_deferred_invite') return t("messageNotifications.header.roleOfferCreated");
+
+  if (isRoleInvite) {
+    switch (type) {
+      case 'invitation_cancelled': return t("messageNotifications.header.teamRoleInviteCancelled");
+      case 'invitation_accepted': return t("messageNotifications.header.teamRoleInviteAccepted");
+      case 'invitation_declined': return t("messageNotifications.header.teamRoleInviteDeclined");
+      default: return t("messageNotifications.header.teamRoleInvitation");
+    }
+  }
+
+  switch (type) {
+    case 'invitation_received': return t("messageNotifications.header.teamInvitation");
+    case 'role_invitation': return t("messageNotifications.header.roleInvitation");
+    case 'invitation_accepted': return t("messageNotifications.header.invitationAccepted");
+    case 'invitation_declined': return t("messageNotifications.header.invitationDeclined");
+    case 'invitation_cancelled': return t("messageNotifications.header.invitationCancelled");
+    case 'application_received': return t("messageNotifications.header.newApplication");
+    case 'application_approved': return t("messageNotifications.header.applicationApproved");
+    case 'application_rejected': return t("messageNotifications.header.applicationDeclined");
+    default: return null;
+  }
+};
+
+/**
+ * The toast sentence for a `notification:new` payload, built from `type` and
+ * the fields BE #325 added. Returns null when a field the sentence needs is
+ * missing — an older backend — and the caller then shows `payload.title`,
+ * the English it always showed. Never a sentence with an empty team name.
+ *
+ * The actor is not in the sentence: the toast prints it on its own line.
+ */
+const getNotificationToastText = (t, payload) => {
+  const team = payload?.teamName;
+  if (!team) return null;
+
+  const role = payload.roleName;
+
+  switch (payload.type) {
+    case 'invitation_received':
+      return role
+        ? t("messageNotifications.text.invitationReceivedRole", { team, role })
+        : t("messageNotifications.text.invitationReceived", { team });
+    case 'role_invitation':
+      return role ? t("messageNotifications.text.roleInvitation", { team, role }) : null;
+    case 'invitation_accepted':
+      return payload.filledRoleName
+        ? t("messageNotifications.text.invitationAcceptedRole", { team, role: payload.filledRoleName })
+        : t("messageNotifications.text.invitationAccepted", { team });
+    case 'invitation_declined':
+      return role
+        ? t("messageNotifications.text.invitationDeclinedRole", { team, role })
+        : t("messageNotifications.text.invitationDeclined", { team });
+    case 'invitation_cancelled':
+      return role
+        ? t("messageNotifications.text.invitationCancelledRole", { team, role })
+        : t("messageNotifications.text.invitationCancelled", { team });
+    case 'application_received':
+      if (typeof payload.isRoleApplication !== 'boolean') return null;
+      return payload.isRoleApplication
+        ? t("messageNotifications.text.applicationReceivedRole", { team })
+        : t("messageNotifications.text.applicationReceived", { team });
+    case 'application_approved':
+      return role
+        ? t("messageNotifications.text.applicationApprovedRole", { team, role })
+        : t("messageNotifications.text.applicationApproved", { team });
+    case 'role_application_deferred_invite':
+      return role ? t("messageNotifications.text.roleApplicationDeferredInvite", { team, role }) : null;
+    case 'application_rejected':
+      return t("messageNotifications.text.applicationRejected", { team });
+    default:
+      return null;
+  }
 };
 
 const ROLE_CHANGE_PREVIEW = {
-  role_updated:       { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been updated`,  icon: 'Pencil',     color: '#f59e0b' },
-  role_closed:        { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been closed`,   icon: 'CircleX',    color: '#6b7280' },
-  role_filled:        { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been filled`,   icon: 'UserCheck',  color: '#f59e0b' },
-  role_deleted:       { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} has been deleted`,  icon: 'UserMinus',  color: '#f59e0b' },
-  role_reopened:      { text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} is open again`,    icon: 'UserSearch', color: '#f59e0b' },
-  role_reopened_admin:{ text: (n, u) => `The role "${n}" you ${u === 'applicant' ? 'applied for' : 'were invited to'} is open again`,    icon: 'UserSearch', color: '#f59e0b' },
+  role_updated:        { icon: 'Pencil',     color: '#f59e0b' },
+  role_closed:         { icon: 'CircleX',    color: '#6b7280' },
+  role_filled:         { icon: 'UserCheck',  color: '#f59e0b' },
+  role_deleted:        { icon: 'UserMinus',  color: '#f59e0b' },
+  role_reopened:       { icon: 'UserSearch', color: '#f59e0b' },
+  role_reopened_admin: { icon: 'UserSearch', color: '#f59e0b' },
+};
+
+const getRoleStatusChangedText = (t, roleChangeType, values) => {
+  switch (roleChangeType) {
+    case 'role_updated': return t("messageNotifications.roleStatus.updated", values);
+    case 'role_closed': return t("messageNotifications.roleStatus.closed", values);
+    case 'role_filled': return t("messageNotifications.roleStatus.filled", values);
+    case 'role_deleted': return t("messageNotifications.roleStatus.deleted", values);
+    default: return t("messageNotifications.roleStatus.reopened", values);
+  }
 };
 
 const getRoleStatusChangedPreview = (payload) => {
   const { roleChangeType, roleName, userType } = payload;
   const template = ROLE_CHANGE_PREVIEW[roleChangeType];
   if (!template) return null;
+  // 'Open Role' is a saved role name, not UI copy — it stays English.
+  const values = {
+    role: roleName || DEFAULT_ROLE_NAME,
+    userType: userType === 'applicant' ? 'applicant' : 'invitee',
+  };
   return {
-    text: template.text(roleName || 'Vacant Role', userType),
+    getText: (t) => getRoleStatusChangedText(t, roleChangeType, values),
     icon: template.icon,
     color: template.color,
-    senderPrefix: null,
   };
+};
+
+/**
+ * The line under the sentence. `kind` comes from NOTIFICATION_TOAST_TYPES;
+ * every other event toast reads "by …", a chat message "from …".
+ */
+const getToastByline = (t, { byline, senderName, senderIsViewer, isEvent }) => {
+  if (!isEvent) return t("messageNotifications.byline.from", { name: senderName });
+  if (senderIsViewer) return t("messageNotifications.byline.byYou");
+
+  const values = { name: senderName };
+  switch (byline) {
+    case 'invitedBy': return t("messageNotifications.byline.invitedBy", values);
+    case 'acceptedBy': return t("messageNotifications.byline.acceptedBy", values);
+    case 'declinedBy': return t("messageNotifications.byline.declinedBy", values);
+    case 'cancelledBy': return t("messageNotifications.byline.cancelledBy", values);
+    case 'appliedBy': return t("messageNotifications.byline.appliedBy", values);
+    case 'approvedBy': return t("messageNotifications.byline.approvedBy", values);
+    default: return t("messageNotifications.byline.by", values);
+  }
 };
 
 const NOTIFICATION_VISIBLE_MS = 20000;
@@ -136,271 +258,6 @@ const pickEventContent = (message) => {
   }
 
   return "";
-};
-
-const getFallbackRoleEventPreview = (content) => {
-  const text = String(content || "");
-  const actorCreatedRoleMatch = text.match(
-    /^(.+?)\s+created\s+(?:a\s+)?(?:new\s+)?role:\s*(.+)$/i,
-  );
-
-  if (actorCreatedRoleMatch) {
-    const roleName = actorCreatedRoleMatch[2]?.trim() || "Vacant Role";
-    return {
-      text: `New role ${roleName} created.`,
-      icon: "UserSearch",
-      color: "#f59e0b",
-      roleName,
-      senderPrefix: "by ",
-    };
-  }
-
-  const previewPhraseMatch = text.match(
-    /^(New role open|Vacant role created|Role updated|Role edited|Role removed|Role deleted|Role closed|Role reopened):\s*(.+)$/i,
-  );
-
-  if (previewPhraseMatch) {
-    const label = previewPhraseMatch[1].toLowerCase();
-    const roleName = previewPhraseMatch[2]?.trim() || "Vacant Role";
-    const icon =
-      label === "role updated" || label === "role edited"
-        ? "Pencil"
-        : label === "role removed" || label === "role deleted"
-          ? "UserMinus"
-          : label === "role closed"
-            ? "CircleX"
-            : "UserSearch";
-
-    return {
-      text:
-        label === "role updated" || label === "role edited"
-          ? `Role edited: ${roleName}`
-          : label === "new role open" || label === "vacant role created"
-            ? `New role ${roleName} created.`
-          : label === "role removed" || label === "role deleted"
-            ? `Role deleted: ${roleName}`
-          : text,
-      icon,
-      color:
-        label === "role removed" || label === "role deleted" || label === "role closed"
-          ? "#6b7280"
-          : "#f59e0b",
-      roleName,
-      senderPrefix:
-        label === "new role open" ||
-        label === "vacant role created" ||
-        label === "role removed" ||
-        label === "role deleted" ||
-        label === "role closed" ||
-        label === "role reopened"
-          ? "by "
-          : undefined,
-    };
-  }
-
-  const filledPhraseMatch = text.match(/^(?:The role\s+)?(.+?)\s+(?:was marked as filled|has been marked filled)\.?$/i);
-  if (filledPhraseMatch) {
-    const roleName = filledPhraseMatch[1]?.trim() || "Vacant Role";
-    return {
-      text: `The role ${roleName} has been marked filled.`,
-      icon: "UserCheck",
-      color: "#f59e0b",
-      roleName,
-    };
-  }
-
-  const reopenedPhraseMatch = text.match(/^(.+?)\s+is open again\.?$/i);
-  if (reopenedPhraseMatch) {
-    return {
-      text,
-      icon: "UserSearch",
-      color: "#f59e0b",
-      roleName: reopenedPhraseMatch[1]?.trim() || "Vacant Role",
-    };
-  }
-
-  const roleEventMatch = text.match(
-    /(?:ROLE_CREATED|ROLE_UPDATED|ROLE_DELETED|ROLE_CLOSED|ROLE_FILLED|ROLE_REOPENED_ADMIN|ROLE_REOPENED):\s*(.+?)\s+\|\s+(.+?)(?:\s+\|\s+(.+?))?(?:\s+\|\s+(.+))?$/,
-  );
-
-  if (!roleEventMatch) return null;
-
-  const eventType = roleEventMatch[0].split(":")[0].replace(/[^\w]/g, "");
-  const roleToken = roleEventMatch[2] || "";
-  const roleName = roleToken.includes(":")
-    ? roleToken.split(":").slice(1).join(":").trim()
-    : roleToken.trim();
-  const actorToken =
-    eventType === "ROLE_FILLED" || eventType === "ROLE_REOPENED"
-      ? roleEventMatch[3] || ""
-      : "";
-  const filledByToken = eventType === "ROLE_FILLED" ? roleEventMatch[4] || "" : "";
-  const filledUserName = actorToken.includes(":")
-    ? actorToken.split(":").slice(1).join(":").trim()
-    : actorToken.trim();
-  const filledByName = filledByToken.includes(":")
-    ? filledByToken.split(":").slice(1).join(":").trim()
-    : filledByToken.trim();
-
-  const labels = {
-    ROLE_CREATED: `New role ${roleName || "Vacant Role"} created.`,
-    ROLE_UPDATED: `Role edited: ${roleName || "Vacant Role"}`,
-    ROLE_DELETED: `Role deleted: ${roleName || "Vacant Role"}`,
-    ROLE_CLOSED: `Role closed: ${roleName || "Vacant Role"}`,
-    ROLE_FILLED: filledUserName && filledByName
-      ? `The role ${roleName || "Vacant Role"} has been filled by ${filledUserName}, approved by ${filledByName}.`
-      : filledUserName
-        ? `The role ${roleName || "Vacant Role"} has been filled by ${filledUserName}.`
-        : `The role ${roleName || "Vacant Role"} has been marked filled.`,
-    ROLE_REOPENED: filledUserName
-      ? `${filledUserName} left the role ${roleName || "Vacant Role"}. It is open again.`
-      : `Role reopened: ${roleName || "Vacant Role"}`,
-    ROLE_REOPENED_ADMIN: `Role reopened: ${roleName || "Vacant Role"}`,
-  };
-
-  return {
-    text: labels[eventType] || `Role event: ${roleName || "Vacant Role"}`,
-    icon:
-      eventType === "ROLE_FILLED"
-        ? "UserCheck"
-        : eventType === "ROLE_DELETED"
-          ? "UserMinus"
-          : eventType === "ROLE_CLOSED"
-            ? "CircleX"
-            : eventType === "ROLE_UPDATED"
-              ? "Pencil"
-              : "UserSearch",
-    color: eventType === "ROLE_DELETED" || eventType === "ROLE_CLOSED"
-      ? "#6b7280"
-      : "#f59e0b",
-    senderPrefix:
-      eventType === "ROLE_UPDATED" || eventType === "ROLE_CREATED"
-        || eventType === "ROLE_DELETED" ||
-        eventType === "ROLE_CLOSED" ||
-        eventType === "ROLE_FILLED" ||
-        eventType === "ROLE_REOPENED" ||
-        eventType === "ROLE_REOPENED_ADMIN"
-        ? "by "
-        : undefined,
-  };
-};
-
-const getToastActorLabel = (userId, userName, currentUser) => {
-  if (
-    userId != null &&
-    currentUser?.id != null &&
-    String(userId) === String(currentUser.id)
-  ) {
-    return "you";
-  }
-
-  return userName || null;
-};
-
-const getRoleEventTypePreview = (message, currentUser = null) => {
-  const rawType =
-    message?.eventType ??
-    message?.event_type ??
-    message?.notificationType ??
-    message?.notification_type ??
-    message?.type;
-  const type = String(rawType || "").toLowerCase();
-
-  if (!type.startsWith("role_")) return null;
-
-  const roleName =
-    message?.roleName ??
-    message?.role_name ??
-    message?.role?.roleName ??
-    message?.role?.role_name ??
-    "Vacant Role";
-  const filledUserName =
-    message?.filledUserName ??
-    message?.filled_user_name ??
-    message?.filledByUserName ??
-    message?.filled_by_user_name ??
-    message?.userName ??
-    message?.user_name ??
-    message?.filledByUser?.name ??
-    message?.filled_by_user?.name ??
-    null;
-  const filledUserId =
-    message?.filledUserId ??
-    message?.filled_user_id ??
-    message?.filledByUserId ??
-    message?.filled_by_user_id ??
-    message?.userId ??
-    message?.user_id ??
-    message?.filledByUser?.id ??
-    message?.filled_by_user?.id ??
-    null;
-  const filledActorName =
-    message?.filledByName ??
-    message?.filled_by_name ??
-    message?.actorName ??
-    message?.actor_name ??
-    null;
-  const filledActorId =
-    message?.filledById ??
-    message?.filled_by_id ??
-    message?.actorId ??
-    message?.actor_id ??
-    null;
-  const filledUserLabel = getToastActorLabel(
-    filledUserId,
-    filledUserName,
-    currentUser,
-  );
-  const filledActorLabel = getToastActorLabel(
-    filledActorId,
-    filledActorName,
-    currentUser,
-  );
-  const labels = {
-    role_created: `New role ${roleName} created.`,
-    role_updated: `Role edited: ${roleName}`,
-    role_deleted: `Role deleted: ${roleName}`,
-    role_closed: `Role closed: ${roleName}`,
-    role_filled: filledUserLabel && filledActorLabel
-      ? `The role ${roleName} has been filled by ${filledUserLabel}, approved by ${filledActorLabel}.`
-      : filledUserLabel
-        ? `The role ${roleName} has been filled by ${filledUserLabel}.`
-        : `The role ${roleName} has been marked filled.`,
-    role_reopened: filledUserLabel
-      ? `${filledUserLabel === "you" ? "You" : filledUserLabel} left the role ${roleName}. It is open again.`
-      : `Role reopened: ${roleName}`,
-    role_reopened_admin: `Role reopened: ${roleName}`,
-  };
-
-  if (!labels[type]) return null;
-
-  return {
-    text: labels[type],
-    icon:
-      type === "role_filled"
-        ? "UserCheck"
-        : type === "role_deleted"
-          ? "UserMinus"
-          : type === "role_closed"
-            ? "CircleX"
-            : type === "role_updated"
-              ? "Pencil"
-              : "UserSearch",
-    color:
-      type === "role_deleted" || type === "role_closed"
-        ? "#6b7280"
-        : "#f59e0b",
-    senderPrefix:
-      type === "role_updated" ||
-      type === "role_created" ||
-      type === "role_deleted" ||
-      type === "role_closed" ||
-      type === "role_filled" ||
-      type === "role_reopened" ||
-      type === "role_reopened_admin"
-        ? "by "
-        : undefined,
-  };
 };
 
 const getRoleReopenedToastKey = (content, message = null) => {
@@ -484,36 +341,6 @@ const getCombinedApplicationApprovalKey = ({ teamId, roleId, roleName }) => {
   return normalizedRole === "name:" ? null : `${teamId}:${normalizedRole}`;
 };
 
-const getPayloadText = (payload) =>
-  [
-    payload?.title,
-    payload?.message,
-    payload?.content,
-    payload?.text,
-    payload?.body,
-    payload?.data?.title,
-    payload?.data?.message,
-    payload?.data?.content,
-    payload?.metadata?.title,
-    payload?.metadata?.message,
-    payload?.metadata?.content,
-  ]
-    .filter((value) => typeof value === 'string')
-    .join(' ');
-
-const getRemovedMemberIdFromPayload = (payload) =>
-  payload?.memberId ??
-  payload?.member_id ??
-  payload?.removedUserId ??
-  payload?.removed_user_id ??
-  payload?.targetUserId ??
-  payload?.target_user_id ??
-  payload?.data?.memberId ??
-  payload?.data?.member_id ??
-  payload?.metadata?.memberId ??
-  payload?.metadata?.member_id ??
-  null;
-
 const getRoleEventUserIdFromPayload = (payload) =>
   payload?.userId ??
   payload?.user_id ??
@@ -528,16 +355,24 @@ const getRoleEventUserIdFromPayload = (payload) =>
   null;
 
 const isCurrentUserName = (name, user) => {
-  const normalizedName = String(name || '').trim().toLowerCase();
+  // The canonical matcher, which collapses interior whitespace as well as the
+  // edges. This site used to trim only, while its two siblings
+  // (describeEvent's normalizeNameForMatch, MessageDisplay's normalizeName)
+  // collapse — so a stored name carrying a stray space made the viewer's OWN
+  // name go unrecognised here and nowhere else.
+  const normalizedName = normalizeNameForMatch(String(name || ''));
   if (!normalizedName) return false;
 
-  const userFullName = `${user?.firstName || user?.first_name || ''} ${user?.lastName || user?.last_name || ''}`
-    .trim()
-    .toLowerCase();
+  const userFullName = normalizeNameForMatch(
+    joinNameParts(
+      user?.firstName || user?.first_name,
+      user?.lastName || user?.last_name,
+    ),
+  );
 
   return (
     normalizedName === userFullName ||
-    normalizedName === String(user?.username || '').trim().toLowerCase()
+    normalizedName === normalizeNameForMatch(String(user?.username || ''))
   );
 };
 
@@ -553,36 +388,9 @@ const isMemberRoleChangeForCurrentUser = (parsedMessage, user) => (
   )
 );
 
-const isRemovalForCurrentUser = (payload, user) => {
-  const type = String(payload?.type ?? payload?.notificationType ?? '').toLowerCase();
-  if (!type.includes('member_removed') && !type.includes('removed')) return false;
-
-  const removedMemberId = getRemovedMemberIdFromPayload(payload);
-  if (removedMemberId != null && String(removedMemberId) === String(user?.id)) {
-    return true;
-  }
-
-  const text = getPayloadText(payload).toLowerCase();
-  return /\byou\b/.test(text) && /removed from/.test(text);
-};
-
-const isTemporaryDemotionToast = (payload) => {
-  const type = String(payload?.type ?? payload?.notificationType ?? '').toLowerCase();
-  const text = getPayloadText(payload).toLowerCase();
-
-  return (
-    type === 'role_changed' &&
-    (text.includes('demoted') ||
-      text.includes('changed to member') ||
-      text.includes('role changed to member') ||
-      text.includes('to member'))
-  );
-};
-
-const buildCurrentUserRemovalText = (payload) => {
-  const title = String(payload?.title || '').trim();
-  if (/^you\b/i.test(title)) return title;
-
+// Without a team name (an older backend) the English title is still the best
+// sentence available — it names the team.
+const buildCurrentUserRemovalText = (t, payload) => {
   const teamName =
     payload?.teamName ??
     payload?.team_name ??
@@ -593,30 +401,57 @@ const buildCurrentUserRemovalText = (payload) => {
     payload?.metadata?.team_name ??
     null;
 
-  return teamName
-    ? `You were removed from "${teamName}"`
-    : 'You were removed from the team';
+  if (teamName) return t("messageNotifications.text.removed", { team: teamName });
+
+  return payload?.title || t("messageNotifications.text.removedNoTeam");
 };
 
-const MENTION_REGEX = /@\[([^\]]+)\]\([^)]+\)/g;
+// A block in either direction anonymizes the mention here too (F12), and so
+// does a deleted account - both via the shared precedence in utils/mentions.js.
+// One span, resolving its own id. A component rather than a plain branch of
+// `renderTextWithMentions` because asking for the name is a side effect, and
+// the notification list does not otherwise know which ids its text mentions -
+// the same reason MentionChip asks for its own in the transcript.
+const NotificationMention = ({ segment, blockedIds, t }) => {
+  const { names, requestIds } = useMentionNames();
 
-const renderTextWithMentions = (text) => {
-  if (!text || !text.includes("@[")) return text;
-  const parts = [];
-  let last = 0;
-  let m;
-  MENTION_REGEX.lastIndex = 0;
-  while ((m = MENTION_REGEX.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    parts.push(
-      <span key={m.index} className="font-semibold text-primary">
-        @{m[1]}
-      </span>,
-    );
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
+  useEffect(() => {
+    requestIds([segment.userId]);
+  }, [requestIds, segment.userId]);
+
+  const { label, isAnonymized } = resolveMentionLabel(segment, {
+    blockedIds,
+    names,
+    t,
+  });
+
+  return (
+    <span
+      className={
+        isAnonymized
+          ? "font-semibold text-base-content/50"
+          : "font-semibold text-primary"
+      }
+    >
+      @{label}
+    </span>
+  );
+};
+
+const renderTextWithMentions = (text, blockedIds = null, t = null) => {
+  if (!hasMention(text)) return text;
+  return splitMentions(text).map((segment, index) =>
+    segment.isMention ? (
+      <NotificationMention
+        key={index}
+        segment={segment}
+        blockedIds={blockedIds}
+        t={t}
+      />
+    ) : (
+      segment.text
+    ),
+  );
 };
 
 const getNotificationSenderName = (message) => {
@@ -633,7 +468,7 @@ const getNotificationSenderName = (message) => {
     sender?.lastName ??
     sender?.last_name ??
     "";
-  const fullName = `${firstName} ${lastName}`.trim();
+  const fullName = joinNameParts(firstName, lastName);
 
   return [
     message?.senderDisplayName ??
@@ -652,6 +487,12 @@ const getNotificationSenderName = (message) => {
 };
 
 const MessageNotifications = () => {
+  // A toast names people too, so it resolves from the same lookup as the
+  // transcript. A name that arrives after the toast is already on screen
+  // simply stays the stored one — acceptable for something transient, and
+  // never wrong, only stale.
+  const { names: mentionNames, requestIds: requestEventPersonIds } =
+    useMentionNames();
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -659,7 +500,8 @@ const MessageNotifications = () => {
     pathname: location.pathname,
     search: location.search,
   });
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { t } = useTranslation();
   const prevIsAuthenticatedRef = useRef(false);
   const currentUserRemovalSuppressionsRef = useRef(new Map());
   const combinedApplicationApprovalSuppressionsRef = useRef(new Map());
@@ -737,11 +579,10 @@ const MessageNotifications = () => {
         dedupeKey,
         isEvent: true,
         headerIconName: 'UserMinus',
-        headerLabel: 'Removed from Team',
+        getHeaderLabel: (t) => t("messageNotifications.header.removedFromTeam"),
         eventIcon: 'UserMinus',
         eventColor: '#6b7280',
-        text: buildCurrentUserRemovalText(payload),
-        senderPrefix: null,
+        getText: (t) => buildCurrentUserRemovalText(t, payload),
         senderName: null,
         navigateTo: '/chat',
         time: new Date(),
@@ -782,7 +623,7 @@ const MessageNotifications = () => {
         if (count > 0) {
           setNotifications([{
             id: 'initial',
-            text: `You have ${count} unread messages`,
+            getText: (t) => t("messageNotifications.unreadOnLogin", { count }),
             expiresAt: Date.now() + NOTIFICATION_VISIBLE_MS,
             removeAt: Date.now() + NOTIFICATION_VISIBLE_MS + NOTIFICATION_FADE_MS,
           }]);
@@ -811,9 +652,6 @@ const MessageNotifications = () => {
         type: 'member_removed',
         teamId,
         teamName: parsedMessage.teamName,
-        title: parsedMessage.teamName
-          ? `You were removed from "${parsedMessage.teamName}"`
-          : 'You were removed from the team',
       });
       return;
     }
@@ -879,10 +717,8 @@ const MessageNotifications = () => {
       // Team join messages (👋/🎯) are visible in the team chat and covered by notification:new for the inviter.
       if ((message.team_id || message.teamId) && /^[\u{1F44B}\u{1F3AF}]/u.test(eventContent.trim())) return;
 
-      const eventPreview =
-        getRoleEventTypePreview(message, user) ||
-        getEventPreview(eventContent, user) ||
-        getFallbackRoleEventPreview(eventContent);
+      requestEventPersonIds(collectEventPersonIds(eventContent));
+      const eventPreview = getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames);
       const dedupeKey =
         getRoleReopenedToastKey(eventContent, message) ||
         (parsedMessage?.type === 'member_removed_public'
@@ -896,9 +732,14 @@ const MessageNotifications = () => {
           conversationId: target.conversationId,
           conversationType: target.type,
           senderId: message.senderId || message.sender_id,
-          senderName: eventPreview?.senderName || getNotificationSenderName(message),
-          senderPrefix: eventPreview?.senderPrefix ?? null,
-          text: eventPreview?.text || getMessagePreviewText(message),
+          senderName: eventPreview?.senderIsViewer
+            ? null
+            : eventPreview?.senderName || getNotificationSenderName(message),
+          senderIsViewer: Boolean(eventPreview?.senderIsViewer),
+          text: eventPreview ? null : getMessagePreviewText(message),
+          getText: eventPreview
+            ? (t) => getEventPreview(eventContent, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames)?.text
+            : null,
           isEvent: Boolean(eventPreview),
           eventIcon: eventPreview?.icon || null,
           eventColor: eventPreview?.color || null,
@@ -910,10 +751,15 @@ const MessageNotifications = () => {
       ]);
     }
   }, [
+    mentionNames,
+    requestEventPersonIds,
     isTeamSuppressedForCurrentUserRemoval,
     isCombinedApplicationApprovalSuppressed,
     upsertCurrentUserRemovalToast,
     user,
+    t,
+    blockedRelationshipIds,
+    blockedRelationshipNames,
   ]);
 
   const handleMessageDeleted = useCallback((payload) => {
@@ -945,8 +791,7 @@ const MessageNotifications = () => {
         userType: payload.userType,
         eventIcon: preview.icon,
         eventColor: preview.color,
-        text: preview.text,
-        senderPrefix: 'by ',
+        getText: preview.getText,
         senderName: payload.actorName || null,
         navigateTo: payload.userType === 'applicant'
           ? `/teams/my-teams?openApplication=${payload.applicationId}`
@@ -969,11 +814,12 @@ const MessageNotifications = () => {
         id,
         isEvent: true,
         headerIconName: 'Award',
-        headerLabel: 'New Badge for you!',
+        getHeaderLabel: (t) => t("messageNotifications.header.newBadge"),
         eventIcon: BADGE_CATEGORY_ICON[badgeCategory] || 'Award',
         eventColor: categoryColor,
-        text: `You received the "${badgeName}" badge!`,
-        senderPrefix: 'by ',
+        // badgeName is the stored English name: the highlight URL below needs it
+        // as is; only the sentence shows the translated one.
+        getText: (t) => t("messageNotifications.text.badgeAwarded", { badge: getBadgeName(badgeName, t) }),
         senderName: awarderName || null,
         navigateTo: `/profile?scrollTo=badges&highlightBadge=${encodeURIComponent(badgeName)}`,
         time: new Date(),
@@ -988,13 +834,14 @@ const MessageNotifications = () => {
 
     const teamId = getTeamIdFromPayload(payload);
 
-    if (isRemovalForCurrentUser(payload, user)) {
+    // The emit goes only to user:${memberId} — whoever receives it is the
+    // removed member, so the type alone decides.
+    if (payload.type === 'member_removed') {
       upsertCurrentUserRemovalToast(payload);
       return;
     }
 
     if (
-      isTemporaryDemotionToast(payload) ||
       (
         isTeamSuppressedForCurrentUserRemoval(teamId) &&
         ['role_reopened', 'role_changed'].includes(String(payload.type || '').toLowerCase())
@@ -1017,10 +864,7 @@ const MessageNotifications = () => {
     const isRoleInvite = (['invitation_received', 'invitation_cancelled', 'invitation_declined'].includes(payload.type) && !!payload.roleName)
       || (payload.type === 'invitation_accepted' && !!payload.filledRoleName)
       || payload.type === 'role_application_deferred_invite';
-    const dedupeKey =
-      payload.type?.includes?.('member_removed')
-        ? `member-removed:${teamId ?? ''}:${getRemovedMemberIdFromPayload(payload) ?? payload.title}`
-        : `notif-${payload.type}-${teamId ?? ''}-${payload.title}`;
+    const dedupeKey = `notif-${payload.type}-${teamId ?? ''}-${payload.title}`;
     setNotifications((prev) => [
       ...prev.filter((notification) => notification.dedupeKey !== dedupeKey),
       {
@@ -1029,21 +873,15 @@ const MessageNotifications = () => {
         isEvent: true,
         headerIconName: config.icon,
         secondaryHeaderIconName: isRoleInvite || isRoleApplicationApproval ? 'UserSearch' : null,
-        headerLabel: isRoleApplicationApproval
-          ? 'Team & Role Application Approved'
-          : payload.type === 'role_application_deferred_invite'
-            ? 'Role Offer Created'
-          : isRoleInvite
-          ? payload.type === 'invitation_cancelled' ? 'Team & Role Invite Cancelled'
-            : payload.type === 'invitation_accepted' ? 'Team & Role Invite Accepted'
-            : payload.type === 'invitation_declined' ? 'Team & Role Invite Declined'
-            : 'Team & Role Invitation'
-          : config.label,
+        getHeaderLabel: (t) => getNotificationHeaderLabel(t, payload.type, {
+          isRoleInvite,
+          isRoleApplicationApproval,
+        }),
         eventIcon: config.icon,
         eventColor: config.color || null,
-        text: payload.title,
+        getText: (t) => getNotificationToastText(t, payload) || payload.title,
         senderName: payload.actorName || null,
-        senderPrefix: config.senderPrefix || null,
+        byline: config.byline,
         senderColor: config.senderColor || null,
         navigateTo: '/teams/my-teams',
         time: new Date(),
@@ -1134,15 +972,18 @@ const MessageNotifications = () => {
   return (
     <div className="fixed bottom-4 right-4 z-50 space-y-2">
       {notifications.map(notification => {
+        // Toast words are resolved here, never when the toast is created: the
+        // language can still change after login (LanguageContext switches once
+        // the user arrives), and a stored sentence would keep the old one.
+        const text = notification.getText ? notification.getText(t) : notification.text;
         const renderEventPreview =
           (notification.isEvent && {
-            text: notification.text,
+            text,
             icon: notification.eventIcon,
             color: notification.eventColor,
             backgroundColor: notification.eventBackgroundColor,
           }) ||
-          getFallbackRoleEventPreview(notification.text) ||
-          getEventPreview(notification.text, user);
+          getEventPreview(text, user, t, blockedRelationshipIds, blockedRelationshipNames, mentionNames);
         const isEvent = Boolean(renderEventPreview);
         const HeaderIcon = notification.headerIconName
           ? EVENT_PREVIEW_ICONS[notification.headerIconName] || Clock
@@ -1150,7 +991,12 @@ const MessageNotifications = () => {
         const SecondaryHeaderIcon = notification.secondaryHeaderIconName
           ? EVENT_PREVIEW_ICONS[notification.secondaryHeaderIconName] || null
           : null;
-        const headerLabel = notification.headerLabel || (isEvent ? 'New Event' : 'New Message');
+        const headerLabel =
+          notification.getHeaderLabel?.(t) ||
+          (isEvent
+            ? t("messageNotifications.header.newEvent")
+            : t("messageNotifications.header.newMessage"));
+        const hasByline = Boolean(notification.senderName || (isEvent && notification.senderIsViewer));
         const EventIcon = isEvent
           ? EVENT_PREVIEW_ICONS[renderEventPreview.icon] || Clock
           : MessageCircle;
@@ -1193,19 +1039,14 @@ const MessageNotifications = () => {
                 </span>
               </p>
             ) : (
-              <p className="text-sm">{renderTextWithMentions(notification.text)}</p>
+              <p className="text-sm">{renderTextWithMentions(text, blockedRelationshipIds, t)}</p>
             )}
-            {isEvent && notification.senderName && (
+            {hasByline && (
               <p
                 className="text-[11px] mt-0.5 text-primary-focus truncate"
-                style={notification.senderColor ? { color: notification.senderColor } : undefined}
+                style={isEvent && notification.senderColor ? { color: notification.senderColor } : undefined}
               >
-                {notification.senderPrefix ?? "by "}{notification.senderName}
-              </p>
-            )}
-            {!isEvent && notification.senderName && (
-              <p className="text-[11px] mt-0.5 text-primary-focus truncate">
-                from {notification.senderName}
+                {getToastByline(t, { ...notification, isEvent })}
               </p>
             )}
           </div>

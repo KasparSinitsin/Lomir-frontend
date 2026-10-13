@@ -1,3 +1,15 @@
+/**
+ * Component playground: the shared UI primitives - typography, colors, buttons,
+ * alerts, cards, inputs and modals - rendered together on one page as a
+ * reference when building or restyling a component.
+ *
+ * Deliberately NOT routed. It was reachable at /design-system behind an
+ * import.meta.env.DEV gate until commit 6168c1a, which removed the route
+ * because the static import in App.jsx pulled the playground into the
+ * production bundle regardless of that gate. The file is kept on purpose; if
+ * you want the page back, add the route with lazy() (see
+ * VacantRoleDetailsModalLazy.jsx) so it stays out of the production build.
+ */
 import React from 'react';
 import PageContainer from '../components/layout/PageContainer';
 import Button from '../components/common/Button';

@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { parseSystemMessage } from "../utils/messageSystemParser";
 import { messageService } from "../services/messageService";
 import socketService from "../services/socketService";
@@ -68,6 +70,61 @@ const useChatSocketEvents = ({
   setTeamMembersRefreshSignal,
   user,
 }) => {
+  const { t } = useTranslation();
+
+  // Emits sent while the socket was down never arrive, so after a reconnect
+  // the open conversation pulls its latest page and adds only what is missing.
+  // Merging, not replacing, keeps the earlier pages the reader had loaded. The
+  // server-side socket is new, so the conversation room is joined again too.
+  useEffect(() => {
+    if (!isAuthenticated || !conversationId) return undefined;
+
+    let isCurrent = true;
+
+    const catchUpAfterReconnect = async () => {
+      const currentType =
+        new URLSearchParams(window.location.search).get("type") || "direct";
+
+      socketService.joinConversation(conversationId, currentType);
+      refreshConversationList();
+
+      try {
+        const response = await messageService.getMessages(
+          conversationId,
+          currentType,
+        );
+        if (!isCurrent) return;
+        const latestMessages = response.data || [];
+
+        setMessages((prev) => {
+          const knownIds = new Set(prev.map((msg) => String(msg.id)));
+          const missedMessages = latestMessages.filter(
+            (msg) => !knownIds.has(String(msg.id)),
+          );
+          return missedMessages.length > 0
+            ? dedupeMessages([...prev, ...missedMessages])
+            : prev;
+        });
+        socketService.markMessagesAsRead(conversationId, currentType);
+      } catch (err) {
+        console.error("Error catching up on messages after reconnect:", err);
+      }
+    };
+
+    const unsubscribe = socketService.onSocketReconnected(catchUpAfterReconnect);
+
+    return () => {
+      isCurrent = false;
+      unsubscribe();
+    };
+  }, [
+    conversationId,
+    dedupeMessages,
+    isAuthenticated,
+    refreshConversationList,
+    setMessages,
+  ]);
+
   useSocketEvents((socket) => {
     if (!socket || !isAuthenticated) {
       return undefined;
@@ -78,12 +135,42 @@ const useChatSocketEvents = ({
         conversationType === "team" &&
         parseInt(conversationId, 10) === data.teamId
       ) {
-        revokeTeamChatAccess(data.teamId, "You have been removed from this team.");
+        revokeTeamChatAccess(data.teamId, t("chatPage.errors.removedFromTeam"));
         return;
       }
 
       setConversations((prev) =>
         prev.filter((c) => !(c.type === "team" && c.id === data.teamId)),
+      );
+    };
+
+    /**
+     * The team was permanently deleted. Emitted by the backend only on the
+     * solo-owner path, where the deleter is the sole member - so in practice
+     * this reaches the person who just pressed delete.
+     *
+     * Without it the conversation sat in their list until something hit a 404:
+     * opening it, or the membership poll, which runs every 60s and only for the
+     * active chat.
+     *
+     * It still words a message rather than vanishing silently. The viewer may
+     * have deleted the team in another tab, and a chat that disappears without
+     * a word is harder to trust than one that says why.
+     */
+    const handleTeamDeleted = (data) => {
+      const teamId = data?.teamId;
+      if (teamId == null) return;
+
+      if (
+        conversationType === "team" &&
+        parseInt(conversationId, 10) === teamId
+      ) {
+        revokeTeamChatAccess(teamId, t("chatPage.errors.teamDeleted"));
+        return;
+      }
+
+      setConversations((prev) =>
+        prev.filter((c) => !(c.type === "team" && c.id === teamId)),
       );
     };
 
@@ -233,7 +320,7 @@ const useChatSocketEvents = ({
       if (!teamId) return;
 
       if (isCurrentUserRemovalPayload(payload, user?.id)) {
-        revokeTeamChatAccess(teamId, "You have been removed from this team.");
+        revokeTeamChatAccess(teamId, t("chatPage.errors.removedFromTeam"));
         return;
       }
 
@@ -358,7 +445,7 @@ const useChatSocketEvents = ({
       }
 
       if (leftUserId != null && String(leftUserId) === String(user?.id)) {
-        revokeTeamChatAccess(data.teamId, "You have left this team chat.");
+        revokeTeamChatAccess(data.teamId, t("chatPage.errors.leftTeamChat"));
         return;
       }
 
@@ -492,6 +579,7 @@ const useChatSocketEvents = ({
     socket.on("team:member_left", handleTeamMemberLeft);
     socket.on("conversation:deleted", handleConversationDeleted);
     socket.on("team:member_kicked", handleKickedFromTeam);
+    socket.on("team:deleted", handleTeamDeleted);
     socket.on("message:deleted", handleMessageDeleted);
     socket.on("message:edited", handleMessageEdited);
     socket.on("notification:new", refreshTeamEventMessages);
@@ -506,6 +594,7 @@ const useChatSocketEvents = ({
       socket.off("team:member_left", handleTeamMemberLeft);
       socket.off("conversation:deleted", handleConversationDeleted);
       socket.off("team:member_kicked", handleKickedFromTeam);
+      socket.off("team:deleted", handleTeamDeleted);
       socket.off("message:deleted", handleMessageDeleted);
       socket.off("message:edited", handleMessageEdited);
       socket.off("notification:new", refreshTeamEventMessages);
@@ -531,6 +620,10 @@ const useChatSocketEvents = ({
     setMessages,
     setOnlineUsers,
     setTeamMembersRefreshSignal,
+    // Listed so the handlers re-register on a language change; without it they
+    // close over the `t` that was current when the socket connected, and a
+    // revocation message would arrive in the previous language.
+    t,
     user?.id,
   ]);
 };

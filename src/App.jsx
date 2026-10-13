@@ -7,6 +7,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { MentionNamesProvider } from "./contexts/MentionNamesContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import { UserModalProvider } from "./contexts/UserModalContext";
 import { TeamModalProvider } from "./contexts/TeamModalContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -14,7 +16,9 @@ import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Placeholder from "./components/common/Placeholder";
+import { useTranslation } from "react-i18next";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import Alert from "./components/common/Alert";
 import MessageNotifications from "./components/chat/MessageNotifications";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -24,6 +28,7 @@ import PublicProfile from "./pages/PublicProfile";
 import VerifyEmail from "./pages/VerifyEmail";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
 import BadgeOverview from "./pages/BadgeOverview";
+import FocusAreaOverview from "./pages/FocusAreaOverview";
 import MyTeams from "./pages/MyTeams";
 import SearchPage from "./pages/SearchPage";
 import "./index.css";
@@ -34,12 +39,19 @@ import Settings from "./pages/Settings";
 import Contact from "./pages/Contact";
 import LegalPage from "./pages/LegalPage";
 
-const renderChatError = (error) => (
-  <div className="mx-auto max-w-3xl rounded-lg border border-error/30 bg-error/10 p-4 text-error">
-    <p className="font-semibold">Chat could not be rendered.</p>
-    <p className="mt-2 text-sm">{error?.message || "Unknown render error"}</p>
-  </div>
-);
+// A component, not plain JSX, so the sentence can go through `t()` - the
+// boundary that renders it is a class and cannot. The engine's own message is
+// left to the console; see `ErrorBoundary`.
+const ChatRenderError = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto flex max-w-3xl justify-center p-4">
+      <Alert type="error" message={t("chatPage.errors.renderFailed")} />
+    </div>
+  );
+};
+
+const renderChatError = () => <ChatRenderError />;
 
 function AppLayout() {
   const location = useLocation();
@@ -82,6 +94,7 @@ function AppLayout() {
                   element={<VerifyEmailChange />}
                 />
                 <Route path="/badges" element={<BadgeOverview />} />
+                <Route path="/focusareas" element={<FocusAreaOverview />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/about" element={<LegalPage type="about" />} />
                 <Route path="/terms" element={<LegalPage type="terms" />} />
@@ -150,9 +163,19 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppLayout />
-      </Router>
+      {/* Inside AuthProvider: the account language outranks every other step
+          of the precedence chain, and it arrives with the user. */}
+      <LanguageProvider>
+        {/* Inside AuthProvider because it needs the signed-in user, and
+            outside Router because the resolved names are cached across
+            navigation - a mention of the same person on the chat page and in
+            a notification is one lookup, not two. */}
+        <MentionNamesProvider>
+          <Router>
+            <AppLayout />
+          </Router>
+        </MentionNamesProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

@@ -1,12 +1,9 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { User } from "lucide-react";
 import DemoAvatarOverlay from "./DemoAvatarOverlay";
 import { getUserInitials, isSyntheticUser } from "../../utils/userHelpers";
-import {
-  getDisplayName,
-  isDeletedUser,
-  DELETED_USER_DISPLAY_NAME,
-} from "../../utils/deletedUser";
+import { getDisplayName, isDeletedUser } from "../../utils/deletedUser";
 
 const UserAvatar = ({
   user,
@@ -24,16 +21,18 @@ const UserAvatar = ({
   demoOverlayTextClassName = "text-[7px]",
   demoOverlayTextTranslateClassName = "-translate-y-[2px]",
 }) => {
+  const { t } = useTranslation();
+
   const isFormerUser = deleted || isDeletedUser(user);
   const avatarUrl =
     !isFormerUser &&
     !privateProfile &&
     (user?.avatar_url || user?.avatarUrl || null);
   const displayName = isFormerUser
-    ? DELETED_USER_DISPLAY_NAME
+    ? t("user.formerUser")
     : privateProfile
-      ? "Private Profile"
-      : getDisplayName(user, DELETED_USER_DISPLAY_NAME);
+      ? t("user.privateProfile")
+      : getDisplayName(user, t("user.formerUser"));
   const showSyntheticOverlay =
     showDemoOverlay && !isFormerUser && isSyntheticUser(user);
 

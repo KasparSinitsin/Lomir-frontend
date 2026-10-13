@@ -1,4 +1,6 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   AlertTriangle,
   Check,
@@ -11,12 +13,16 @@ import {
 } from "lucide-react";
 import { formatLocalTime } from "../../utils/dateHelpers";
 import { getFileExpirationStatus } from "../../utils/fileExpiration";
+import { useFileExpirationText } from "../../hooks/useFileExpirationText";
 import {
   formatReplyTooltipText,
   getEventReactionPreview,
   getFileIcon,
 } from "../../utils/messageDisplayHelpers";
 import { renderReplyContent } from "../../utils/messageDisplayRenderers";
+import { collectMentionIds } from "../../utils/mentions";
+import { collectEventPersonIds } from "../../utils/describeEvent";
+import { useMentionNames } from "../../contexts/MentionNamesContext";
 import Tooltip from "../common/Tooltip";
 import FileAttachment from "./FileAttachment";
 import MessageText from "./MessageText";
@@ -123,10 +129,16 @@ const MessageActions = ({
   onReply,
   onEditStart,
   onDeleteMessage,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1">
     {canReplyMessage && (
-      <Tooltip content="React" position="top" wrapperClassName="inline-flex">
+      <Tooltip
+        content={t("messageBubble.respond")}
+        position="top"
+        wrapperClassName="inline-flex"
+      >
         <button
           type="button"
           onClick={() =>
@@ -153,7 +165,7 @@ const MessageActions = ({
             })
           }
           className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-          aria-label="React to message"
+          aria-label={t("messageBubble.respondAria")}
         >
           <Reply size={14} className="text-base-content/50 hover:text-primary" />
         </button>
@@ -161,12 +173,16 @@ const MessageActions = ({
     )}
 
     {canEditMessage && (
-      <Tooltip content="Edit message" position="top" wrapperClassName="inline-flex">
+      <Tooltip
+        content={t("messageBubble.edit")}
+        position="top"
+        wrapperClassName="inline-flex"
+      >
         <button
           type="button"
           onClick={() => onEditStart(message)}
           className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-          aria-label="Edit message"
+          aria-label={t("messageBubble.edit")}
         >
           <Pencil size={14} className="text-base-content/50 hover:text-primary" />
         </button>
@@ -174,21 +190,41 @@ const MessageActions = ({
     )}
 
     {canDeleteMessage && (
-      <Tooltip content="Delete message" position="top" wrapperClassName="inline-flex">
+      <Tooltip
+        content={t("messageBubble.deleteMessage")}
+        position="top"
+        wrapperClassName="inline-flex"
+      >
         <button
           type="button"
           onClick={() => onDeleteMessage(message.id)}
           className="bg-base-100 border border-base-300 rounded-full p-1 shadow-sm hover:shadow"
-          aria-label="Delete message"
+          aria-label={t("messageBubble.deleteMessage")}
         >
           <Trash2 size={14} className="text-base-content/50 hover:text-error" />
         </button>
       </Tooltip>
     )}
   </div>
-);
+  );
+};
 
 const ReplyPreview = ({ replyPreview }) => {
+  const { t } = useTranslation();
+  const { user, blockedRelationshipIds, blockedRelationshipNames } = useAuth();
+  const { names: mentionNames, requestIds: requestMentionIds } = useMentionNames();
+
+  // ⚠️ The quoted message is NOT necessarily loaded in the transcript - a reply
+  // can quote something scrolled far away or never fetched - so this surface
+  // asks for its own ids rather than relying on MentionChip having asked.
+  useEffect(() => {
+    requestMentionIds([
+      ...collectMentionIds(replyPreview?.content),
+      ...collectEventPersonIds(replyPreview?.content),
+    ]);
+  }, [requestMentionIds, replyPreview?.content]);
+
+  const expirationText = useFileExpirationText();
   const replyImageUrl = replyPreview?.imageUrl || replyPreview?.image_url;
   const replyFileUrl = replyPreview?.fileUrl || replyPreview?.file_url;
   const replyFileName = replyPreview?.fileName || replyPreview?.file_name;
@@ -202,7 +238,14 @@ const ReplyPreview = ({ replyPreview }) => {
   const replyHasMedia = Boolean(replyImageUrl || replyFileUrl || replyFileName);
   const ReplyFileIcon = getFileIcon(replyFileName);
   const replyEventPreview = replyPreview?.content
-    ? getEventReactionPreview(replyPreview.content)
+    ? getEventReactionPreview(
+        replyPreview.content,
+        user,
+        t,
+        blockedRelationshipIds,
+        blockedRelationshipNames,
+        mentionNames,
+      )
     : null;
   const ReplyEventIcon = replyEventPreview?.Icon;
   const ReplyEventTrailingIcon = replyEventPreview?.trailingIcon;
@@ -215,19 +258,23 @@ const ReplyPreview = ({ replyPreview }) => {
       <p className="text-xs font-semibold text-primary truncate">
         {replyPreview.senderFirstName ||
           replyPreview.senderUsername ||
-          "Former Lomir User"}
+          t("user.formerUser")}
       </p>
       <Tooltip
         content={
           replyHasMedia && !replyPreview.content
             ? replyMediaExpired
-              ? "Image or file no longer available"
+              ? t("messageBubble.mediaExpired")
               : replyExpirationStatus.status !== "none"
-                ? replyExpirationStatus.message
+                ? expirationText(replyExpirationStatus)
                 : replyImageUrl
-                  ? "Image"
-                  : replyFileName || "File"
-            : formatReplyTooltipText(replyPreview.content, replyEventPreview)
+                  ? t("messageInput.attachmentImage")
+                  : replyFileName || t("messageBubble.attachmentFile")
+            : formatReplyTooltipText(replyPreview.content, replyEventPreview, {
+                blockedIds: blockedRelationshipIds,
+                names: mentionNames,
+                t,
+              })
         }
         position="top"
         wrapperClassName="block min-w-0 max-w-full"
@@ -236,21 +283,25 @@ const ReplyPreview = ({ replyPreview }) => {
           <div className="mt-1 flex min-w-0 items-center gap-2 text-warning">
             <AlertTriangle size={16} className="shrink-0" />
             <p className="text-xs font-medium truncate">
-              Image or file no longer available
+              {t("messageBubble.mediaExpired")}
             </p>
           </div>
         ) : replyImageUrl ? (
           <div className="mt-1 min-w-0">
             <img
               src={replyImageUrl}
-              alt="Replied image"
+              alt={t("messageBubble.repliedImageAlt")}
               className="rounded-lg max-w-full max-h-64 object-contain"
               loading="lazy"
             />
             <div className="mt-1 min-w-0">
               {replyPreview.content && (
                 <p className="text-xs text-base-content/60 truncate">
-                  {renderReplyContent(replyPreview.content)}
+                  {renderReplyContent(replyPreview.content, 120, {
+                    blockedIds: blockedRelationshipIds,
+                    names: mentionNames,
+                    t,
+                  })}
                 </p>
               )}
               {replyExpirationStatus.status !== "none" &&
@@ -264,13 +315,15 @@ const ReplyPreview = ({ replyPreview }) => {
                   >
                     <Clock size={11} className="shrink-0" />
                     <p className="text-[11px] truncate">
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   </div>
                 )}
               {replyExpirationStatus.status === "none" &&
                 !replyPreview.content && (
-                  <p className="text-xs text-base-content/60 truncate">Image</p>
+                  <p className="text-xs text-base-content/60 truncate">
+                    {t("messageInput.attachmentImage")}
+                  </p>
                 )}
             </div>
           </div>
@@ -279,7 +332,7 @@ const ReplyPreview = ({ replyPreview }) => {
             <ReplyFileIcon size={18} className="text-primary shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-xs text-base-content/60 truncate">
-                {replyFileName || "File"}
+                {replyFileName || t("messageBubble.attachmentFile")}
               </p>
               {replyExpirationStatus.status !== "none" &&
                 replyExpirationStatus.daysLeft !== null && (
@@ -292,7 +345,7 @@ const ReplyPreview = ({ replyPreview }) => {
                   >
                     <Clock size={11} className="shrink-0" />
                     <p className="text-[11px] truncate">
-                      {replyExpirationStatus.message}
+                      {expirationText(replyExpirationStatus)}
                     </p>
                   </div>
                 )}
@@ -314,11 +367,15 @@ const ReplyPreview = ({ replyPreview }) => {
         ) : (
           <p className="text-xs text-base-content/60 truncate">
             {replyPreview.content ? (
-              renderReplyContent(replyPreview.content)
+              renderReplyContent(replyPreview.content, 120, {
+                blockedIds: blockedRelationshipIds,
+                names: mentionNames,
+                t,
+              })
             ) : replyPreview.deletedAt || replyPreview.deleted_at ? (
-              <span className="italic">Original message was deleted</span>
+              <span className="italic">{t("messageBubble.originalDeleted")}</span>
             ) : (
-              "Message unavailable"
+              t("messageBubble.messageUnavailable")
             )}
           </p>
         )}
@@ -328,6 +385,8 @@ const ReplyPreview = ({ replyPreview }) => {
 };
 
 const MessageImage = ({ message }) => {
+  const { t } = useTranslation();
+  const expirationText = useFileExpirationText();
   const imageUrl = message.imageUrl || message.image_url;
   const imageDeletedAt = message.fileDeletedAt || message.file_deleted_at;
   const imageExpirationStatus = getFileExpirationStatus(message);
@@ -343,9 +402,11 @@ const MessageImage = ({ message }) => {
           <AlertTriangle size={24} className="text-warning flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-base-content/60">
-              Image or file no longer available
+              {t("messageBubble.mediaExpired")}
             </p>
-            <p className="text-xs text-base-content/40">This data has expired.</p>
+            <p className="text-xs text-base-content/40">
+              {t("messageBubble.dataExpired")}
+            </p>
           </div>
         </div>
       </div>
@@ -359,11 +420,11 @@ const MessageImage = ({ message }) => {
       {imageExpirationStatus.status === "expiring-soon" && (
         <div className="flex items-center gap-2 p-2 mb-2 bg-warning/10 border border-warning/30 rounded-lg max-w-xs">
           <Clock size={16} className="text-warning flex-shrink-0" />
-          <p className="text-xs text-warning">{imageExpirationStatus.message}</p>
+          <p className="text-xs text-warning">{expirationText(imageExpirationStatus)}</p>
         </div>
       )}
       <Tooltip
-        content="Click to open and download image in new tab"
+        content={t("messageBubble.openImage")}
         position="top"
         wrapperClassName="block"
       >
@@ -373,7 +434,7 @@ const MessageImage = ({ message }) => {
         >
           <img
             src={imageUrl}
-            alt="Shared image"
+            alt={t("messageBubble.sharedImageAlt")}
             className="rounded-lg max-w-full max-h-64 object-contain transition-opacity group-hover/img:opacity-80"
             loading="lazy"
           />
@@ -392,7 +453,7 @@ const MessageImage = ({ message }) => {
           <div className="flex items-center gap-2 mt-1 ml-1">
             <Clock size={12} className="text-base-content/40 flex-shrink-0" />
             <p className="text-xs text-base-content/40">
-              {imageExpirationStatus.message}
+              {expirationText(imageExpirationStatus)}
             </p>
           </div>
         )}
@@ -408,7 +469,9 @@ const EditMessageForm = ({
   isSavingEdit,
   onCancelEdit,
   onSaveEdit,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <div className="space-y-2 min-w-[16rem] max-w-full">
     <textarea
       value={editingContent}
@@ -437,7 +500,7 @@ const EditMessageForm = ({
         disabled={isSavingEdit}
       >
         <X size={14} />
-        Cancel
+        {t("messageBubble.cancel")}
       </button>
       <button
         type="button"
@@ -454,11 +517,12 @@ const EditMessageForm = ({
         ) : (
           <Check size={14} />
         )}
-        Save
+        {t("messageBubble.save")}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 const MessageBubbleMeta = ({
   message,
@@ -469,7 +533,9 @@ const MessageBubbleMeta = ({
   teamMembers,
   currentUserId,
   getReadByTooltip,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <div
     className={`
       flex justify-between items-center text-xs mt-1
@@ -480,11 +546,11 @@ const MessageBubbleMeta = ({
       {formatLocalTime(getMessageDisplayTime(message))}
       {messageEdited && (
         <Tooltip
-          content="Message edited"
+          content={t("messageBubble.edited")}
           position="top"
           wrapperClassName="inline-flex shrink-0"
         >
-          <Pencil size={12} strokeWidth={2.25} aria-label="Message edited" />
+          <Pencil size={12} strokeWidth={2.25} aria-label={t("messageBubble.edited")} />
         </Tooltip>
       )}
     </span>
@@ -499,7 +565,8 @@ const MessageBubbleMeta = ({
       />
     </span>
   </div>
-);
+  );
+};
 
 class MessageBubbleErrorBoundary extends React.Component {
   constructor(props) {
@@ -523,7 +590,7 @@ class MessageBubbleErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div className="rounded-lg border border-error/30 bg-error/10 p-3 text-sm text-error">
-          Could not render this message.
+          {this.props.fallbackText}
           {this.props.messageId != null && (
             <span className="ml-1 text-xs opacity-70">
               ID: {String(this.props.messageId)}
@@ -572,6 +639,7 @@ const MessageBubbleContent = forwardRef(
     },
     ref,
   ) => {
+    const { t } = useTranslation();
     const replyPreview = buildReplyPreview(message, messagesById);
 
     return (
@@ -642,7 +710,7 @@ const MessageBubbleContent = forwardRef(
 
         {isDeleted && (
           <p className="text-sm text-base-content/50 italic">
-            This message was deleted.
+            {t("messageBubble.messageDeleted")}
           </p>
         )}
 
@@ -665,11 +733,21 @@ const MessageBubbleContent = forwardRef(
 
 MessageBubbleContent.displayName = "MessageBubbleContent";
 
-const MessageBubble = forwardRef((props, ref) => (
-  <MessageBubbleErrorBoundary messageId={props.message?.id}>
-    <MessageBubbleContent {...props} ref={ref} />
-  </MessageBubbleErrorBoundary>
-));
+const MessageBubble = forwardRef((props, ref) => {
+  const { t } = useTranslation();
+  return (
+    // The boundary is a class component and cannot hold a hook, so the one
+    // string it renders is translated here and handed down. Passing it as a
+    // prop also means a language change re-renders the fallback, which an
+    // i18n.t() call inside the class would not.
+    <MessageBubbleErrorBoundary
+      messageId={props.message?.id}
+      fallbackText={t("messageBubble.renderError")}
+    >
+      <MessageBubbleContent {...props} ref={ref} />
+    </MessageBubbleErrorBoundary>
+  );
+});
 
 MessageBubble.displayName = "MessageBubble";
 

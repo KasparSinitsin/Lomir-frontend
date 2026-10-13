@@ -79,6 +79,13 @@ export const tagService = {
     }
   },
 
+  // The translated names of the taxonomy for one language (STATUS item 11). English asks for
+  // nothing: the stored names ARE the English text.
+  getTagTranslations: async (language) => {
+    const response = await api.get("/api/tags/translations", { params: { lang: language } });
+    return response.data;
+  },
+
   // Create a new tag
   createTag: async (tagData) => {
     const data = await call("creating tag", () =>

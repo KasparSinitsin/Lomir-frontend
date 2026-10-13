@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { formatDateMedium } from "./dateHelpers";
 
 export const normalizeNumericId = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -158,7 +158,7 @@ export const formatRequestDate = (request, fallback = "Unknown date") => {
   if (!date) return fallback;
 
   try {
-    return format(new Date(date), "MMM d, yyyy");
+    return formatDateMedium(new Date(date));
   } catch (error) {
     console.error("Error formatting request date:", error);
     return fallback;

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTagLabels } from "../../hooks/useTagLabels";
 
 const TagDisplay = ({
   tags = [],
@@ -8,6 +9,8 @@ const TagDisplay = ({
   showCategory = false,
   className = "",
 }) => {
+  const { tagLabel, categoryLabel } = useTagLabels();
+
   if (!tags || tags.length === 0) {
     return (
       <span className="text-sm text-base-content/60 italic">
@@ -40,14 +43,14 @@ const TagDisplay = ({
           className={`badge ${variantClasses[variant]} ${sizeClasses[size]} px-3 py-1`}
           title={
             showCategory && tag.category
-              ? `${tag.category}: ${tag.name}`
-              : tag.name
+              ? `${categoryLabel(tag.category)}: ${tagLabel(tag)}`
+              : tagLabel(tag)
           }
         >
           {showCategory && tag.category && (
-            <span className="opacity-70 mr-1">{tag.category}:</span>
+            <span className="opacity-70 mr-1">{categoryLabel(tag.category)}:</span>
           )}
-          {tag.name}
+          {tagLabel(tag)}
         </span>
       ))}
 

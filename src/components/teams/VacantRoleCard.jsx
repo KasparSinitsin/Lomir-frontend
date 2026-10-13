@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import {
   Award,
@@ -34,8 +35,6 @@ import MatchScoreOverlay from "../common/MatchScoreOverlay";
 import MatchScoreSubtitle from "../common/MatchScoreSubtitle";
 import Tooltip from "../common/Tooltip";
 import {
-  DEMO_PROFILE_TOOLTIP,
-  DEMO_ROLE_TOOLTIP,
   getDisplayName,
   getUserInitials,
   isSyntheticRole,
@@ -51,15 +50,20 @@ import {
   MATCH_TIER_GREAT,
 } from "../../utils/matchScoreUtils";
 import { summarizeList } from "../../utils/listSummaryUtils";
+import { useTagLabels } from "../../hooks/useTagLabels";
 import { teamService } from "../../services/teamService";
 import { useAuth } from "../../contexts/AuthContext";
-import { format } from "date-fns";
+import {
+  formatDateMedium,
+  formatDateNumeric,
+} from "../../utils/dateHelpers";
 import { formatDisplayName } from "../../utils/nameFormatters";
 import {
   formatListLocation,
   formatLocation,
   normalizeLocationData,
 } from "../../utils/locationUtils";
+import { getBadgeName } from "../../utils/badgeLabels";
 
 const userPendingApplicationsCache = new Map();
 const userReceivedInvitationsCache = new Map();
@@ -212,6 +216,8 @@ const VacantRoleCard = ({
   showMatchScore = true,
   notificationHighlight = false,
 }) => {
+  const { t } = useTranslation("teams");
+  const { tagLabel } = useTagLabels();
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const menuTriggerRef = useRef(null);
@@ -594,15 +600,22 @@ const VacantRoleCard = ({
         .map((tag) => {
           if (typeof tag === "string") return tag.trim();
 
+          // The translated name when the tag has an id the dictionary knows,
+          // else the stored one; the order stays the backend's.
           return String(
-            tag?.name ?? tag?.tagName ?? tag?.tag_name ?? tag?.tag ?? "",
+            tagLabel(tag) ??
+              tag?.name ??
+              tag?.tagName ??
+              tag?.tag_name ??
+              tag?.tag ??
+              "",
           ).trim();
         })
         .filter(Boolean)
     : [];
 
   const getRoleInitials = () => {
-    const name = role_name || "Vacant Role";
+    const name = role_name || t("common:roleStatus.vacantRoleFallback");
     const words = name.trim().split(/\s+/);
     if (words.length === 1) {
       return name.substring(0, 2).toUpperCase();
@@ -611,7 +624,10 @@ const VacantRoleCard = ({
   };
 
   const getRoleShortInitials = () =>
-    (role_name || "Vacant Role").trim().slice(0, 2).toUpperCase() || "VR";
+    (role_name || t("common:roleStatus.vacantRoleFallback"))
+      .trim()
+      .slice(0, 2)
+      .toUpperCase() || "VR";
 
   const handleCardClick = (e) => {
     if (e?.target?.closest("[data-dropdown-menu]")) return;
@@ -660,7 +676,7 @@ const VacantRoleCard = ({
     if (!rolePostedAt) return null;
 
     try {
-      return format(new Date(rolePostedAt), "MM/dd/yy");
+      return formatDateNumeric(new Date(rolePostedAt));
     } catch {
       return null;
     }
@@ -672,7 +688,7 @@ const VacantRoleCard = ({
     }
 
     try {
-      return `Posted ${format(new Date(rolePostedAt), "MMM d, yyyy")}`;
+      return `Posted ${formatDateMedium(new Date(rolePostedAt))}`;
     } catch {
       return "Posted";
     }
@@ -720,27 +736,27 @@ const VacantRoleCard = ({
       ? getDisplayName(filledUser)
       : null;
   const filledByText = filledUserIsBlocked
-    ? "Private Profile"
+    ? t("common:user.privateProfile")
     : filledUser
     ? formatDisplayName(filledUser)
     : filledUserDisplayName
     ? filledUserDisplayName
-    : "Filled";
+    : t("common:roleStatus.filled");
   const badgeConfig = isFilled
     ? {
         icon: UserCheck,
-        label: "Filled",
+        label: t("common:roleStatus.filled"),
         badgeColorClass: "badge-role-filled",
       }
     : isClosed
     ? {
         icon: XCircle,
-        label: "Closed",
+        label: t("common:roleStatus.closed"),
         badgeColorClass: "badge-role-closed",
       }
     : {
         icon: UserSearch,
-        label: "Vacant",
+        label: t("common:roleStatus.vacant"),
         badgeColorClass: "badge-role-vacant",
       };
   const cardColorClass = isFilled
@@ -790,7 +806,7 @@ const VacantRoleCard = ({
     />
   ) : null;
   const roleApplicationSubtitleItem = hasCurrentUserRoleApplication ? (
-    <Tooltip content="You applied for this role">
+    <Tooltip content={t("vacantRoleCard.appliedForRole")}>
       <span className="inline-flex shrink-0 items-center leading-none text-orange-500">
         <SendHorizontal
           size={subtitleMetaIconSize}
@@ -811,7 +827,7 @@ const VacantRoleCard = ({
     </Tooltip>
   ) : null;
   const roleInvitationSubtitleItem = hasCurrentUserRoleInvitation ? (
-    <Tooltip content="You were invited to fill this role">
+    <Tooltip content={t("vacantRoleCard.invitedToFillRole")}>
       <span className="inline-flex shrink-0 items-center leading-none text-orange-500">
         <Mail
           size={subtitleMetaIconSize}
@@ -854,7 +870,7 @@ const VacantRoleCard = ({
     <Tooltip
       content={
         viewerIsTeamMember
-          ? `You are a member of this team: ${resolvedTeamName}`
+          ? t("vacantRoleCard.memberOfTeam", { teamName: resolvedTeamName })
           : resolvedTeamName
       }
       wrapperClassName={
@@ -892,7 +908,7 @@ const VacantRoleCard = ({
     <>
       {roleIsDemo && (
         <Tooltip
-          content={DEMO_ROLE_TOOLTIP}
+          content={t("common:demo.roleTooltip")}
           wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
         >
           <FlaskConical size={9} className="flex-shrink-0" />
@@ -900,7 +916,7 @@ const VacantRoleCard = ({
       )}
       {filledMemberIsDemo && (
         <Tooltip
-          content={DEMO_PROFILE_TOOLTIP}
+          content={t("common:demo.profileTooltip")}
           wrapperClassName="flex items-center gap-1 whitespace-nowrap text-base-content/50"
         >
           <FlaskConical size={9} className="flex-shrink-0" />
@@ -941,7 +957,7 @@ const VacantRoleCard = ({
     <SearchResultTypeOverlay
       icon={UserSearch}
       bgClassName={matchTier?.bg ?? "bg-orange-500"}
-      tooltip="Open Role"
+      tooltip={t("common:roleStatus.open")}
       viewMode={viewMode}
     />
   ) : null;
@@ -1029,8 +1045,10 @@ const VacantRoleCard = ({
     );
     const { summary: tagsSummary, tooltip: tagsTooltip } =
       summarizeList(tagNames, 3);
+    // Display only — badgeNames holds the stored English names (UserCard and
+    // TeamCard translate at the same point).
     const { summary: badgesSummary, tooltip: badgesTooltip } =
-      summarizeList(badgeNames, 3);
+      summarizeList(badgeNames.map((name) => getBadgeName(name, t)), 3);
     const listSubtitle =
       scoreSubtitleItem ||
       postedDateSubtitleItem ||
@@ -1051,7 +1069,7 @@ const VacantRoleCard = ({
     return (
       <>
         <Card
-          title={role_name || "Vacant Role"}
+          title={role_name || t("common:roleStatus.vacantRoleFallback")}
           subtitle={listSubtitle}
           image={null}
           imageFallback={getRoleShortInitials()}
@@ -1065,7 +1083,7 @@ const VacantRoleCard = ({
           marginClassName=""
           clickTooltip={
             teamContext?.name
-              ? `${role_name || "Vacant Role"} — ${teamContext.name}`
+              ? `${role_name || t("common:roleStatus.vacantRoleFallback")} — ${teamContext.name}`
               : null
           }
           className={status !== "open" ? "opacity-70" : ""}
@@ -1074,7 +1092,9 @@ const VacantRoleCard = ({
             locationText={locationTextShort}
             locationTooltip={locationText}
             isRemote={is_remote}
-            distance={showDistance ? roundedDistanceKm : null}
+            distance={
+              showDistance && locationTextShort ? roundedDistanceKm : null
+            }
             tagsSummary={tagsSummary}
             tagsTooltip={tagsTooltip}
             badgesSummary={badgesSummary}
@@ -1103,7 +1123,7 @@ const VacantRoleCard = ({
         {miniLocationSubtitleItem}
         {roleIsDemo && (
           <Tooltip
-            content={DEMO_ROLE_TOOLTIP}
+            content={t("common:demo.roleTooltip")}
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
@@ -1114,7 +1134,7 @@ const VacantRoleCard = ({
         )}
         {filledMemberIsDemo && (
           <Tooltip
-            content={DEMO_PROFILE_TOOLTIP}
+            content={t("common:demo.profileTooltip")}
             wrapperClassName="flex items-center gap-1 text-base-content/50"
           >
             <FlaskConical
@@ -1129,7 +1149,7 @@ const VacantRoleCard = ({
     return (
       <>
         <Card
-          title={role_name || "Vacant Role"}
+          title={role_name || t("common:roleStatus.vacantRoleFallback")}
           subtitle={searchCardSubtitle}
           hoverable
           image={isFilled ? filledUserAvatarUrl : null}
@@ -1140,15 +1160,15 @@ const VacantRoleCard = ({
               ? getUserInitials(filledUser)
               : getRoleInitials()
           }
-          imageAlt={role_name || "Vacant Role"}
+          imageAlt={role_name || t("common:roleStatus.vacantRoleFallback")}
           imageSize="medium"
           imageShape="circle"
           onClick={handleCardClick}
           truncateContent={true}
           clickTooltip={
             resolvedTeamName
-              ? `${role_name || "Vacant Role"}\n${resolvedTeamName}`
-              : role_name || "Vacant Role"
+              ? `${role_name || t("common:roleStatus.vacantRoleFallback")}\n${resolvedTeamName}`
+              : role_name || t("common:roleStatus.vacantRoleFallback")
           }
           contentClassName={
             viewMode === "mini"
@@ -1173,7 +1193,7 @@ const VacantRoleCard = ({
         >
           {viewMode !== "mini" && (
             <p className="text-base-content/80 mb-4">
-              {role_bio || "No description"}
+              {role_bio || t("vacantRoleCard.noDescription")}
             </p>
           )}
 
@@ -1279,7 +1299,7 @@ const VacantRoleCard = ({
           <div className="flex flex-col">
             <div className="flex min-w-0 items-center gap-1">
               <h3 className={`${roleNameClass} ${titleLeadingClass} min-w-0 flex-1 truncate`}>
-                {role_name || "Vacant Role"}
+                {role_name || t("common:roleStatus.vacantRoleFallback")}
               </h3>
               <div ref={menuTriggerRef} className="shrink-0 ml-1" data-dropdown-menu>
               <RoleBadgePill
@@ -1334,7 +1354,7 @@ const VacantRoleCard = ({
                       }}
                     >
                       <Edit size={14} />
-                      Edit Role
+                      {t("vacantRoleCard.editRole")}
                     </button>
                   )}
                   {canMarkFilled && (
@@ -1351,13 +1371,14 @@ const VacantRoleCard = ({
                         className="text-success flex-shrink-0 mt-[2px]"
                       />
                       {viewAsUser
-                        ? `Mark role as filled with ${
-                            viewAsUser.firstName ??
-                            viewAsUser.first_name ??
-                            viewAsUser.username ??
-                            "this applicant"
-                          }`
-                        : "Mark Filled"}
+                        ? t("vacantRoleCard.markFilledWith", {
+                            name:
+                              viewAsUser.firstName ??
+                              viewAsUser.first_name ??
+                              viewAsUser.username ??
+                              t("vacantRoleCard.thisApplicant"),
+                          })
+                        : t("vacantRoleCard.markFilled")}
                     </button>
                   )}
                   {canCloseRole && (
@@ -1370,7 +1391,7 @@ const VacantRoleCard = ({
                       }}
                     >
                       <XCircle size={14} className="text-warning" />
-                      Close Role
+                      {t("vacantRoleCard.closeRole")}
                     </button>
                   )}
                   {canReopenRole && (
@@ -1383,7 +1404,7 @@ const VacantRoleCard = ({
                       }}
                     >
                       <CheckCircle size={14} className="text-primary" />
-                      Reopen Role
+                      {t("vacantRoleCard.reopenRole")}
                     </button>
                   )}
                   {canDeleteRole && (
@@ -1396,7 +1417,7 @@ const VacantRoleCard = ({
                       }}
                     >
                       <Trash2 size={14} />
-                      Delete Role
+                      {t("vacantRoleCard.deleteRole")}
                     </button>
                   )}
                 </div>
@@ -1437,7 +1458,7 @@ const VacantRoleCard = ({
                 {showDistance && (
                   <span className="flex items-center gap-1 text-base-content">
                     <Ruler size={10} className="shrink-0" />
-                    <span>{Math.round(rawDistanceKm)} km away</span>
+                    <span>{t("common:distance.away", { km: Math.round(rawDistanceKm) })}</span>
                   </span>
                 )}
                 {!is_remote && max_distance_km && (
@@ -1464,7 +1485,7 @@ const VacantRoleCard = ({
                 {showDistance && (
                   <span className="flex items-center gap-1 text-base-content">
                     <Ruler size={10} className="shrink-0" />
-                    <span>{Math.round(rawDistanceKm)} km away</span>
+                    <span>{t("common:distance.away", { km: Math.round(rawDistanceKm) })}</span>
                   </span>
                 )}
                 {!is_remote && max_distance_km && (
@@ -1491,7 +1512,9 @@ const VacantRoleCard = ({
               )}
               {showDistance && (
                 <CardMetaItem icon={Ruler} nowrap>
-                  {Math.round(rawDistanceKm)} km away
+                  {t("common:distance.away", {
+                    km: Math.round(rawDistanceKm),
+                  })}
                 </CardMetaItem>
               )}
               {demoRoleMetaItem}
@@ -1510,7 +1533,9 @@ const VacantRoleCard = ({
               )}
               {showDistance && (
                 <CardMetaItem icon={Ruler} nowrap>
-                  {Math.round(rawDistanceKm)} km away
+                  {t("common:distance.away", {
+                    km: Math.round(rawDistanceKm),
+                  })}
                 </CardMetaItem>
               )}
               {demoRoleMetaItem}

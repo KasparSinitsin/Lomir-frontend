@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 import {
   Mail,
   MessageCircle,
@@ -13,29 +14,67 @@ import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import FormGroup from "../components/common/FormGroup";
 import TurnstileWidget from "../components/common/TurnstileWidget";
+import LegalLink from "../components/common/LegalLink";
 import { useAuth } from "../contexts/AuthContext";
+import { getActiveLocale } from "../utils/languageUtils";
+import { useLanguage } from "../contexts/LanguageContext";
 import api from "../services/api";
 
 const LOMIR_CONTACT_USER_ID = (
   import.meta.env.VITE_LOMIR_CONTACT_USER_ID || ""
 ).trim();
 
+const REPORT_TOPIC_CODE = "report";
+
+/**
+ * The topic dropdown, in display order. Values only — the labels live in the
+ * locale files and are resolved by `topicLabel()` below.
+ *
+ * ⚠️ The value and the label were one and the same English string until
+ * 2026-09-12, and the backend decides whether a submission becomes a DSA
+ * report by comparing it (`topic.trim() === "Report content or abuse"`).
+ * Translating the label — which is exactly what has now happened — would have
+ * meant no report row, no reference code and no receipt email: the legally
+ * required channel failing silently, with no test to catch it, because both
+ * repos read the same constant.
+ *
+ * The backend keeps its own copy in `src/config/contactTopics.js` and maps the
+ * code back to the English label it stores. The two repos deploy separately,
+ * so a new topic changes both.
+ */
+const topicCodes = [
+  "general",
+  "account",
+  "privacy",
+  REPORT_TOPIC_CODE,
+  "feedback",
+];
+
+/**
+ * The backend's attachment failure codes, mapped onto the ones this page
+ * already resolves. `/api/contact` names what went wrong and the frontend says
+ * it — decision 7, and the reason these sentences are not sent as prose.
+ *
+ * ⚠️ The wire codes are SCREAMING_SNAKE and deliberately not spellable as
+ * translation keys. A code like `contact.attachment.tooLarge` would invite
+ * `t(code)`, which `npm run i18n:check` cannot verify and would report as
+ * unused. See `src/config/contactErrors.js` in the backend.
+ */
+const SERVER_ATTACHMENT_CODES = {
+  ATTACHMENT_NAME_UNSUPPORTED: "unsafeName",
+  ATTACHMENT_TYPE_UNSUPPORTED: "wrongType",
+  ATTACHMENT_EMPTY: "empty",
+  ATTACHMENT_TOO_LARGE: "tooLarge",
+  ATTACHMENT_TOO_MANY: "tooMany",
+  ATTACHMENT_TOTAL_TOO_LARGE: "totalTooLarge",
+};
+
 const initialFormValues = {
   name: "",
   email: "",
-  topic: "General question",
+  topic: topicCodes[0],
   message: "",
 };
-
-const REPORT_TOPIC = "Report content or abuse";
-
-const topicOptions = [
-  "General question",
-  "Account support",
-  "Privacy request",
-  REPORT_TOPIC,
-  "Feedback",
-];
 
 const ATTACHMENT_MAX_FILES = 3;
 const ATTACHMENT_MAX_MB = 5;
@@ -90,8 +129,6 @@ const ATTACHMENT_ACCEPT = ATTACHMENT_ALLOWED_FILE_TYPES.flatMap((fileType) => [
   ...fileType.mimeTypes,
 ]).join(",");
 
-const ATTACHMENT_HELPER_TEXT = `Accepted: ${ATTACHMENT_ALLOWED_LABEL}. Max ${ATTACHMENT_MAX_FILES} files, ${ATTACHMENT_MAX_MB} MB each, ${ATTACHMENT_TOTAL_MAX_MB} MB total.`;
-
 const getFileExtension = (fileName = "") => {
   const match = fileName.toLowerCase().match(/\.[^.]+$/);
   return match ? match[0] : "";
@@ -102,6 +139,16 @@ const isUnsafeFileNameCharacter = (char) => {
   return code <= 31 || code === 127 || char === "/" || char === "\\";
 };
 
+/**
+ * The file name as it can safely be shown, or "" when nothing is left of it.
+ *
+ * ⚠️ Returns "" rather than a placeholder on purpose. It used to return the
+ * finished English words "Selected file" — a pure helper handing a sentence to
+ * a component that cannot translate it, which is the shape that left
+ * `MessageBubble` and `MessageInput` marked translated while they rendered
+ * English (see `utils/fileExpiration.js`). The caller supplies the label,
+ * because the caller is what has `t`.
+ */
 const getAttachmentDisplayName = (fileName = "") => {
   const sanitizedName = fileName
     .split("")
@@ -110,7 +157,7 @@ const getAttachmentDisplayName = (fileName = "") => {
     .trim();
 
   if (!sanitizedName) {
-    return "Selected file";
+    return "";
   }
 
   return sanitizedName.length > 80
@@ -149,29 +196,69 @@ const isSameAttachment = (firstFile, secondFile) =>
 const getTotalAttachmentBytes = (files) =>
   files.reduce((totalBytes, file) => totalBytes + file.size, 0);
 
+/**
+ * An attachment's size, in the reader's own conventions.
+ *
+ * ⚠️ Was `${(bytes / 1048576).toFixed(1)} MB`, which is a decimal point in
+ * every language — "1.5 MB" to a German reader, where the separator means
+ * nothing or, worse, reads as a thousands group. `toFixed` is not a
+ * formatter, it is a string operation that happens to look like one.
+ *
+ * Built the same way as `formatDistance` in `locationUtils.js`: through
+ * `Intl` with `getActiveLocale()`, so nothing here decides what a number
+ * looks like. That is the rule FE #614 established for dates.
+ *
+ * ⚠️ One visible consequence: Intl writes the SI-correct "kB", not "KB".
+ * Accepted — the same trade as English moving to a 24-hour clock, where the
+ * formatter's answer wins over the previous hand-built string.
+ */
 const formatAttachmentSize = (bytes) => {
-  if (bytes >= 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  const isMegabytes = bytes >= 1024 * 1024;
+  const value = isMegabytes
+    ? bytes / (1024 * 1024)
+    : Math.max(1, Math.round(bytes / 1024));
 
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return new Intl.NumberFormat(getActiveLocale(), {
+    style: "unit",
+    unit: isMegabytes ? "megabyte" : "kilobyte",
+    unitDisplay: "short",
+    maximumFractionDigits: isMegabytes ? 1 : 0,
+    minimumFractionDigits: isMegabytes ? 1 : 0,
+  }).format(value);
 };
 
-const formatAttachmentErrors = (messages) => {
+/**
+ * Which of several attachment errors to show, and how many are left over.
+ *
+ * Deliberately returns numbers rather than a sentence: the leftover count
+ * needs a plural, and German does not form it the way the old
+ * `"N more file(s) were skipped."` pretended English did either. The caller
+ * renders it through ICU.
+ */
+const summariseAttachmentErrors = (messages) => {
   const uniqueMessages = [...new Set(messages.filter(Boolean))];
 
-  if (uniqueMessages.length <= 2) {
-    return uniqueMessages.join(" ");
-  }
-
-  return `${uniqueMessages.slice(0, 2).join(" ")} ${
-    uniqueMessages.length - 2
-  } more file(s) were skipped.`;
+  return {
+    shown: uniqueMessages.slice(0, 2),
+    skipped: Math.max(0, uniqueMessages.length - 2),
+  };
 };
 
 const Contact = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+  // The receipt email for an abuse report is chosen from this, because there
+  // is no account to resolve it from — a DSA report may be filed by anyone.
+  // `language` is what the app is actually rendered in, not what the
+  // precedence chain resolved to, so the mail matches the page the reporter
+  // read. While LANGUAGE_FEATURE_VISIBLE is false that is "en" for everyone,
+  // which is correct: the form they just filled in was English too.
+  //
+  // ⚠️ Not gated on the flag, unlike RegisterForm. That gate exists because
+  // registration *stores* a value and a stored guess would outrank the country
+  // rule forever. This value is thrown away after one email.
+  const { language } = useLanguage();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
   const [formValues, setFormValues] = useState(initialFormValues);
@@ -205,26 +292,26 @@ const Contact = () => {
     const trimmedEmail = formValues.email.trim();
 
     if (!formValues.name.trim()) {
-      nextErrors.name = "Name is required";
+      nextErrors.name = t("contact.validation.name");
     }
 
     if (!trimmedEmail) {
-      nextErrors.email = "Email is required";
+      nextErrors.email = t("contact.validation.email");
     } else if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
-      nextErrors.email = "Please enter a valid email address";
+      nextErrors.email = t("contact.validation.emailInvalid");
     }
 
     if (!formValues.message.trim()) {
-      nextErrors.message = "Message is required";
+      nextErrors.message = t("contact.validation.message");
     }
 
     const attachmentError = validateAttachmentsForSubmit(attachments);
     if (attachmentError) {
-      nextErrors.attachment = attachmentError;
+      nextErrors.attachment = attachmentErrorText(attachmentError);
     }
 
     if (hasTurnstile && !turnstileToken) {
-      nextErrors.turnstile = "Please complete the CAPTCHA verification";
+      nextErrors.turnstile = t("contact.validation.captcha");
     }
 
     setErrors(nextErrors);
@@ -236,42 +323,72 @@ const Contact = () => {
     setTurnstileToken(null);
   };
 
+  /**
+   * Which rule an attachment breaks, as a code — never as a sentence.
+   *
+   * The values every message needs (the size limits, the type list) are
+   * module constants, so the resolver below can supply them without this
+   * having to carry them.
+   */
   const validateAttachment = (file, currentAttachments) => {
-    if (hasUnsafeFileName(file.name)) {
-      return "File name is not supported. Please rename the file and try again.";
-    }
-
-    if (!isAllowedAttachmentType(file)) {
-      return `File type not supported. Accepted: ${ATTACHMENT_ALLOWED_LABEL}.`;
-    }
-
-    if (file.size <= 0) {
-      return "File is empty and cannot be attached.";
-    }
-
-    if (file.size > ATTACHMENT_MAX_BYTES) {
-      return `Each file must be ${ATTACHMENT_MAX_MB} MB or smaller.`;
-    }
+    if (hasUnsafeFileName(file.name)) return "unsafeName";
+    if (!isAllowedAttachmentType(file)) return "wrongType";
+    if (file.size <= 0) return "empty";
+    if (file.size > ATTACHMENT_MAX_BYTES) return "tooLarge";
 
     if (
       currentAttachments.some((attachment) =>
         isSameAttachment(attachment, file),
       )
     ) {
-      return "This file is already attached.";
+      return "duplicate";
     }
 
     const totalBytes = getTotalAttachmentBytes(currentAttachments) + file.size;
-    if (totalBytes > ATTACHMENT_TOTAL_MAX_BYTES) {
-      return `Attachments must be ${ATTACHMENT_TOTAL_MAX_MB} MB total or smaller.`;
-    }
+    if (totalBytes > ATTACHMENT_TOTAL_MAX_BYTES) return "totalTooLarge";
 
     return "";
   };
 
+  /**
+   * One code -> one sentence.
+   *
+   * ⚠️ Written as an explicit switch of literal keys rather than
+   * `t(`contact.attachment.${code}`)`, which would be shorter and would read
+   * fine. A template key is invisible to `npm run i18n:check`: it reports the
+   * call as unverifiable and every one of these keys as unused, so a typo or a
+   * deleted German string would pass. Seven literals keep the check meaningful.
+   */
+  const attachmentErrorText = (code) => {
+    switch (code) {
+      case "unsafeName":
+        return t("contact.attachment.unsafeName");
+      case "wrongType":
+        return t("contact.attachment.wrongType", {
+          types: ATTACHMENT_ALLOWED_LABEL,
+        });
+      case "empty":
+        return t("contact.attachment.empty");
+      case "tooLarge":
+        return t("contact.attachment.tooLarge", { maxMb: ATTACHMENT_MAX_MB });
+      case "duplicate":
+        return t("contact.attachment.duplicate");
+      case "totalTooLarge":
+        return t("contact.attachment.totalTooLarge", {
+          totalMb: ATTACHMENT_TOTAL_MAX_MB,
+        });
+      case "tooMany":
+        return t("contact.attachment.tooMany", {
+          maxFiles: ATTACHMENT_MAX_FILES,
+        });
+      default:
+        return "";
+    }
+  };
+
   const validateAttachmentsForSubmit = (files) => {
     if (files.length > ATTACHMENT_MAX_FILES) {
-      return `You can attach up to ${ATTACHMENT_MAX_FILES} files.`;
+      return "tooMany";
     }
 
     let checkedAttachments = [];
@@ -288,6 +405,78 @@ const Contact = () => {
     return "";
   };
 
+  /**
+   * One topic code -> its label. Same reasoning as `attachmentErrorText`:
+   * literal keys so `npm run i18n:check` can actually verify them, rather
+   * than a template key it has to report as unverifiable.
+   */
+  const topicLabel = (code) => {
+    switch (code) {
+      case "general":
+        return t("contact.topics.general");
+      case "account":
+        return t("contact.topics.account");
+      case "privacy":
+        return t("contact.topics.privacy");
+      case REPORT_TOPIC_CODE:
+        return t("contact.topics.report");
+      case "feedback":
+        return t("contact.topics.feedback");
+      default:
+        return code;
+    }
+  };
+
+  /** The file name, or the placeholder when nothing safe is left of it. */
+  const attachmentDisplayName = (fileName) =>
+    getAttachmentDisplayName(fileName) || t("contact.attachment.selectedFile");
+
+  /**
+   * A failure from `/api/contact`, said in the reader's language.
+   *
+   * Returns "" for a code this build does not know, so the caller can fall
+   * back to the backend's own prose. ⚠️ That fallback is the point: it makes
+   * the change additive in both directions and free of any deploy order — a
+   * new frontend against an old backend finds no code and reads `message`, an
+   * old frontend against a new backend ignores the code it never looks for.
+   * The topic codes could not be built that way and cost the release an
+   * ordering constraint; this one need not.
+   */
+  const serverErrorText = (code, values) => {
+    const attachmentCode = SERVER_ATTACHMENT_CODES[code];
+    if (attachmentCode) {
+      const sentence = attachmentErrorText(attachmentCode);
+      // The file name is the one thing only the backend knew.
+      return values?.fileName
+        ? t("contact.attachment.fileError", {
+            name: attachmentDisplayName(values.fileName),
+            message: sentence,
+          })
+        : sentence;
+    }
+
+    switch (code) {
+      case "INVALID_INPUT":
+        return t("contact.errors.invalidInput");
+      // The same refusal the client-side check already words; no reason to
+      // say it differently just because it arrived over the wire.
+      case "CAPTCHA_REQUIRED":
+        return t("contact.validation.captcha");
+      case "CAPTCHA_FAILED":
+        return t("contact.errors.captchaFailed");
+      case "ATTACHMENT_UPLOAD_FAILED":
+        return t("contact.errors.uploadFailed");
+      case "REPORT_PERSIST_FAILED":
+        return t("contact.errors.reportFailed");
+      case "CONTACT_FAILED":
+        return t("contact.errors.contactFailed");
+      case "RATE_LIMITED":
+        return t("contact.errors.rateLimited");
+      default:
+        return "";
+    }
+  };
+
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files || []);
     event.target.value = "";
@@ -299,16 +488,17 @@ const Contact = () => {
 
     selectedFiles.forEach((file) => {
       if (nextAttachments.length >= ATTACHMENT_MAX_FILES) {
-        attachmentErrors.push(
-          `You can attach up to ${ATTACHMENT_MAX_FILES} files.`,
-        );
+        attachmentErrors.push(attachmentErrorText("tooMany"));
         return;
       }
 
       const attachmentError = validateAttachment(file, nextAttachments);
       if (attachmentError) {
         attachmentErrors.push(
-          `${getAttachmentDisplayName(file.name)}: ${attachmentError}`,
+          t("contact.attachment.fileError", {
+            name: attachmentDisplayName(file.name),
+            message: attachmentErrorText(attachmentError),
+          }),
         );
         return;
       }
@@ -317,10 +507,14 @@ const Contact = () => {
     });
 
     if (attachmentErrors.length > 0) {
-      setErrors((prev) => ({
-        ...prev,
-        attachment: formatAttachmentErrors(attachmentErrors),
-      }));
+      const { shown, skipped } = summariseAttachmentErrors(attachmentErrors);
+      const summary = skipped
+        ? `${shown.join(" ")} ${t("contact.attachment.moreSkipped", {
+            count: skipped,
+          })}`
+        : shown.join(" ");
+
+      setErrors((prev) => ({ ...prev, attachment: summary }));
     } else {
       setErrors((prev) => {
         const next = { ...prev };
@@ -362,6 +556,7 @@ const Contact = () => {
         body.append("topic", formValues.topic);
         body.append("message", formValues.message.trim());
         if (hasTurnstile) body.append("turnstile_token", turnstileToken);
+        body.append("language", language);
         attachments.forEach((file) => body.append("attachments", file));
       } else {
         body = {
@@ -369,17 +564,29 @@ const Contact = () => {
           email: formValues.email.trim(),
           topic: formValues.topic,
           message: formValues.message.trim(),
+          language,
           ...(hasTurnstile ? { turnstile_token: turnstileToken } : {}),
         };
       }
 
       const response = await api.post("/api/contact", body);
       const referenceId = response.data?.data?.referenceId;
-      const successMessage =
-        response.data?.message ||
-        (referenceId
-          ? `Your report has been received. Reference ID: ${referenceId}.`
-          : "Thanks, your message has been sent to the Lomir team.");
+      // ⚠️ `response.data.message` is deliberately NOT read here, though the
+      // backend always sends one. On success it is pure prose restating what
+      // `success` and `data.referenceId` already say — and it is English, so
+      // reading it turned the most visible moment of a German form back into
+      // English. Seen in the browser 2026-09-13, right after the reference
+      // code came back correctly.
+      //
+      // This is decision 7 applied rather than deferred: the backend emits the
+      // data, the frontend formulates. No wire-format change was needed,
+      // because the datum was already there. The error path below still falls
+      // back to the backend's text — there the frontend genuinely does not
+      // know what went wrong, and those messages do need codes (their own
+      // change, tracked in STATUS.md).
+      const successMessage = referenceId
+        ? t("contact.status.reportReceived", { reference: referenceId })
+        : t("contact.status.sent");
 
       setFormValues(initialFormValues);
       setAttachments([]);
@@ -390,9 +597,9 @@ const Contact = () => {
     } catch (error) {
       console.error("Contact form submission error:", error);
       setStatus("error");
+      const { code, values, message } = error.response?.data ?? {};
       setStatusMessage(
-        error.response?.data?.message ||
-          "Something went wrong while sending your message. Please try again.",
+        serverErrorText(code, values) || message || t("contact.status.error"),
       );
       resetTurnstile();
     }
@@ -414,10 +621,10 @@ const Contact = () => {
   const renderContactForm = () => {
     const isSubmitting = status === "submitting";
     const hasSuccessMessage = status === "success" && Boolean(statusMessage);
-    const isReportTopic = formValues.topic === REPORT_TOPIC;
+    const isReportTopic = formValues.topic === REPORT_TOPIC_CODE;
     const emailSubtitle = isAuthenticated
-      ? "We will reply by email."
-      : "We will reply by email. Create an account for direct in-app messaging with the Lomir team.";
+      ? t("contact.email.subtitle")
+      : t("contact.email.subtitleGuest");
 
     if (!isEmailFormOpen) {
       return (
@@ -437,11 +644,12 @@ const Contact = () => {
 
             <div className="min-w-0 flex-1">
               <h3 className="font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 text-lg">
-                {hasSuccessMessage ? "Write another email?" : "Send us a message"}
+                {hasSuccessMessage
+                  ? t("contact.email.titleAgain")
+                  : t("contact.email.title")}
               </h3>
-              <p className="max-h-[2.75em] overflow-hidden">
-                {emailSubtitle}
-              </p>
+              {/* Not clamped: see the note beside the open card below. */}
+              <p>{emailSubtitle}</p>
             </div>
           </div>
 
@@ -465,18 +673,19 @@ const Contact = () => {
                 setIsEmailFormOpen(true);
               }}
             >
-              Compose Email
+              {t("contact.email.compose")}
             </Button>
           </div>
 
           {!isAuthenticated && (
             <div className="mt-6 rounded-lg bg-base-100/60 text-left text-sm text-base-content/70 sm:text-right">
               <p>
-                Already part of Lomir?{" "}
-                <Link to="/login" className="link link-primary">
-                  Log in
-                </Link>{" "}
-                to contact us through the app chat.
+                <Trans
+                  i18nKey="contact.loginHint"
+                  components={[
+                    <Link key="login" to="/login" className="link link-primary" />,
+                  ]}
+                />
               </p>
             </div>
           )}
@@ -486,8 +695,18 @@ const Contact = () => {
 
     return (
       <Card
-        title="Send us a message"
+        title={t("contact.email.title")}
         subtitle={emailSubtitle}
+        /* ⚠️ Card clamps a subtitle to two lines so cards in a grid match in
+           height. On this page that only ever loses text: the long subtitle is
+           the one for signed-out visitors, and a signed-out visitor sees this
+           card ALONE — `canUseInAppContact` requires being signed in. So the
+           clamp never balanced anything here, it only cut.
+           Found on a phone, 2026-09-13, reading the German page: the sentence
+           stopped after "…schreibst du dem". Pre-existing and not a German
+           problem — the English is 89 characters against German's 92 and was
+           being cut in the same place. Nobody had read it. */
+        clampSubtitle={false}
         hoverable={false}
         truncateContent={false}
         imageSize="small"
@@ -506,7 +725,7 @@ const Contact = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <FormGroup
-                label="Name"
+                label={t("contact.form.name")}
                 htmlFor="contact-name"
                 error={errors.name}
                 required
@@ -520,13 +739,13 @@ const Contact = () => {
                   }`}
                   value={formValues.name}
                   onChange={(event) => updateField("name", event.target.value)}
-                  placeholder="Your name"
+                  placeholder={t("contact.form.namePlaceholder")}
                   disabled={isSubmitting}
                 />
               </FormGroup>
 
               <FormGroup
-                label="Email"
+                label={t("contact.form.email")}
                 htmlFor="contact-email"
                 error={errors.email}
                 required
@@ -540,18 +759,14 @@ const Contact = () => {
                   }`}
                   value={formValues.email}
                   onChange={(event) => updateField("email", event.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t("contact.form.emailPlaceholder")}
                   disabled={isSubmitting}
                 />
               </FormGroup>
               <FormGroup
-                label="Topic"
+                label={t("contact.form.topic")}
                 htmlFor="contact-topic"
-                helperText={
-                  isReportTopic
-                    ? "Use this topic to report illegal content, abuse, harassment, spam, privacy issues, or security concerns."
-                    : ""
-                }
+                helperText={isReportTopic ? t("contact.report.topicHelp") : ""}
                 className="mb-0"
               >
                 <select
@@ -561,9 +776,9 @@ const Contact = () => {
                   onChange={(event) => updateField("topic", event.target.value)}
                   disabled={isSubmitting}
                 >
-                  {topicOptions.map((topic) => (
-                    <option key={topic} value={topic}>
-                      {topic}
+                  {topicCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {topicLabel(code)}
                     </option>
                   ))}
                 </select>
@@ -571,14 +786,10 @@ const Contact = () => {
             </div>
 
             <FormGroup
-              label="Message"
+              label={t("contact.form.message")}
               htmlFor="contact-message"
               error={errors.message}
-              helperText={
-                isReportTopic
-                  ? "Please include enough detail to find the content or account, such as usernames, team names, message context, links, screenshots, and why you believe it should be reviewed."
-                  : ""
-              }
+              helperText={isReportTopic ? t("contact.report.messageHelp") : ""}
               required
               className="mb-0"
             >
@@ -590,7 +801,7 @@ const Contact = () => {
                   }`}
                   value={formValues.message}
                   onChange={(event) => updateField("message", event.target.value)}
-                  placeholder="Tell us what is on your mind"
+                  placeholder={t("contact.form.messagePlaceholder")}
                   disabled={isSubmitting}
                 />
                 <input
@@ -614,14 +825,19 @@ const Contact = () => {
                       className="pointer-events-auto btn btn-ghost btn-xs gap-1 px-2 text-base-content/40 hover:text-base-content/70"
                     >
                       <Paperclip size={13} />
-                      Attach files
+                      {t("contact.attachment.attach")}
                     </button>
                   )}
                   <p
                     id="contact-attachment-rules"
                     className="w-full text-right text-xs leading-[115%] text-[#9ca3af] sm:flex-1 sm:text-left"
                   >
-                    {ATTACHMENT_HELPER_TEXT}
+                    {t("contact.attachment.rules", {
+                      types: ATTACHMENT_ALLOWED_LABEL,
+                      maxFiles: ATTACHMENT_MAX_FILES,
+                      maxMb: ATTACHMENT_MAX_MB,
+                      totalMb: ATTACHMENT_TOTAL_MAX_MB,
+                    })}
                   </p>
                 </div>
               </div>
@@ -637,7 +853,7 @@ const Contact = () => {
                     >
                       <Paperclip size={14} className="shrink-0 text-base-content/60" />
                       <span className="min-w-0 truncate text-base-content/80">
-                        {getAttachmentDisplayName(file.name)}
+                        {attachmentDisplayName(file.name)}
                       </span>
                       <span className="shrink-0 text-base-content/50">
                         ({formatAttachmentSize(file.size)})
@@ -647,7 +863,7 @@ const Contact = () => {
                         onClick={() => removeAttachment(index)}
                         disabled={isSubmitting}
                         className="btn btn-ghost btn-xs ml-auto shrink-0 p-0.5"
-                        aria-label="Remove attachment"
+                        aria-label={t("contact.attachment.remove")}
                       >
                         <X size={14} />
                       </button>
@@ -689,10 +905,10 @@ const Contact = () => {
                 {isSubmitting ? (
                   <>
                     <span className="loading loading-spinner loading-sm"></span>
-                    Sending...
+                    {t("contact.form.submitting")}
                   </>
                 ) : (
-                  "Send Message"
+                  t("contact.form.submit")
                 )}
               </Button>
             </div>
@@ -701,22 +917,23 @@ const Contact = () => {
         {!isAuthenticated && (
           <div className="mt-12 rounded-lg bg-base-100/60 text-sm text-base-content/70">
             <p>
-              Already part of Lomir?{" "}
-              <Link to="/login" className="link link-primary">
-                Log in
-              </Link>{" "}
-              to contact us through the app chat.
+              <Trans
+                i18nKey="contact.loginHint"
+                components={[
+                  <Link key="login" to="/login" className="link link-primary" />,
+                ]}
+              />
             </p>
           </div>
         )}
 
         <p className="mt-6 text-xs text-base-content/50">
-          By submitting this form, your name and email address will be processed
-          to respond to your inquiry. See our{" "}
-          <Link to="/privacy" className="link link-primary">
-            Privacy Policy
-          </Link>{" "}
-          for details on how we handle your data.
+          <Trans
+            i18nKey="contact.privacyNote"
+            components={[
+              <LegalLink key="privacy" to="/privacy" className="link link-primary" />,
+            ]}
+          />
         </p>
       </Card>
     );
@@ -740,17 +957,15 @@ const Contact = () => {
 
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-[var(--color-primary-focus)] leading-[120%] mb-1 text-lg">
-              Talk to the Lomir Team
+              {t("contact.inApp.title")}
             </h3>
-            <p className="max-h-[2.75em] overflow-hidden">
-              Use your Lomir account to reach us directly in the app.
-            </p>
+            {/* Not clamped, same reasoning as the card above. */}
+            <p>{t("contact.inApp.subtitle")}</p>
           </div>
         </div>
 
         <p className="text-base-content/75">
-          The Lomir Team account is available for account questions, privacy
-          requests, feedback, and anything that needs a little human context.
+          {t("contact.inApp.body")}
         </p>
 
         <div className="mt-auto flex justify-end pt-6">
@@ -763,7 +978,7 @@ const Contact = () => {
               navigate(`/chat/${LOMIR_CONTACT_USER_ID}?type=direct`)
             }
           >
-            Send Chat Message
+            {t("contact.inApp.button")}
           </Button>
         </div>
       </Card>
@@ -777,13 +992,12 @@ const Contact = () => {
           <Mail size={30} />
         </div>
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-primary">
-          Contact Lomir
+          {t("contact.title")}
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-base-content/75">
-          Questions, feedback, account help, privacy requests, or content reports
-          can all start here.
+          {t("contact.intro")}
           <br />
-          We will get your message to the right place.
+          {t("contact.introSecondLine")}
         </p>
       </section>
 
