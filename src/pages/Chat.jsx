@@ -43,6 +43,7 @@ import {
   getConversationUpdatedAt,
   dedupeMessages,
 } from "../utils/chatHelpers";
+import { isConversation } from "../utils/conversationIdentity";
 import {
   dedupeConversations,
   hydrateConversationPreviews,
@@ -142,6 +143,7 @@ const Chat = () => {
     handleTypingUpdate,
   } = useChatTyping({
     conversationId,
+    conversationType: searchParams.get("type") || "direct",
     currentUser: user,
     activeConversation,
   });
@@ -329,12 +331,16 @@ const Chat = () => {
       const next = prev.filter(
         (conversation) =>
           !isTransientEmptyDirectConversation(conversation) ||
-          String(conversation.id) === String(conversationId),
+          isConversation(
+            conversation,
+            searchParams.get("type") || "direct",
+            conversationId,
+          ),
       );
 
       return next.length === prev.length ? prev : next;
     });
-  }, [conversationId, setConversations]);
+  }, [conversationId, searchParams, setConversations]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -443,14 +449,14 @@ const Chat = () => {
       return;
     }
 
-    const conversationExists = conversations.some(
-      (conv) => String(conv.id) === String(conversationId),
+    const type =
+      new URLSearchParams(window.location.search).get("type") || "direct";
+    const conversationExists = conversations.some((conv) =>
+      isConversation(conv, type, conversationId),
     );
     if (conversationExists) return;
     if (seededVirtualConvRef.current === String(conversationId)) return;
 
-    const type =
-      new URLSearchParams(window.location.search).get("type") || "direct";
     if (type !== "direct") return;
 
     seededVirtualConvRef.current = String(conversationId);
@@ -584,13 +590,17 @@ const Chat = () => {
     setSelectedTeamData,
   });
 
-  const selectConversation = (id) => {
+  const selectConversation = (id, selectedType) => {
     // Deselect only when the chat panel is actually open for this conversation.
     // If activeConversation is null and not loading, the panel isn't visible yet
     // (e.g. new virtual conversation) — re-open instead of deselecting.
     if (
       showChatView &&
-      String(id) === String(conversationId) &&
+      isConversation(
+        { id, type: selectedType },
+        searchParams.get("type") || "direct",
+        conversationId,
+      ) &&
       (activeConversation || loadingMessages)
     ) {
       setShowChatView(false);
@@ -600,8 +610,8 @@ const Chat = () => {
 
     // Find the conversation to get its type
     const conversation =
-      filteredConversations.find((c) => c.id === id) ||
-      conversations.find((c) => c.id === id);
+      filteredConversations.find((c) => isConversation(c, selectedType, id)) ||
+      conversations.find((c) => isConversation(c, selectedType, id));
     const type = conversation?.type || "direct";
 
     pendingChatSearchTargetRef.current =
@@ -616,7 +626,9 @@ const Chat = () => {
 
     // Reset unread count for selected conversation
     setConversations((prev) =>
-      prev.map((conv) => (conv.id === id ? { ...conv, unreadCount: 0 } : conv)),
+      prev.map((conv) =>
+        isConversation(conv, type, id) ? { ...conv, unreadCount: 0 } : conv,
+      ),
     );
 
     // Show chat view on mobile/tablet when conversation is selected
@@ -784,6 +796,7 @@ const Chat = () => {
           }
           conversations={isNoSearchResults ? conversations : filteredConversations}
           activeConversationId={conversationId}
+          activeConversationType={searchParams.get("type") || "direct"}
           onSelectConversation={selectConversation}
           loading={loading}
           onlineUsers={onlineUsers}

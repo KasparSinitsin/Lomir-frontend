@@ -4,6 +4,7 @@ import { messageService } from "../services/messageService";
 import { teamService } from "../services/teamService";
 import socketService from "../services/socketService";
 import { uploadToImageKit } from "../config/imagekit";
+import { isConversation } from "../utils/conversationIdentity";
 
 // Message + conversation action handlers extracted from Chat.jsx (Stage 5).
 // Owns send (text/image/file), edit, delete, reply state wiring, and the
@@ -67,7 +68,9 @@ const useChatMessageActions = ({
       await teamService.removeTeamMember(teamId, user.id);
 
       // Remove from local conversation list
-      setConversations((prev) => prev.filter((c) => c.id !== teamId));
+      setConversations((prev) =>
+        prev.filter((c) => !isConversation(c, "team", teamId)),
+      );
 
       // Navigate away
       navigate("/chat");
@@ -115,15 +118,18 @@ const useChatMessageActions = ({
     setPendingChatAction({
       type: "delete-conversation",
       conversationId: activeConversation.id,
+      conversationType: searchParams.get("type") || "direct",
     });
   };
 
-  const executeDeleteConversation = async ({ conversationId }) => {
+  const executeDeleteConversation = async ({ conversationId, conversationType }) => {
     try {
       const convId = conversationId;
 
       // Remove from local state
-      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      setConversations((prev) =>
+        prev.filter((c) => !isConversation(c, conversationType, convId)),
+      );
 
       // Navigate away
       navigate("/chat");
@@ -360,7 +366,11 @@ const useChatMessageActions = ({
     if (isLatestMessage) {
       setConversations((prev) =>
         prev.map((conversation) =>
-          String(conversation.id) === String(conversationId)
+          isConversation(
+            conversation,
+            searchParams.get("type") || "direct",
+            conversationId,
+          )
             ? {
                 ...conversation,
                 lastMessage: trimmedContent,
@@ -412,7 +422,11 @@ const useChatMessageActions = ({
       if (isLatestMessage) {
         setConversations((prev) =>
           prev.map((conversation) =>
-            String(conversation.id) === String(conversationId)
+            isConversation(
+              conversation,
+              searchParams.get("type") || "direct",
+              conversationId,
+            )
               ? {
                   ...conversation,
                   lastMessage: previousMessage?.content || conversation.lastMessage,
