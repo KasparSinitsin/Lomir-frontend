@@ -7,6 +7,7 @@ import {
 import { getEventSentenceText } from "../utils/eventSentences";
 import { formatDisplayName } from "../utils/nameFormatters";
 import { normalizeTimestampToDate } from "../utils/dateHelpers";
+import { isConversation } from "./conversationIdentity";
 import { messageService } from "../services/messageService";
 import {
   collectMentionIds,
@@ -92,7 +93,10 @@ export const dedupeConversations = (list) =>
       );
     }
 
-    return index === self.findIndex((candidate) => candidate.id === conv.id);
+    return (
+      index ===
+      self.findIndex((candidate) => isConversation(candidate, "team", conv.id))
+    );
   });
 
 export const getConversationSearchKey = (conversation) =>
