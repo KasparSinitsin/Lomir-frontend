@@ -995,7 +995,7 @@ const buildMarkerIcon = (point, searchType = "all", showMatchScore = false) => {
   const initials = escapeHtml(point.initials);
   const markerColor = getMapEntityColor(point, searchType);
   const imageMarkup = point.imageUrl
-    ? `<img src="${escapeHtml(point.imageUrl)}" alt="" class="lomir-map-marker-avatar-image" onerror="this.style.display='none'" />`
+    ? `<img src="${escapeHtml(point.imageUrl)}" alt="" class="lomir-map-marker-avatar-image" />`
     : "";
   const demoMarkup = point.isDemo ? getMarkerDemoLabelMarkup(Boolean(point.imageUrl)) : "";
   const matchBadgeMarkup = getMarkerMatchBadgeMarkup(point, showMatchScore);
@@ -1332,6 +1332,43 @@ const MapBounds = ({ points, proximityCenter = null, proximityRadiusKm = null })
     const bounds = L.latLngBounds(points.map((point) => [point.lat, point.lng]));
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 12, animate: false });
   }, [map, points, proximityCenter, proximityRadiusKm]);
+
+  return null;
+};
+
+// A marker avatar that fails to load must fall back to the initials behind it.
+// The image sits inside Leaflet's divIcon HTML, where an inline `onerror` is
+// forbidden by the CSP (`script-src-attr`), so the failure is caught here
+// instead: image errors do not bubble, but a capturing listener on the map
+// container sees every marker image, including ones added later. Images that
+// failed before the listener existed are marked on the way in.
+const MARKER_IMAGE_CLASS = "lomir-map-marker-avatar-image";
+const MARKER_IMAGE_FAILED_CLASS = "lomir-map-marker-avatar-image--failed";
+
+const MarkerImageFallback = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+
+    const onImageError = (event) => {
+      const image = event.target;
+      if (image instanceof HTMLImageElement && image.classList.contains(MARKER_IMAGE_CLASS)) {
+        image.classList.add(MARKER_IMAGE_FAILED_CLASS);
+      }
+    };
+
+    container.addEventListener("error", onImageError, true);
+    container
+      .querySelectorAll(`img.${MARKER_IMAGE_CLASS}`)
+      .forEach((image) => {
+        if (image.complete && image.naturalWidth === 0) {
+          image.classList.add(MARKER_IMAGE_FAILED_CLASS);
+        }
+      });
+
+    return () => container.removeEventListener("error", onImageError, true);
+  }, [map]);
 
   return null;
 };
@@ -2852,6 +2889,7 @@ const SearchMapView = ({
             >
               <AttributionControl position="bottomleft" />
               <MapInstanceCapture onReady={setMapInstance} />
+              <MarkerImageFallback />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

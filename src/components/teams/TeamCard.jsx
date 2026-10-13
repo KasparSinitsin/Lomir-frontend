@@ -21,6 +21,7 @@ import TeamInvitesModal from "./TeamInvitesModal";
 import TeamInvitationDetailsModal from "./TeamInvitationDetailsModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { teamService } from "../../services/teamService";
+import { isQuietError } from "../../services/api";
 import { vacantRoleService } from "../../services/vacantRoleService";
 import useSocketEvents from "../../hooks/useSocketEvents";
 import useTeamRequestLists from "../../hooks/useTeamRequestLists";
@@ -1729,7 +1730,11 @@ const TeamCard = ({
           if (onUpdate) onUpdate(mergedTeam);
         }
       } catch (error) {
-        console.error("Error refreshing team data:", error);
+        // The team is gone when this close follows its deletion: the service
+        // marks that 404 as expected, so it is not an error worth logging.
+        if (!isQuietError(error)) {
+          console.error("Error refreshing team data:", error);
+        }
       }
     }
     setIsModalOpen(false);
