@@ -5,10 +5,7 @@ import Tooltip from "../common/Tooltip";
 import LanguageFlag from "../common/LanguageFlag";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import {
-  LANGUAGE_FEATURE_VISIBLE,
-  SUPPORTED_LANGUAGES,
-} from "../../constants/languages";
+import { SUPPORTED_LANGUAGES } from "../../constants/languages";
 
 /**
  * The navbar language control, for signed-out visitors only.
@@ -32,9 +29,6 @@ import {
  * built for a long list, and the project's own `LANGUAGE_SEARCH_THRESHOLD` of
  * 8 says a list this short should not have a search box at all. A menu is
  * also what the navbar already speaks, right beside the avatar dropdown.
- *
- * ⚠️ Renders nothing while LANGUAGE_FEATURE_VISIBLE is false, like every
- * other surface of this feature.
  */
 const NavbarLanguageMenu = ({ className = "" }) => {
   const { t } = useTranslation();
@@ -46,7 +40,6 @@ const NavbarLanguageMenu = ({ className = "" }) => {
     SUPPORTED_LANGUAGES.find((entry) => entry.code === language)?.endonym ??
     language.toUpperCase();
 
-  if (!LANGUAGE_FEATURE_VISIBLE) return null;
   if (isAuthenticated) return null;
 
   const selectLanguage = (code) => {

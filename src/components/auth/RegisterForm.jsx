@@ -20,7 +20,7 @@ import {
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import CommunicationSection from "../common/CommunicationSection";
-import { LANGUAGE_FEATURE_VISIBLE, getLanguageForCountry } from "../../constants/languages";
+import { getLanguageForCountry } from "../../constants/languages";
 import { readStoredLanguage, resolveLanguage } from "../../utils/languageUtils";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
@@ -585,12 +585,8 @@ const RegisterForm = () => {
       registrationData.append("postal_code", formData.postal_code);
       registrationData.append("city", formData.city);
       registrationData.append("country", formData.country);
-      // Only sent while the picker is on screen. Storing a language nobody was
-      // shown would make the guess an explicit choice and outrank the country
-      // rule for good.
-      if (LANGUAGE_FEATURE_VISIBLE) {
-        registrationData.append("preferred_language", formData.preferred_language);
-      }
+      // The picker is on screen, so what it shows is the person's choice.
+      registrationData.append("preferred_language", formData.preferred_language);
       registrationData.append("accepted_terms", "true");
       registrationData.append("accepted_privacy", "true");
       registrationData.append("confirmed_age_16", "true");
