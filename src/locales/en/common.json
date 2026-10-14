@@ -53,6 +53,7 @@
     },
     "card": {
       "awardedBy": "Awarded by",
+      "awardedByInline": "awarded by",
       "awardedTo": "Awarded to",
       "byShort": "by",
       "delete": "Delete badge award",
