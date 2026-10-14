@@ -252,12 +252,8 @@ const Contact = () => {
   // is no account to resolve it from — a DSA report may be filed by anyone.
   // `language` is what the app is actually rendered in, not what the
   // precedence chain resolved to, so the mail matches the page the reporter
-  // read. While LANGUAGE_FEATURE_VISIBLE is false that is "en" for everyone,
-  // which is correct: the form they just filled in was English too.
-  //
-  // ⚠️ Not gated on the flag, unlike RegisterForm. That gate exists because
-  // registration *stores* a value and a stored guess would outrank the country
-  // rule forever. This value is thrown away after one email.
+  // read. This value is thrown away after one email; registration, by
+  // contrast, stores the language of the account.
   const { language } = useLanguage();
   const hasTurnstile = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 

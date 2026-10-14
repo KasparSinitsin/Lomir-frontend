@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { MessagesSquare } from "lucide-react";
 import FormSectionDivider from "./FormSectionDivider";
 import LanguageSelect from "./LanguageSelect";
-import { LANGUAGE_FEATURE_VISIBLE } from "../../constants/languages";
 
 /**
  * CommunicationSection
@@ -20,14 +19,9 @@ import { LANGUAGE_FEATURE_VISIBLE } from "../../constants/languages";
  * communication preferences (email notification opt-outs and the like) have
  * an obvious home here rather than a second settings-shaped place.
  *
- * ⚠️ Renders nothing while LANGUAGE_FEATURE_VISIBLE is false. Offering
- * "Deutsch" in a UI that then renders English is a promise the app cannot
- * keep; the section appears when the shell is actually translated.
- *
- * Callers must make sure nothing is *written* while the flag is false either.
- * The registration form gates its payload explicitly, because it posts every
- * field at once; the settings page needs no gate, because its only writer is
- * this picker's own onChange and that cannot fire while nothing renders.
+ * What the picker shows is what gets stored: on the settings page it saves
+ * the moment a language is chosen, and the registration form posts it with
+ * the other fields.
  *
  * @param {Object} props
  * @param {string} props.value - selected language code
@@ -43,8 +37,6 @@ const CommunicationSection = ({
   disabled = false,
 }) => {
   const { t } = useTranslation();
-
-  if (!LANGUAGE_FEATURE_VISIBLE) return null;
 
   const fieldId = `communication-${name}`;
 

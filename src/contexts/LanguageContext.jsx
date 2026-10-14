@@ -9,11 +9,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
-import {
-  DEFAULT_LANGUAGE_CODE,
-  LANGUAGE_FEATURE_VISIBLE,
-  isSupportedLanguage,
-} from "../constants/languages";
+import { isSupportedLanguage } from "../constants/languages";
 import {
   clearStoredLanguage,
   readStoredLanguage,
@@ -33,13 +29,9 @@ const LanguageContext = createContext(null);
  * Must sit inside AuthProvider - the account's `preferredLanguage` outranks
  * everything else in that chain, and it arrives with the user.
  *
- * ⚠️ While LANGUAGE_FEATURE_VISIBLE is false the app stays English, on
- * purpose. Resolution still runs and is exposed as `resolvedLanguage`, so the
- * chain can be inspected and tested, but nothing is applied: a German browser
- * would otherwise get <html lang="de"> over an untranslated English UI, which
- * mainly tells a screen reader to mispronounce every word on the page. Same
- * reasoning as the hidden picker - the feature turns on in one place, when
- * the shell is actually translated.
+ * The language the chain resolves to is the language the app is rendered in,
+ * and `<html lang>` follows it, so a screen reader pronounces the page in the
+ * language it is written in.
  */
 export const LanguageProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
@@ -64,9 +56,7 @@ export const LanguageProvider = ({ children }) => {
     [user?.preferredLanguage, user?.country, storedLanguage],
   );
 
-  const activeLanguage = LANGUAGE_FEATURE_VISIBLE
-    ? resolvedLanguage
-    : DEFAULT_LANGUAGE_CODE;
+  const activeLanguage = resolvedLanguage;
 
   useEffect(() => {
     if (i18n.language !== activeLanguage) {
@@ -147,11 +137,9 @@ export const LanguageProvider = ({ children }) => {
     () => ({
       /** What the app is rendered in right now. */
       language: activeLanguage,
-      /** What the chain says it should be - equal to `language` once the
-       *  feature is visible, and the only difference while it is not. */
+      /** What the chain resolves to - the same as `language`. */
       resolvedLanguage,
       setLanguage,
-      isEnabled: LANGUAGE_FEATURE_VISIBLE,
     }),
     [activeLanguage, resolvedLanguage, setLanguage],
   );
