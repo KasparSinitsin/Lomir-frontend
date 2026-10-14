@@ -36,7 +36,7 @@ To test the live demo, just **register your own account** directly in the deploy
 - **Real-Time Chat** — Direct and team group messaging with typing indicators, read receipts, file/image sharing, @mentions, reply threading, and rich system event messages (Socket.IO); blocked users are hidden from direct conversations, team rosters, mention lists, and rendered message streams
 - **Badge System** — Browse 30 badges across 5 color-coded categories; award badges to teammates with reasons and team context
 - **Notifications** — Navbar bell and chat badges with interactive hover tooltips that summarize unread items by type; clear everything behind a badge in one click, or click a type-group to work through its notifications from oldest to newest; notifications whose target was already handled by someone else resolve with an explanation instead of opening an empty view
-- **Bilingual Interface (English / German)** — UI text, the chat's system-event sentences and the legal pages exist in both languages (i18next with ICU messages); translation is being rolled out page by page, and the language picker stays hidden unless `VITE_LANGUAGE_FEATURE_VISIBLE=true` is set (see [Internationalisation](#internationalisation))
+- **Bilingual Interface (English / German)** — UI text, the chat's system-event sentences and the legal pages exist in both languages (i18next with ICU messages); visitors can pick the language in the navbar, and signed-in users in their settings (see [Internationalisation](#internationalisation))
 - **Account Deletion** — Multi-step account deletion with impact preview, automatic team ownership transfer, and graceful "Former Lomir User" handling across chat, badges, and notifications
 - **Demo Data Indicators** — Synthetic/seed data is visually labeled with FlaskConical icons and "DEMO" avatar overlays so users can distinguish test content from real data
 - **Contact Page** — Email contact form with optional multipart file attachments (up to 3 files, 5 MB each, 10 MB total — JPG, PNG, WebP, PDF, TXT, CSV); authenticated users with a configured contact user ID are routed directly to in-app chat instead; optional Turnstile CAPTCHA; privacy disclosure with `/privacy` link at submission; abuse/content reports show a persistent reference ID after submit
@@ -109,22 +109,7 @@ VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/<your-id>
 
 # Contact page — set to a Lomir user ID to route authenticated users to in-app chat
 # VITE_LOMIR_CONTACT_USER_ID=<lomir-team-user-id>
-
-# Bilingual interface — the English/German language picker is being built and
-# is hidden unless this is set to true. Restart the dev server after changing it.
-# VITE_LANGUAGE_FEATURE_VISIBLE=true
 ```
-
-While running `npm run dev` you can also turn the language picker on from the
-browser console without restarting anything, and off again the same way:
-
-```js
-localStorage.setItem("lomir.languageFeaturePreview", "true"); // then reload
-localStorage.removeItem("lomir.languageFeaturePreview");      // then reload
-```
-
-This second switch exists only in a development server; it is compiled out of
-production builds.
 
 > Without ImageKit values the app runs against a local demo backend; only uploads need keys from your own ImageKit account. Maintainers of the shared environment get its values from the project owner.
 
@@ -512,7 +497,7 @@ The interface is available in English and German.
 - **Strings** live in `src/locales/<lang>/` — `common.json` is bundled, `home`, `auth`, `profile` and `teams` load on demand — and are written as ICU messages. Keys must appear as literal `t("…")` calls so `npm run i18n:check` can see them.
 - **Chat events** are the exception to "one string per UI element": every combination of who is addressed (you / a named person / a deleted account / unknown) has its own sentence under `chatEvents.*`, and `utils/eventSentences.js` picks it. Names are inserted after the sentence is translated, never passed into `t()`, because a display name is user input.
 - **Legal pages** are one file per language (`src/content/legal/de.jsx`, `en.jsx`); `npm run legal:check` compares their structure.
-- **The language picker** is hidden unless `VITE_LANGUAGE_FEATURE_VISIBLE=true` (see Getting Started) while the translation work is finished.
+- **The language** is resolved in one order: the account's `preferredLanguage`, then the choice stored in this browser (signed-out visitors, via the navbar menu), then the browser language (if it is a supported one), then the country of the profile, then English (`utils/languageUtils.js`, `contexts/LanguageContext.jsx`). The picker in the navbar is for signed-out visitors, the one in Settings for signed-in users, and the registration form has its own; each stores the choice.
 
 ---
 

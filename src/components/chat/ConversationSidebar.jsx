@@ -8,6 +8,7 @@ const ConversationSidebar = ({
   fullWidth,
   conversations,
   activeConversationId,
+  activeConversationType,
   onSelectConversation,
   loading,
   onlineUsers,
@@ -29,6 +30,7 @@ const ConversationSidebar = ({
       <ConversationList
         conversations={conversations}
         activeConversationId={activeConversationId}
+        activeConversationType={activeConversationType}
         onSelectConversation={onSelectConversation}
         loading={loading}
         onlineUsers={onlineUsers}

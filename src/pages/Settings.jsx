@@ -1151,9 +1151,8 @@ const Settings = () => {
           </section>
 
           {/* ── Communication ── */}
-          {/* Renders nothing while LANGUAGE_FEATURE_VISIBLE is false, which is
-              also why no payload gate is needed here: the only thing that
-              writes preferredLanguage is this picker's own onChange. */}
+          {/* The only thing that writes preferredLanguage is this picker's own
+              onChange. */}
           <CommunicationSection
             value={preferredLanguage}
             onChange={handleLanguageChange}

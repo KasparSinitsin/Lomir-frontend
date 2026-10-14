@@ -206,6 +206,12 @@
     object-position: center;
   }
 
+  /* An avatar that failed to load: the initials behind it show instead
+     (set by MarkerImageFallback in SearchMapView.jsx). */
+  .lomir-map-marker-avatar-image--failed {
+    display: none;
+  }
+
   .lomir-map-marker-demo-overlay {
     position: absolute;
     inset-inline: 0;

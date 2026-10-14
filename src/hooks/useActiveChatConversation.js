@@ -14,6 +14,7 @@ import {
   CHAT_SEARCH_MAX_MESSAGES_PER_CONVERSATION,
 } from "../utils/chatSearch";
 import { isArchivedTeamData } from "../utils/chatHelpers";
+import { isConversation } from "../utils/conversationIdentity";
 
 const useActiveChatConversation = ({
   conversationId,
@@ -307,7 +308,7 @@ const useActiveChatConversation = ({
           if (latestFetchedMessage && latestPreview) {
             setConversations((prev) =>
               prev.map((conversation) =>
-                String(conversation.id) === String(conversationId)
+                isConversation(conversation, type, conversationId)
                   ? {
                       ...conversation,
                       lastMessage: latestPreview,

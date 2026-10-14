@@ -20,8 +20,9 @@ import {
 import api from "../../services/api";
 import LocationInput from "../common/LocationInput";
 import CommunicationSection from "../common/CommunicationSection";
-import { LANGUAGE_FEATURE_VISIBLE, getLanguageForCountry } from "../../constants/languages";
+import { getLanguageForCountry } from "../../constants/languages";
 import { readStoredLanguage, resolveLanguage } from "../../utils/languageUtils";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   useLocationAutoFill,
   describeLocationBlock,
@@ -366,11 +367,37 @@ const RegisterForm = () => {
   // may quietly overwrite what someone chose. Same rule LocationInput applies
   // to city and country, and wired the same way rather than assumed.
   const languageTouchedRef = useRef(Boolean(readStoredLanguage()));
+  // Set only by the picker in this form: a choice made here outranks a later
+  // switch of the page language.
+  const pickerTouchedRef = useRef(false);
 
   const handleLanguageChange = (e) => {
     languageTouchedRef.current = true;
+    pickerTouchedRef.current = true;
     handleChange(e);
   };
+
+  // Switching the page language (the menu in the navbar) while the form is
+  // open moves the picker with it, unless the picker was used here: the picker
+  // names the language of the account and of its confirmation mail, so it must
+  // not stay on the language the page was loaded in. The switch is an explicit
+  // choice, so the country rule above stops as well. Does nothing while the
+  // feature is hidden: the page language never changes then.
+  const { language: pageLanguage } = useLanguage();
+  const previousPageLanguageRef = useRef(pageLanguage);
+
+  useEffect(() => {
+    if (previousPageLanguageRef.current === pageLanguage) return;
+    previousPageLanguageRef.current = pageLanguage;
+    if (pickerTouchedRef.current) return;
+
+    languageTouchedRef.current = true;
+    setFormData((prev) =>
+      prev.preferred_language === pageLanguage
+        ? prev
+        : { ...prev, preferred_language: pageLanguage },
+    );
+  }, [pageLanguage]);
 
   useEffect(() => {
     if (languageTouchedRef.current || !formData.country) return;
@@ -558,12 +585,8 @@ const RegisterForm = () => {
       registrationData.append("postal_code", formData.postal_code);
       registrationData.append("city", formData.city);
       registrationData.append("country", formData.country);
-      // Only sent while the picker is on screen. Storing a language nobody was
-      // shown would make the guess an explicit choice and outrank the country
-      // rule for good.
-      if (LANGUAGE_FEATURE_VISIBLE) {
-        registrationData.append("preferred_language", formData.preferred_language);
-      }
+      // The picker is on screen, so what it shows is the person's choice.
+      registrationData.append("preferred_language", formData.preferred_language);
       registrationData.append("accepted_terms", "true");
       registrationData.append("accepted_privacy", "true");
       registrationData.append("confirmed_age_16", "true");

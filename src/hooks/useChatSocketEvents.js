@@ -10,6 +10,7 @@ import {
   isCurrentUserRemovalPayload,
   isDirectConversationForPartner,
 } from "../utils/chatHelpers";
+import { isConversation } from "../utils/conversationIdentity";
 import { getMessageConversationTarget } from "../utils/messageNotificationUtils";
 import {
   buildConversationLastMessagePreview,
@@ -258,11 +259,15 @@ const useChatSocketEvents = ({
 
       setConversations((prev) => {
         const isUnreadIncoming =
-          messageConvId !== currentConvId && message.senderId !== user.id;
+          !isConversation(
+            { type: messageTarget.type, id: messageConvId },
+            currentType,
+            currentConvId,
+          ) && message.senderId !== user.id;
         const lastMessagePreview = buildConversationLastMessagePreview(message);
         let conversationUpdated = false;
         const updatedList = prev.map((conv) => {
-          if (String(conv.id) === messageConvId) {
+          if (isConversation(conv, messageTarget.type, messageConvId)) {
             conversationUpdated = true;
             const currentUnreadCount = conv.unreadCount ?? conv.unread_count ?? 0;
             const unreadCount = isUnreadIncoming
@@ -544,10 +549,11 @@ const useChatSocketEvents = ({
       if (payload.isLatestMessage || payload.isLastMessage) {
         setConversations((prev) =>
           prev.map((conversation) =>
-            String(conversation.id) === String(payload.conversationId) ||
-            (payload.type === "direct" &&
-              (String(conversation.id) === String(payload.senderId) ||
-                String(conversation.id) === String(payload.receiverId)))
+            (payload.type === "team"
+              ? isConversation(conversation, "team", payload.conversationId)
+              : [payload.conversationId, payload.senderId, payload.receiverId].some(
+                  (id) => isConversation(conversation, "direct", id),
+                ))
               ? {
                   ...conversation,
                   lastMessage: nextContent ?? conversation.lastMessage,
