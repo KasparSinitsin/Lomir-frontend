@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getBadgeName, getCategoryLabel } from "../../utils/badgeLabels";
+import {
+  getBadgeDescription,
+  getBadgeName,
+  getCategoryLabel,
+} from "../../utils/badgeLabels";
 import { Users, Lightbulb, Award } from "lucide-react";
 import {
   CATEGORY_SECTION_PASTELS,
@@ -330,7 +334,11 @@ const BadgeCategoryModal = ({
                       }
                       style={{ color, opacity: 0.8 }}
                     >
-                      {data.badge.description}
+                      {getBadgeDescription(
+                        data.badge.name,
+                        data.badge.description,
+                        t,
+                      )}
                     </p>
                   )}
 
