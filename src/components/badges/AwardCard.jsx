@@ -722,7 +722,7 @@ const AwardCard = ({
                   size={11}
                   className="flex-shrink-0 text-base-content/70"
                 />
-                <span className="flex-shrink-0">awarded by</span>
+                <span className="flex-shrink-0">{t("badges.card.awardedByInline")}</span>
                 <Tooltip
                   content={
                     awardedByUserId &&
